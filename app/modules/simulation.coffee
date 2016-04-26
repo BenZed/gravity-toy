@@ -138,43 +138,50 @@ class Simulation
         check_if_exceeded: -> false
 
     main_emitter = if is_type time.simulation, Simulation then time.simulation.emitter else null
-
+    cache_enabled = time.simulation and time.simulation.cached
+    cached_current_step = if time.paused then yes else no
+    
     #Calculate
-    if not time.paused
-      while time._bi < bodies.length
-        body = bodies[time._bi]
+    loop
+      if not time.paused and not cache_enabled
+        while time._bi < bodies.length
+          body = bodies[time._bi]
 
-        calculate.call body, bodies, time, main_emitter
-        break if time.exceeded
+          calculate.call body, bodies, time, main_emitter, cached_current_step
+          break if time.exceeded
 
-        time._bsi = 0
-        time._bi += 1
+          time._bsi = 0
+          time._bi += 1
 
-    #Integrate
-    i = 0
-    while i < bodies.length
+      cached_current_step = true
 
-      body = bodies[i]
-      if not body.destroyed
+      #Integrate
+      i = 0
+      while i < bodies.length
 
-        if not time.exceeded and not time.paused and not body.suspended
-          #plain old boring inaccurate Euler
-          # body.vel.iadd body.force.mult(time._step)
-          # body.pos.iadd body.vel.mult(time._step)
+        body = bodies[i]
+        if not body.destroyed
 
-          #velocity verlet
-          old_vel = body.vel.copy()
-          new_vel = old_vel.add body.force.mult(time._step)
-          body.vel = old_vel.add(new_vel).mult(0.5)
-          body.pos.iadd body.vel.mult(time._step)
+          if not time.exceeded and not time.paused and not body.suspended
+            #plain old boring inaccurate Euler
+            # body.vel.iadd body.force.mult(time._step)
+            # body.pos.iadd body.vel.mult(time._step)
 
-        if not body.suspended
-          body.emit 'body-update' if is_type body, events.EventEmitter
-          main_emitter.emit 'body-update', body if main_emitter
+            #velocity verlet
+            old_vel = body.vel.copy()
+            new_vel = old_vel.add body.force.mult(time._step)
+            body.vel = old_vel.add(new_vel).mult(0.5)
+            body.pos.iadd body.vel.mult(time._step)
 
-        i += 1
+          if not body.suspended
+            body.emit 'body-update' if is_type body, events.EventEmitter
+            main_emitter.emit 'body-update', body if main_emitter
 
-      bodies.splice i, 1 if body.destroyed
+          i += 1
+
+        bodies.splice i, 1 if body.destroyed
+
+      break if time.exceeded or not cache_enabled
 
   constructor: ->
     @bodies = []
