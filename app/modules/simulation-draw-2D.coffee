@@ -108,9 +108,12 @@ class SimulationDraw2D
 
   draw_body = (body) ->
     radius = body.radius / @camera.current.scale
+    speed = body.vel.magnitude / @camera.current.scale * 0.001 * this.simulation.UPDATE_DELTA
+    speed = radius if speed < radius
+
     pos = @camera.worldToCanvas body.pos
 
-    body.visible = not(pos.x < -radius or pos.x > canvas.width + radius or pos.y < -radius or pos.y > canvas.height + radius)
+    body.visible = not(pos.x < -speed or pos.x > canvas.width + speed or pos.y < -speed or pos.y > canvas.height + speed)
     return if not body.visible;
 
     color = body.color
@@ -119,23 +122,18 @@ class SimulationDraw2D
     draw_orbit.call this, body if @options.orbits
     draw_name.call this, body.name, pos, radius if @options.names and radius >= @options.nameRadiusThreshold and body.name?
     draw_selection.call this, pos, radius if body.selected
-    #fill circle
-    if radius > 2
-      startRadius = radius - 1
-      grad = @context.createRadialGradient pos.x, pos.y, startRadius, pos.x, pos.y, radius
-      grad.addColorStop 0, "rgba(#{color[0]}, #{color[1]}, #{color[2]}, 1.0)"
-      grad.addColorStop 1, "rgba(#{color[0]}, #{color[1]}, #{color[2]}, 0)"
-      @context.fillStyle = grad
 
-    else
-      opacity = geometry.lerp 0.5, 1, radius / 0.5
-      opacity = 1 if opacity > 1
+    opacity = geometry.lerp 0.5, 1, radius / 0.5
+    opacity = 1 if opacity > 1
 
-      radius = 0.5 if radius < 0.5
-      @context.fillStyle = "rgba(#{color[0]}, #{color[1]}, #{color[2]}, #{opacity})"
+    radius = 0.5 if radius < 0.5
+    @context.fillStyle = "rgba(#{color[0]}, #{color[1]}, #{color[2]}, #{opacity})"
 
     @context.beginPath()
-    @context.arc pos.x, pos.y, radius, 0, 2 * Math.PI
+
+    angle = (body.vel.angle - 90) * Math.PI / 180
+    @context.ellipse pos.x, pos.y, radius, speed, angle, 0, 2 * Math.PI
+
     @context.closePath()
 
     @context.fill()

@@ -86,12 +86,12 @@ export default class GravityUI extends React.Component {
   }
 
   createInitialBodies() {
-    this.createNebula(1000, new Vector(6000,1250));
-    this.createNebula(200, new Vector(-3000,50), 50);
-    this.createNebula(500, new Vector(-1000,3500), 50);
-    var canvas = this.draw.canvas;
+    // this.createNebula(1000, new Vector(6000,1250));
+    // this.createNebula(200, new Vector(-3000,50), 50);
+    // this.createNebula(500, new Vector(-1000,3500), 50);
+    // var canvas = this.draw.canvas;
     this.createNebula(350, new Vector(canvas.width * 0.5, canvas.height*0.5));
-    console.log(this.draw.simulation.bodies.length);
+    // console.log(this.draw.simulation.bodies.length);
   }
 
   componentDidMount() {

@@ -8,7 +8,8 @@ Vector = geometry.Vector
 
 #Constants
 UPDATE_DELTA = 20 # ms
-GRAVITATIONAL_CONSTANT = 0.225
+G = 0.225 #gravitational constant
+C = 3000   #light speed (pixels per second)
 
 running_simulations = []
 
@@ -224,6 +225,7 @@ class Simulation
     body = new Body mass, pos, vel, @emitter
     @bodies.push body
     @emitter.emit 'body-create', body
+    body
 
   createPseudoBody: (mass, pos, vel) ->
     throw 'pos must be Vector' if not is_type pos, Vector
@@ -250,7 +252,7 @@ class Simulation
         if dist < body.collisionRadius + @collisionRadius and is_type body.constructor.collide, Function
           body.constructor.collide this, body, main_emitter
 
-        forceOfGravity = GRAVITATIONAL_CONSTANT * body.mass / distSqr
+        forceOfGravity = G * body.mass / distSqr
         force = new Vector forceOfGravity * relative.x / dist, forceOfGravity * relative.y / dist
         @force.iadd force
 
@@ -261,4 +263,4 @@ class Simulation
 Object.defineProperty Simulation.prototype, "UPDATE_DELTA", get: (-> UPDATE_DELTA), configurable: no
 #Export
 module.exports = Simulation
-#module.exports = Object.freeze {start, pause, terminate, bodies: get_bodies, on: on_event, UPDATE_DELTA, GRAVITATIONAL_CONSTANT}
+#module.exports = Object.freeze {start, pause, terminate, bodies: get_bodies, on: on_event, UPDATE_DELTA, G}
