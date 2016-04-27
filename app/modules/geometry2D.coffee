@@ -16,6 +16,11 @@ class Vector
   @distance = (a,b)->
     Math.sqrt @sqrDistance(a,b)
 
+  @dot = (a,b)->
+    a = a.normalized()
+    b = b.normalized()
+    return a.x * b.x + a.y * b.y
+
   @sqrDistance = (a,b)->
     (a.x - b.x) ** 2 + (a.y - b.y) ** 2
 
@@ -92,5 +97,6 @@ class Vector
 
 lerp = (from, to, delta)->
   from + delta * (to - from)
+
 
 module.exports = { Vector, lerp }

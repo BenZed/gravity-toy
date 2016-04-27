@@ -22,8 +22,6 @@ export default class GravityUI extends React.Component {
     this.simulation = new Simulation;
     this.draw = new SimulationDraw2D(this.simulation, props.canvas);
 
-    this.followBody = null;
-
     this.simulation.on('body-create', (body) => {
       var name = Math.random().toString(36).substring(2,8).toUpperCase();
       body.name = name.slice(0,3) + "-" + name.slice(3);
@@ -35,12 +33,6 @@ export default class GravityUI extends React.Component {
 
       if (this.input.mousePressing && is(this.input.mouseAction.hold, Function))
         this.input.mouseAction.hold(this.input);
-
-      if (this.followBody && !this.followBody.destroyed)
-        this.draw.camera.target.pos = this.followBody.pos.copy();
-
-      if (this.followBody && this.followBody.destroyed)
-        this.followBody = null;
 
       this.setState({
         speed,
@@ -57,7 +49,7 @@ export default class GravityUI extends React.Component {
       mouseOrigin: Vector.zero,
       mouseEnd: Vector.zero,
       mousePressing: false,
-      mouseAction: new actions.CreateBody(this)
+      mouseAction: {}
     };
 
     this.createInitialBodies();
@@ -69,7 +61,7 @@ export default class GravityUI extends React.Component {
     offset = offset == null ? Vector.zero : offset;
     var total = 0;
 
-    while (total < radius * 1.125) {
+    while (total < radius * 1.5) {
 
       var cloudOffset = Vector.randomInCircle(radius);
       var cloudRadius = Math.random() * (radius * 0.5);
@@ -90,8 +82,8 @@ export default class GravityUI extends React.Component {
     // this.createNebula(200, new Vector(-3000,50), 50);
     // this.createNebula(500, new Vector(-1000,3500), 50);
     // var canvas = this.draw.canvas;
-    this.createNebula(350, new Vector(canvas.width * 0.5, canvas.height*0.5));
-    // console.log(this.draw.simulation.bodies.length);
+    var windowCenter = new Vector(canvas.width * 0.5, canvas.height * 0.5)
+    this.createNebula(500, windowCenter);
   }
 
   componentDidMount() {
@@ -114,7 +106,7 @@ export default class GravityUI extends React.Component {
 
       this.draw.camera.target.scale += delta.magnitude * zoomSpeed * sign;
 
-    } else if (this.followBody == null || this.followBody.destroyed) {
+    } else {
       let translateSpeed = this.draw.camera.target.scale * 0.2;
       delta.imult(translateSpeed);
 
@@ -148,13 +140,33 @@ export default class GravityUI extends React.Component {
       this.input.mouseAction.release(this.input);
   }
 
+  changeActionButton(e) {
+    
+    name = e.target.dataset.action;
+
+    if (actions[name])
+      this.input.mouseAction = new actions[name](this);
+  }
+
   render() {
 
-    return <div className="row">
-        <div className="col-sm-6">
-          <h1 className='text-'>Gravity Toy</h1>
+    let changeActionButton = this.changeActionButton.bind(this);
+
+    return <div className="container">
+        <div className="row">
+          <div className="col-sm-3">
+            <h1 className='text-'>Gravity Toy</h1>
+          </div>
         </div>
-        <Speedometer speed={this.state.speed} />
+        <div className="row">
+          <div className="col-sm-1">
+            <button className="btn btn-primary" onClick={changeActionButton} data-action="CreateBody">Create</button>
+          </div>
+          <div className="col-sm-1">
+            <button className="btn btn-primary" onClick={changeActionButton} data-action="SelectBody">Select</button>
+          </div>
+          <Speedometer speed={this.state.speed} />
+        </div>
       </div>
   }
 }

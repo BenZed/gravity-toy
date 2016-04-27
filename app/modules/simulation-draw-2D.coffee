@@ -7,6 +7,7 @@ Vector = geometry.Vector
 CAMERA_SPEED = 5
 CAMERA_MIN_SCALE = 0.1
 CAMERA_MAX_SCALE = 1000
+CAMERA_BLUR_FACTOR = 5
 
 class CameraCoords
   constructor: ->
@@ -14,18 +15,27 @@ class CameraCoords
     @scale = 1
 
 class Camera
-  constructor: ->
+  constructor: (@canvas)->
     @current = new CameraCoords
     @target = new CameraCoords
+    @speed = new Vector 0,0
+    @center = null
+
+  setCenter: (body)->
+    old_center = @center
+
+    @center = body
+    @target.pos.iadd old_center.pos if old_center?
+    @target.pos.isub @center.pos if @center?
 
   worldToCanvas: (point) ->
-    screen_mid = new Vector canvas.width * 0.5, canvas.height * 0.5
+    screen_mid = new Vector @canvas.width * 0.5, @canvas.height * 0.5
     relative = point.sub @current.pos
     relative_scaled = relative.div @current.scale
     relative_scaled.add screen_mid
 
   canvasToWorld: (point) ->
-    screen_mid = new Vector canvas.width * 0.5, canvas.height * 0.5
+    screen_mid = new Vector @canvas.width * 0.5, @canvas.height * 0.5
     adjusted = point.sub screen_mid
     scaled = adjusted.mult @current.scale
     scaled.add @current.pos
@@ -33,20 +43,31 @@ class Camera
   update: (delta_t) ->
     @target.scale = CAMERA_MIN_SCALE if @target.scale < CAMERA_MIN_SCALE
     @target.scale = CAMERA_MAX_SCALE if @target.scale > CAMERA_MAX_SCALE
-    @current.pos.ilerp @target.pos, delta_t * CAMERA_SPEED
     @current.scale = geometry.lerp @current.scale, @target.scale, delta_t * CAMERA_SPEED
+
+    has_center = @center and not (@center.destroyed or @center.suspended)
+    @setCenter null if not has_center
+
+    @speed = @current.pos.copy()
+    target = if has_center then @target.pos.add @center.pos else @target.pos
+
+    @current.pos.ilerp target, delta_t * CAMERA_SPEED
+    @speed.isub @current.pos
+
+    if has_center
+      @speed.iadd @center.vel
 
 #Interface
 class SimulationDraw2D
 
   constructor: (@simulation, @canvas) ->
     @context = @canvas.getContext '2d'
-    @camera = new Camera
+    @camera = new Camera @canvas
 
     #Set Camera to Front and Center Canvas
     @camera.target.scale = 1;
-    @camera.target.pos.x = canvas.width * 0.5;
-    @camera.target.pos.y = canvas.height * 0.5;
+    @camera.target.pos.x = @canvas.width * 0.5;
+    @camera.target.pos.y = @canvas.height * 0.5;
 
     @simulation.on 'interval-start', => clear_canvas.call this
     @simulation.on 'interval-start', => draw_grid.call this
@@ -76,7 +97,7 @@ class SimulationDraw2D
 
   #PRIVATE DANGLING DRAW METHODS
   clear_canvas = -> 
-    @context.clearRect 0, 0, canvas.width, canvas.height
+    @context.clearRect 0, 0, @canvas.width, @canvas.height
 
   draw_grid = ->
     return if @options.grid is off
@@ -108,12 +129,13 @@ class SimulationDraw2D
 
   draw_body = (body) ->
     radius = body.radius / @camera.current.scale
-    speed = body.vel.magnitude / @camera.current.scale * 0.001 * this.simulation.UPDATE_DELTA
-    speed = radius if speed < radius
+    vel = body.vel.sub(@camera.speed).div(@camera.current.scale).mult(0.001 * @simulation.UPDATE_DELTA * 0.5)
+    speed = vel.magnitude 
+    speed = radius if speed < radius or @simulation.time.paused
 
     pos = @camera.worldToCanvas body.pos
 
-    body.visible = not(pos.x < -speed or pos.x > canvas.width + speed or pos.y < -speed or pos.y > canvas.height + speed)
+    body.visible = not(pos.x < -speed or pos.x > @canvas.width + speed or pos.y < -speed or pos.y > @canvas.height + speed)
     return if not body.visible;
 
     color = body.color
@@ -123,19 +145,16 @@ class SimulationDraw2D
     draw_name.call this, body.name, pos, radius if @options.names and radius >= @options.nameRadiusThreshold and body.name?
     draw_selection.call this, pos, radius if body.selected
 
-    opacity = geometry.lerp 0.5, 1, radius / 0.5
-    opacity = 1 if opacity > 1
-
+    opacity = geometry.lerp 0.5, 1, radius / speed
     radius = 0.5 if radius < 0.5
-    @context.fillStyle = "rgba(#{color[0]}, #{color[1]}, #{color[2]}, #{opacity})"
+    speed = 0.5 if speed < 0.5
 
+    @context.fillStyle = "rgba(#{color[0]}, #{color[1]}, #{color[2]}, #{opacity})"
     @context.beginPath()
 
-    angle = (body.vel.angle - 90) * Math.PI / 180
+    angle = (vel.angle - 90) * Math.PI / 180
     @context.ellipse pos.x, pos.y, radius, speed, angle, 0, 2 * Math.PI
-
     @context.closePath()
-
     @context.fill()
 
   draw_parent = ->

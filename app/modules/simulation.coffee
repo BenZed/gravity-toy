@@ -117,6 +117,10 @@ class Body extends events.EventEmitter
   constructor: (mass, @pos, @vel)->
     @force = Vector.zero
     @destroyed = false
+    @vel = @vel.normalized().mult C if @vel.magnitude > C
+    @cache = 
+      log: []
+      startTick: 0
     set_body_mass_radius.call this, mass
 
 #SIMULATION
@@ -138,51 +142,56 @@ class Simulation
         exceeded: false
         check_if_exceeded: -> false
 
-    main_emitter = if is_type time.simulation, Simulation then time.simulation.emitter else null
-    cache_enabled = time.simulation and time.simulation.cached
-    cached_current_step = if time.paused then yes else no
+    main_emitter = time.simulation?.emitter
+    cache_enabled = time.simulation?.cache?.enabled
     
-    #Calculate
     loop
-      if not time.paused and not cache_enabled
+      #Calculate
+      if not time.paused
         while time._bi < bodies.length
           body = bodies[time._bi]
 
-          calculate.call body, bodies, time, main_emitter, cached_current_step
+          calculate.call body, bodies, time, main_emitter
           break if time.exceeded
 
           time._bsi = 0
           time._bi += 1
-
-      cached_current_step = true
 
       #Integrate
       i = 0
       while i < bodies.length
 
         body = bodies[i]
-        if not body.destroyed
 
-          if not time.exceeded and not time.paused and not body.suspended
-            #plain old boring inaccurate Euler
-            # body.vel.iadd body.force.mult(time._step)
-            # body.pos.iadd body.vel.mult(time._step)
+        if body.destroyed
+          bodies.splice i, 1
+          continue
 
-            #velocity verlet
-            old_vel = body.vel.copy()
-            new_vel = old_vel.add body.force.mult(time._step)
-            body.vel = old_vel.add(new_vel).mult(0.5)
-            body.pos.iadd body.vel.mult(time._step)
+        if not time.exceeded and not time.paused and cache_enabled
+            body.cache.push 
+              vel: body.vel.copy()
+              force: body.force.copy()
+              pos: body.pos.copy()
 
-          if not body.suspended
-            body.emit 'body-update' if is_type body, events.EventEmitter
-            main_emitter.emit 'body-update', body if main_emitter
+        if not time.exceeded and not time.paused and not body.suspended
+          #velocity verlet with relativity
+          dir_f = 1 + Math.min Vector.dot(body.force, body.vel), 0 
+          fraction_of_c = body.vel.sqrMagnitude / C ** 2
+          relativity  = 1 - fraction_of_c * dir_f
 
-          i += 1
+          old_vel = body.vel.copy()
+          new_vel = old_vel.add body.force.mult time._step * relativity
+          body.vel = old_vel.add(new_vel).mult 0.5
+          body.pos.iadd body.vel.mult time._step
 
-        bodies.splice i, 1 if body.destroyed
+        if not body.suspended
 
-      break if time.exceeded or not cache_enabled
+          body.emit 'body-update' if is_type body, events.EventEmitter
+          main_emitter.emit 'body-update', body if main_emitter
+
+        i += 1
+
+      break if time.exceeded or time.paused or not cache_enabled
 
   constructor: ->
     @bodies = []

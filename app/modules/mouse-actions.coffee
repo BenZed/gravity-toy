@@ -1,71 +1,120 @@
 geometry = require "./geometry2D"
 Vector = geometry.Vector
 
+CLICK_DISTANCE = 5
+
 class MouseAction
-  constructor: (@press, @hold, @release)->
+  constructor: (@gravityUI, @press, @hold, @release)->
 
 class SelectBody extends MouseAction
-  constructor: (@gravityUI)->
+  constructor: (gUI)->
     press = (input)=>
+
       for body in @gravityUI.simulation.bodies
         body.selected = false
-        @gravityUI.followBody = null if @gravityUI.followBody is body
-    hold = (input)=>
+
     release = (input)=>
       clickPoint = @gravityUI.draw.camera.canvasToWorld input.mouseEnd
+
       for body in @gravityUI.simulation.bodies
         dist = Vector.distance clickPoint, body.pos
-        if dist < body.radius + 3 * @gravityUI.draw.camera.current.scale
+
+        if dist < body.radius + CLICK_DISTANCE * @gravityUI.draw.camera.current.scale
           body.selected = true
-          @gravityUI.followBody = body
           break
 
-    super press, hold, release
+    super gUI, press, null, release
+
+
+# class CenterAction extends MouseAction
+#   constructor: (gUI)->
+
 
 class CreateBody extends MouseAction
-  constructor: (@gravityUI)->
+
+  try_center = (input)->
+    clickPoint = @gravityUI.draw.camera.canvasToWorld input.mouseOrigin
+    @centeredThisPress = false
+
+    for body in @gravityUI.draw.simulation.bodies
+      dist = Vector.distance clickPoint, body.pos
+      if dist < body.radius + CLICK_DISTANCE * @gravityUI.draw.camera.current.scale
+          @centeredThisPress = true
+          @gravityUI.draw.camera.setCenter body
+          console.log 'centered'
+          break
+
+  constructor: (gUI)->
+    @newPB = null
+    @centerPB = null
+    @centeredThisPress = false
+
     press = (input)=>
+      try_center.call this, input
       @updatePseudoBodies()
+
+      return if @centeredThisPress
       @updateCoords input
       @gravityUI.simulation.pause()
 
     hold = (input)=>
+      return if @centeredThisPress
+
       @updateCoords input
       @drawTrajectory input
 
     release = (input)->
-      @createNewBody()
+      @createNewBody() if not @centeredThisPress
+      @newPB = null
+      @centerPB = null
       @gravityUI.simulation.start()
 
-    super press, hold, release
+    super gUI, press, hold, release
 
   updatePseudoBodies: ->
-    @pseudoBodies = []
     sim = @gravityUI.simulation
     mass = 1000 * Math.pow @gravityUI.draw.camera.current.scale, 3
-    @pseudoBodies.push sim.createPseudoBody mass, Vector.zero, Vector.zero
 
-    for body in sim.bodies when body.visible and not body.destroyed
-      @pseudoBodies.push sim.createPseudoBody body.mass, body.pos.copy(), body.vel.copy()
+    @newPB = sim.createPseudoBody mass, Vector.zero, Vector.zero
+
+    @pseudoBodies = []
+    @pseudoBodies.push  @newPB
+
+    for body in sim.bodies when not body.destroyed and not body.suspended
+      is_center = body is @gravityUI.draw.camera.center
+      
+      continue if not is_center and not body.visible
+
+      pb = sim.createPseudoBody body.mass, body.pos.copy(), body.vel.copy()
+      @centerPB = pb if is_center
+      @pseudoBodies.push pb
 
   updateCoords: (input)->
-    pb = @pseudoBodies[0]
+  
     origin = @gravityUI.draw.camera.canvasToWorld input.mouseOrigin
     end = @gravityUI.draw.camera.canvasToWorld input.mouseEnd
+    speed = @gravityUI.draw.camera.speed
 
-    pb.original.pos = origin
-    pb.original.vel = end.sub origin
+    @newPB.original.pos = origin
+    @newPB.original.vel = end.sub(origin).add(speed)
 
   createNewBody: ->
-    pb = @pseudoBodies[0]
-    @gravityUI.simulation.createBody pb.original.mass, pb.original.pos, pb.original.vel
+    @gravityUI.simulation.createBody @newPB.original.mass, @newPB.original.pos, @newPB.original.vel
 
   pseudoReset: ->
     pBody.reset() for pBody in @pseudoBodies
 
-  drawTrajectory: ->
+  get_pos = -> #private dangler
 
-    pb = @pseudoBodies[0]
+    newPB_canvas_pos = @gravityUI.draw.camera.worldToCanvas @newPB.pos
+    return newPB_canvas_pos if not @centerPB?
+
+    centerPB_canvas_pos = @gravityUI.draw.camera.worldToCanvas @centerPB.pos
+    centerPB_canvas_original_pos =  @gravityUI.draw.camera.worldToCanvas @centerPB.original.pos
+
+    newPB_canvas_pos.sub(centerPB_canvas_pos).add centerPB_canvas_original_pos 
+
+  drawTrajectory: ->
     @pseudoReset()
 
     simulation = @gravityUI.simulation
@@ -75,7 +124,7 @@ class CreateBody extends MouseAction
     draw.context.lineWidth = 1
 
     view_scale = @gravityUI.draw.camera.current.scale
-    speed_scale = pb.vel.magnitude * 0.025
+    speed_scale = @newPB.vel.magnitude * 0.025
 
     scales = view_scale * speed_scale
     scales = 1 if scales < 1
@@ -85,16 +134,15 @@ class CreateBody extends MouseAction
     prediction_time = 0
     integrate = simulation.constructor.integrate
 
-    origin = pb.pos.copy()
-
-    color_alt = Math.round((Math.min(scales, 100) / 255) * 255)
-    console.log color_alt
+    color_alt = Math.round((Math.min(scales, 2) / 255) * 255)
+    offset = Vector.zero
 
     while performance.now() - start_time < simulation.UPDATE_DELTA
-      
-      canvasStart = draw.camera.worldToCanvas pb.pos
+
+      #works, base on center      
+      canvasStart = get_pos.call @
       integrate @pseudoBodies, step
-      canvasEnd = draw.camera.worldToCanvas pb.pos
+      canvasEnd = get_pos.call @
 
       draw.context.beginPath()
       draw.context.moveTo canvasStart.x, canvasStart.y
@@ -104,7 +152,7 @@ class CreateBody extends MouseAction
       draw.context.strokeStyle = "rgba(#{color_alt},255,0,#{alpha})"
       draw.context.stroke()
 
-      if pb.suspended
+      if @newPB.suspended
         draw.context.fillStyle = "green"
         draw.context.beginPath()
         draw.context.arc canvasEnd.x, canvasEnd.y, 2, 0, 2 * Math.PI
