@@ -14,7 +14,7 @@ import Speedometer from "./Speedometer";
 //Types
 const Vector = geometry.Vector;
 
-export default class GravityUI extends React.Component {
+module.exports = class GravityUI extends React.Component {
 
   constructor(props) {
     super(props);

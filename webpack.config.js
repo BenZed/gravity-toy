@@ -15,12 +15,13 @@ module.exports = {
     filename: "bundle.js"
   },
   resolve: {
-    extensions: ["", ".webpack.js", ".web.js", ".js", ".jsx", ".coffee"]
+    extensions: ["", ".webpack.js", ".web.js", ".js", ".jsx", ".coffee", ".cjsx"]
   },
   module: {
 	  loaders: [
       { test: /\.s?css$/,                             loaders: ["style", "css", "sass"]},
       { test: /\.coffee$/,                            loader: "coffee" },
+      { test: /\.cjsx$/,                              loaders: ["coffee", "cjsx"] },
       { test: /\.(coffee\.md|litcoffee)$/,            loaders: ["coffee", "literate"] },
       { test: /\.(woff|woff2)(\?v=\d+\.\d+\.\d+)?$/,  loader: 'url?limit=10000&mimetype=application/font-woff'},
       { test: /\.ttf(\?v=\d+\.\d+\.\d+)?$/,           loader: 'url?limit=10000&mimetype=application/octet-stream'},

@@ -41,7 +41,6 @@ class CreateBody extends MouseAction
       if dist < body.radius + CLICK_DISTANCE * @gravityUI.draw.camera.current.scale
           @centeredThisPress = true
           @gravityUI.draw.camera.setCenter body
-          console.log 'centered'
           break
 
   constructor: (gUI)->
