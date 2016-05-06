@@ -7,6 +7,8 @@ setter = (obj, prop, set) ->
 class Vector
   getter @, 'zero', -> new Vector 0,0
 
+
+
   @lerp = (from, to, delta)->
     newX = lerp from.x, to.x, delta
     newY = lerp from.y, to.y, delta
@@ -87,6 +89,10 @@ class Vector
     sin = Math.sin rad
 
     new Vector @x * cos - @y * sin, @y * cos + @x * sin
+
+  perpendicular: (h)->
+    h = 1 if !h?
+    (new Vector(-@y, @x)).div(@magnitude).mult h
 
   copy: ->
     new Vector(@x, @y);

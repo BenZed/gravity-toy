@@ -118,9 +118,7 @@ class Body extends events.EventEmitter
     @force = Vector.zero
     @destroyed = false
     @vel = @vel.normalized().mult C if @vel.magnitude > C
-    @cache = 
-      log: []
-      startTick: 0
+    @cache = []
     set_body_mass_radius.call this, mass
 
 #SIMULATION
@@ -143,60 +141,65 @@ class Simulation
         check_if_exceeded: -> false
 
     main_emitter = time.simulation?.emitter
-    cache_enabled = time.simulation?.cache?.enabled
-    
-    loop
-      #Calculate
-      if not time.paused
-        while time._bi < bodies.length
-          body = bodies[time._bi]
+    cache_enabled = time.simulation.cache?.enabled is true
 
-          calculate.call body, bodies, time, main_emitter
-          break if time.exceeded
+    #loop
+    #Calculate
+    if not time.paused
+      while time._bi < bodies.length
+        body = bodies[time._bi]
 
-          time._bsi = 0
-          time._bi += 1
+        calculate.call body, bodies, time, main_emitter
+        break if time.exceeded
 
-      #Integrate
-      i = 0
-      while i < bodies.length
+        time._bsi = 0
+        time._bi += 1
 
-        body = bodies[i]
+    #Integrate
+    i = 0
+    while i < bodies.length
 
-        if body.destroyed
-          bodies.splice i, 1
-          continue
+      body = bodies[i]
 
-        if not time.exceeded and not time.paused and cache_enabled
-            body.cache.push 
-              vel: body.vel.copy()
-              force: body.force.copy()
-              pos: body.pos.copy()
+      if body.destroyed
+        bodies.splice i, 1
+        continue
 
-        if not time.exceeded and not time.paused and not body.suspended
-          #velocity verlet with relativity
-          dir_f = 1 + Math.min Vector.dot(body.force, body.vel), 0 
-          fraction_of_c = body.vel.sqrMagnitude / C ** 2
-          relativity  = 1 - fraction_of_c * dir_f
+      if not time.exceeded and not time.paused and cache_enabled
+          body.cache.push body.pos.copy()
+            # vel: body.vel.copy()
+            # force: body.force.copy()
+            # pos: body.pos.copy()
 
-          old_vel = body.vel.copy()
-          new_vel = old_vel.add body.force.mult time._step * relativity
-          body.vel = old_vel.add(new_vel).mult 0.5
-          body.pos.iadd body.vel.mult time._step
+      if not time.exceeded and not time.paused and not body.suspended
+        #velocity verlet with relativity
+        dir_f = 1 + Math.min Vector.dot(body.force, body.vel), 0 
+        fraction_of_c = body.vel.sqrMagnitude / C ** 2
+        relativity  = 1 - fraction_of_c * dir_f
 
-        if not body.suspended
+        old_vel = body.vel.copy()
+        new_vel = old_vel.add body.force.mult time._step * relativity
+        body.vel = old_vel.add(new_vel).mult 0.5
+        body.pos.iadd body.vel.mult time._step
 
-          body.emit 'body-update' if is_type body, events.EventEmitter
-          main_emitter.emit 'body-update', body if main_emitter
+      if not body.suspended
 
-        i += 1
+        body.emit 'body-update' if is_type body, events.EventEmitter
+        main_emitter.emit 'body-update', body if main_emitter
 
-      break if time.exceeded or time.paused or not cache_enabled
+      time.simulation.cache.tick +=1 if cache_enabled
 
-  constructor: ->
+      i += 1
+
+    #  break if time.exceeded or time.paused or not cache_enabled
+
+  constructor: (cache_enabled)->
     @bodies = []
     @time = new Time this
     @emitter = new events.EventEmitter
+    @cache =
+      enabled: if cache_enabled? then cache_enabled else true
+      tick: 0
 
   start: ->
     @time.paused = false

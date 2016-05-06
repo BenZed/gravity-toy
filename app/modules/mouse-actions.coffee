@@ -9,26 +9,56 @@ class MouseAction
 class SelectBody extends MouseAction
   constructor: (gUI)->
     press = (input)=>
-
       for body in @gravityUI.simulation.bodies
         body.selected = false
 
+    hold = (input)=>
+      @drawSelectionBox input
+
     release = (input)=>
-      clickPoint = @gravityUI.draw.camera.canvasToWorld input.mouseEnd
+      area = @getSelectionArea input
+
+      single_point = area.start.x is area.end.x and area.start.y is area.end.y
 
       for body in @gravityUI.simulation.bodies
-        dist = Vector.distance clickPoint, body.pos
+        pos = @gravityUI.draw.camera.worldToCanvas body.pos
 
-        if dist < body.radius + CLICK_DISTANCE * @gravityUI.draw.camera.current.scale
+        if single_point
+          dist = Vector.distance area.end, pos
+
+          if dist < body.radius + CLICK_DISTANCE * @gravityUI.draw.camera.current.scale
+            body.selected = true
+            break
+
+        else if pos.x >= area.start.x and pos.x <= area.end.x and pos.y >= area.start.y and pos.y <= area.end.y
           body.selected = true
-          break
 
-    super gUI, press, null, release
+    super gUI, press, hold, release
 
+  drawSelectionBox: (input)->
+    context = @gravityUI.draw.context
+    area = @getSelectionArea input
+
+    context.fillStyle = 'rgba(85,200,85,0.25)'
+    context.rect area.start.x, area.start.y, area.end.x - area.start.x, area.end.y - area.start.y
+    context.fill()
+
+  getSelectionArea: (input)->
+    origin = input.mouseOrigin
+    final = input.mouseEnd
+
+    start = 
+      x: if origin.x < final.x then origin.x else final.x
+      y: if origin.y < final.y then origin.y else final.y
+
+    end =   
+      x: if origin.x > final.x then origin.x else final.x
+      y: if origin.y > final.y then origin.y else final.y
+
+    {start, end}
 
 # class CenterAction extends MouseAction
 #   constructor: (gUI)->
-
 
 class CreateBody extends MouseAction
 
@@ -146,10 +176,13 @@ class CreateBody extends MouseAction
       draw.context.beginPath()
       draw.context.moveTo canvasStart.x, canvasStart.y
       draw.context.lineTo canvasEnd.x, canvasEnd.y
+      
       alpha = geometry.lerp 1,0, prediction_time * 0.001
       alpha = 0.1 if alpha < 0.1
+
       draw.context.strokeStyle = "rgba(#{color_alt},255,0,#{alpha})"
       draw.context.stroke()
+      draw.context.closePath()
 
       if @newPB.suspended
         draw.context.fillStyle = "green"

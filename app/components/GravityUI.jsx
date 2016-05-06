@@ -61,7 +61,7 @@ module.exports = class GravityUI extends React.Component {
     offset = offset == null ? Vector.zero : offset;
     var total = 0;
 
-    while (total < radius * 1.5) {
+    while (total < radius * 1) {
 
       var cloudOffset = Vector.randomInCircle(radius);
       var cloudRadius = Math.random() * (radius * 0.5);
@@ -69,21 +69,43 @@ module.exports = class GravityUI extends React.Component {
 
       for (var i = 0; i < count; i++) {
         var mass = Math.random() * 10000 + 100;
-        var vec = Vector.randomInCircle(turbulence);
         var pos = Vector.randomInCircle(cloudRadius).add(cloudOffset).add(offset);
-        this.simulation.createBody(mass, pos, vec);
+
+        var relPos = pos.sub(offset);
+        var edgefactor = 1 - (relPos.magnitude / radius);
+        var mag = Math.random() * turbulence;
+
+        var vel = Vector.randomInCircle(mag).mult(edgefactor);
+
+        this.simulation.createBody(mass, pos, vel);
         total++;
       }
     }
   }
 
+  createProtoDisc(radius, offset, density) {
+    radius = radius == null ? 200 : radius;
+    offset = offset == null ? Vector2 .zero : offset;
+    density = density == null ? 10 : density;
+
+    var total = 0;
+    while (total < radius * density) {
+      var pos = Vector.randomInCircle(radius).add(offset);
+      var relPos = pos.sub(offset);
+      var edgefactor = 1 - (relPos.magnitude / radius);
+
+      var mass = Math.max(Math.random() * 10000 * Math.pow(edgefactor, 2), 500);
+      var speed = Math.sqrt(radius) * (relPos.magnitude / radius);
+      var vel = relPos.perpendicular().normalized().mult(speed)
+
+      this.simulation.createBody(mass, pos, vel);
+      total++;
+    }
+  }
+
   createInitialBodies() {
-    // this.createNebula(1000, new Vector(6000,1250));
-    // this.createNebula(200, new Vector(-3000,50), 50);
-    // this.createNebula(500, new Vector(-1000,3500), 50);
-    // var canvas = this.draw.canvas;
     var windowCenter = new Vector(canvas.width * 0.5, canvas.height * 0.5)
-    this.createNebula(500, windowCenter);
+    this.createProtoDisc(200, windowCenter, 8);
   }
 
   componentDidMount() {

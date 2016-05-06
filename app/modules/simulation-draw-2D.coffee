@@ -71,6 +71,7 @@ class SimulationDraw2D
 
     @simulation.on 'interval-start', => clear_canvas.call this
     @simulation.on 'interval-start', => draw_grid.call this
+    @simulation.on 'interval-start', => draw_center.call this
     @simulation.on 'body-update', (body) => draw_body.call this, body
     @simulation.on 'interval-complete', (delta_t)=> @camera.update delta_t
 
@@ -82,17 +83,23 @@ class SimulationDraw2D
     @options =
       grid: true
       parents: true
-      orbits: true
+      trails: true
+      trailLength: 120 #seconds
       names: true
       nameRadiusThreshold: 10
 
     @styles =
       grid:
-        stroke: "rgba(255,255,255,0.5)"
+        stroke: "rgba(255,255,255,0.75)"
         lineWidth: 0.1
+
       body:
         nameFont: "12px Arial"
         nameColor: "white"
+      selection:
+        stroke: "rgba(225,225,85,0.5)"
+      paths:
+        stroke: "rgba(85,85,225,0.25)"
 
 
   #PRIVATE DANGLING DRAW METHODS
@@ -127,64 +134,127 @@ class SimulationDraw2D
       @context.stroke()
       y += y_line_delta
 
+  draw_center = ->
+    return if !@camera.center?
+
+    @context.lineWidth = @styles.grid.lineWidth * 5
+    @context.strokeStyle = @styles.grid.stroke
+
+    pos = @camera.worldToCanvas @camera.center.pos
+
+    @context.beginPath()
+    y = 0
+
+    while y < @canvas.height
+      @context.beginPath()
+      @context.moveTo pos.x, y
+      @context.lineTo pos.x, y + 5
+      @context.stroke()
+      @context.closePath()
+      y += 15
+
+    x = 0
+    while x < @canvas.width
+      @context.beginPath()
+      @context.moveTo x, pos.y
+      @context.lineTo x + 5, pos.y
+      @context.stroke()
+      @context.closePath()
+      x += 15
+
   draw_body = (body) ->
     radius = body.radius / @camera.current.scale
-    vel = body.vel.sub(@camera.speed).div(@camera.current.scale).mult(0.001 * @simulation.UPDATE_DELTA * 0.5)
-    speed = vel.magnitude 
-    speed = radius if speed < radius or @simulation.time.paused
-
     pos = @camera.worldToCanvas body.pos
 
     body.visible = not(pos.x < -speed or pos.x > @canvas.width + speed or pos.y < -speed or pos.y > @canvas.height + speed)
-    return if not body.visible;
+    return if not body.visible and not body.selected
 
-    color = body.color
-
+    #draw funcs
     draw_parent.call this, body if @options.parents
-    draw_orbit.call this, body if @options.orbits
+    draw_trail.call this, body if @options.trails and body.selected
     draw_name.call this, body.name, pos, radius if @options.names and radius >= @options.nameRadiusThreshold and body.name?
     draw_selection.call this, pos, radius if body.selected
 
+    #draw body
+    color = body.color
+    vel = body.vel.sub(@camera.speed).div(@camera.current.scale).mult(0.001 * @simulation.UPDATE_DELTA * 0.5)
+    speed = vel.magnitude 
+    speed = radius if speed < radius or @simulation.time.paused
     opacity = geometry.lerp 0.5, 1, radius / speed
     radius = 0.5 if radius < 0.5
     speed = 0.5 if speed < 0.5
+    angle = (vel.angle - 90) * Math.PI / 180
 
     @context.fillStyle = "rgba(#{color[0]}, #{color[1]}, #{color[2]}, #{opacity})"
     @context.beginPath()
 
-    angle = (vel.angle - 90) * Math.PI / 180
     @context.ellipse pos.x, pos.y, radius, speed, angle, 0, 2 * Math.PI
     @context.closePath()
     @context.fill()
 
   draw_parent = ->
 
-  draw_orbit = ->
+  draw_trail = (body) ->
+    return if !body.cache? or @camera.center is body
 
-  draw_name = (name, pos, radius) ->
+    pos = @camera.worldToCanvas body.pos
+    centerOrigin = @camera.worldToCanvas(@camera.center.pos) if @camera.center?
+
+    scale = Math.max @camera.current.scale, 1
+    if is_type @options.trailLength, Number
+      total = scale * @options.trailLength * 1000 / @simulation.UPDATE_DELTA
+      last = body.cache.length - total
+    else
+      last = 0
+
+    i = body.cache.length - 1
+
+    @context.beginPath()
+    @context.strokeStyle = @styles.paths.stroke
+    @context.lineWidth = Math.max body.radius * 0.25 / scale, 0.5
+
+    while i > last
+      key = body.cache[i]
+      break if !key?
+
+      pos = @camera.worldToCanvas key#.pos
+
+      if @camera.center?
+        offset = @camera.center.cache.length - body.cache.length
+
+        centerWorldKey = @camera.center.cache[i + offset]
+        break if !centerWorldKey?
+
+        centerCanvasLoc = @camera.worldToCanvas centerWorldKey#.pos
+        pos.isub(centerCanvasLoc).iadd centerOrigin
+
+      @context.lineTo pos.x, pos.y
+      idelta = Math.max(Math.round(scale), 1)
+      i -= idelta
+
+    @context.stroke()
+    @context.closePath() 
+
+   draw_name = (name, pos, radius) ->
     @context.font = @styles.body.nameFont
     @context.textAlign = "center"
     @context.fillStyle = @styles.body.nameColor
     @context.fillText name, pos.x, pos.y - radius * 1.25
 
-  draw_selection = (pos, radius)->
-    radius = 4 if radius < 4
-    d = radius * 2
+  draw_selection = (pos, radius, speed, angle)->
+
+    @context.strokeStyle = @styles.selection.stroke
+    @context.lineWidth = 1;
 
     @context.beginPath()
-    @context.strokeStyle = "white";
-    @context.lineWidth = 1;
-    @context.moveTo pos.x - d, pos.y - d
-    @context.lineTo pos.x + d, pos.y - d
-    @context.lineTo pos.x + d, pos.y + d
-    @context.lineTo pos.x - d, pos.y + d
-    @context.lineTo pos.x - d, pos.y - d
+    @context.arc pos.x, pos.y, radius + 2, 0, 2 * Math.PI
+    @context.closePath()
     @context.stroke()
 
   #PRIVATE NON DANGLING  DRAW METHODS
   set_color = (body) ->
     body.color = [255,
-    Math.round(256 / (1 + Math.pow(body.mass / 200000, 1))),
-    Math.round(256 / (1 + Math.pow(body.mass / 20000, 1)))]
+    Math.round(256 / (1 + Math.pow(body.mass / 1000000, 1))),
+    Math.round(256 / (1 + Math.pow(body.mass / 100000, 1)))]
 
 module.exports = SimulationDraw2D
