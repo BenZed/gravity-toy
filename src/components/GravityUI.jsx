@@ -7,7 +7,6 @@ import actions from "../modules/mouse-actions";
 import Simulation from "../modules/simulation";
 import SimulationDraw2D from "../modules/simulation-draw-2D";
 
-
 //Components
 import Speedometer from "./Speedometer";
 
@@ -27,7 +26,7 @@ module.exports = class GravityUI extends React.Component {
       body.name = name.slice(0,3) + "-" + name.slice(3);
     });
 
-    this.simulation.on('interval-complete', (dt, speed) => { 
+    this.simulation.on('interval-complete', (dt, speed) => {
 
       speed = Math.round(speed * 1000) / 10;
 
@@ -36,13 +35,13 @@ module.exports = class GravityUI extends React.Component {
 
       this.setState({
         speed,
-        bodyCount: this.simulation.bodies.length 
+        bodyCount: this.simulation.bodies.length
       });
     });
 
-    this.state = { 
-      speed: 0, 
-      bodyCount: 0 
+    this.state = {
+      speed: 0,
+      bodyCount: 0
     };
 
     this.input = {
@@ -163,7 +162,7 @@ module.exports = class GravityUI extends React.Component {
   }
 
   changeActionButton(e) {
-    
+
     name = e.target.dataset.action;
 
     if (actions[name])

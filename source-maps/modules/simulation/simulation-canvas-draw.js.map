@@ -1,0 +1,32 @@
+)]}
+{
+ "version": 3,
+ "sources": "/Users/bengaumond/Programming/gravity-toy/src/modules/simulation/simulation-canvas-draw.js",
+ "file": "/Users/bengaumond/Programming/gravity-toy/app/modules/simulation/simulation-canvas-draw.js",
+ "sourceRoot": "",
+ "names": [
+  "CameraDefaults",
+  "speed",
+  "minScale",
+  "maxScale",
+  "blurFactor",
+  "CameraCoords",
+  "constructor",
+  "pos",
+  "zero",
+  "scale",
+  "Camera",
+  "canvas",
+  "current",
+  "target",
+  "center",
+  "setCenter",
+  "worldToCanvas",
+  "point",
+  "canvasToWorld",
+  "update",
+  "SimulationCanvasDraw",
+  "simulation"
+ ],
+ "mappings": ";;;;;;AAAA;;;;AACA;;;;;;AAEA,MAAMA,iBAAiB;AACrBC,SAAO,CADc;AAErBC,YAAU,GAFW;AAGrBC,YAAU,IAHW;AAIrBC,cAAY;AAJS,CAAvB;;AAOA,MAAMC,YAAN,CAAmB;AACjBC,gBAAc;AACZ,SAAKC,GAAL,GAAW,iBAAOC,IAAlB;AACA,SAAKC,KAAL,GAAa,CAAb;AACD;AAJgB;;AAOnB,MAAMC,MAAN,CAAa;AACXJ,cAAYK,MAAZ,EAAoB;AAClB,SAAKA,MAAL,GAAcA,MAAd;AACA,SAAKC,OAAL,GAAe,IAAIP,YAAJ,EAAf;AACA,SAAKQ,MAAL,GAAc,IAAIR,YAAJ,EAAd;AACA,SAAKJ,KAAL,GAAa,iBAAOO,IAAP,EAAb;;AAEA,SAAKM,MAAL,GAAc,IAAd;AACD;;AAEDC,cAAY,CAAE;;AAEdC,gBAAcC,KAAd,EAAqB,CAAE;;AAEvBC,gBAAcD,KAAd,EAAqB,CAAE;;AAEvBE,WAAS,CAAE;;AAhBA;;AAoBb;AACA;AACA;;AAEe,MAAMC,oBAAN,CAA2B;;AAExCd,cAAYe,UAAZ,EAAwBV,MAAxB,EAAgC,CAAG;;AAFK;kBAArBS,oB"
+}
