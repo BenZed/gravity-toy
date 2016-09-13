@@ -46,8 +46,10 @@ export default class Simulation extends EventEmitter {
 
     }
 
-    if (!interval.exceeded)
+    if (!interval.exceeded) {
       interval.bodyIndex = 0
+      interval.currentTick ++
+    }
   }
 
   [_calculate](body) {
@@ -101,15 +103,8 @@ export default class Simulation extends EventEmitter {
     }
   }
 
-
   [_collide](b1, b2) {
     const [big, small] = b1.mass > b2.mass ? [b1,b2] : [b2,b1]
-
-    small.destroyed = true
-    small.emit('body-collision', big)
-    big.emit('body-collision', small)
-
-    this.emit('body-collision', small, big)
 
     const totalMass = big.mass + small.mass
     big.pos
@@ -123,8 +118,12 @@ export default class Simulation extends EventEmitter {
       .idiv(totalMass)
 
     big.mass = totalMass
-  }
+    small.mass = 0 //this sets the destroyed flag to true
+    small.emit('body-collision', big)
+    big.emit('body-collision', small)
 
+    this.emit('body-collision', small, big)
+  }
 
   [_update]() {
 
@@ -147,7 +146,7 @@ export default class Simulation extends EventEmitter {
     //this.updateDelta readonly
     Object.defineProperty(this, 'updateDelta', { value: updateDelta})
     //this.g readonly
-    Object.defineProperty(this, 'g', { value: g})
+    Object.defineProperty(this, 'g', { value: g })
     this[_bodies] = new Array()
     this[_update] = this[_update].bind(this)
     this[_interval] = {
@@ -188,19 +187,16 @@ export default class Simulation extends EventEmitter {
     this[_paused] = true
   }
 
-  pause() {
-    if (this[_paused])
-      return
-
-    this[_paused] = true
-  }
-
   get running() {
     return this[_interval].id !== null
   }
 
   get paused() {
     return this[_paused]
+  }
+
+  set paused(value) {
+    this[_paused] = value
   }
 
   createBody(mass, pos, vel) {

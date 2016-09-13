@@ -1,0 +1,237 @@
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+var _isExplicit = require('is-explicit');
+
+var _isExplicit2 = _interopRequireDefault(_isExplicit);
+
+var _events = require('events');
+
+var _events2 = _interopRequireDefault(_events);
+
+var _performanceNow = require('performance-now');
+
+var _performanceNow2 = _interopRequireDefault(_performanceNow);
+
+var _body = require('./body');
+
+var _body2 = _interopRequireDefault(_body);
+
+var _vector = require('./vector');
+
+var _vector2 = _interopRequireDefault(_vector);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/******************************************************************************/
+// Simulation Class
+/******************************************************************************/
+
+//Symbols for "private" properties
+const _bodies = Symbol('bodies'),
+      _update = Symbol('update'),
+      _paused = Symbol('paused'),
+      _interval = Symbol('interval'),
+      _calculate = Symbol('calculate'),
+      _integrate = Symbol('intergrate'),
+      _collide = Symbol('collide');
+
+class Simulation extends _events2.default {
+
+  // UPDATE *******************************************************************/
+
+  [_integrate]() {
+
+    const bodies = this[bodies];
+    const interval = this[interval];
+
+    //calculate loop
+    while (interval.bodyIndex < bodies.length) {
+      this[_calculate](bodies[interval.bodyIndex]);
+
+      if (interval.exceeded) break;
+
+      interval.bodySubIndex = 0;
+      interval.bodyIndex += 1;
+    }
+
+    //apply loop
+    for (let i = 0; i < bodies.length; i++) {
+      const body = bodies[i];
+
+      //we need to write the body class and figure out how cacheing is going to
+      //work before we do this step
+    }
+
+    if (!interval.exceeded) {
+      interval.bodyIndex = 0;
+      interval.currentTick++;
+    }
+  }
+
+  [_calculate](body) {
+    //This function gets called a lot, so there are
+    //some manual inlining and optimizations
+    //i've made. I dunno if they make a difference in the
+    //grand scheme of things, but it helps my OCD
+
+    const bodies = this[_bodies];
+    const interval = this[_interval];
+
+    // relative position vector between two bodies
+    // declared outside of the while loop
+    // to save garbage collections on Vector objects
+    const relative = _vector2.default.zero;
+
+    if (interval.bodySubIndex === 0) body.force.x = 0, body.force.y = 0;
+
+    if (body.destroyed) return;
+
+    while (interval.bodySubIndex < bodies.length) {
+      const otherBody = bodies[interval.bodySubIndex];
+
+      if (body != otherBody && !otherBody.destroyed) {
+
+        //inlining body.pos.sub(otherBody.pos)
+        relative.x = body.pos.x - otherBody.pos.x;
+        relative.y = body.pos.y - otherBody.pos.y;
+
+        const distSqr = relative.sqrMagnitude;
+        //inlining relative.magnitude
+        const dist = Math.sqrt(distSqr);
+
+        if (dist < otherBody.collisionRadius + body.collisionRadius) this[_collide](body, otherBody);
+
+        const G = this.g * body.mass / distSqr;
+
+        //inlining body.iadd(new Vector(G * relative.x / dist, G * relative.y / dist)
+        body.force.x += G * relative.x / dist;
+        body.force.y += G * relative.y / dist;
+      }
+
+      interval.bodySubIndex++;
+
+      if (interval.check()) return;
+    }
+  }
+
+  [_collide](b1, b2) {
+    var _ref = b1.mass > b2.mass ? [b1, b2] : [b2, b1];
+
+    var _ref2 = _slicedToArray(_ref, 2);
+
+    const big = _ref2[0];
+    const small = _ref2[1];
+
+
+    const totalMass = big.mass + small.mass;
+    big.pos.imult(big.mass).iadd(small.pos.mult(small.mass)).idiv(totalMass);
+
+    big.vel.imult(big.mass).iadd(small.vel.mult(small.mass)).idiv(totalMass);
+
+    big.mass = totalMass;
+    small.mass = 0; //this sets the destroyed flag to true
+    small.emit('body-collision', big);
+    big.emit('body-collision', small);
+
+    this.emit('body-collision', small, big);
+  }
+
+  [_update]() {
+
+    const interval = this[_interval];
+
+    interval.start = (0, _performanceNow2.default)();
+    interval.exceeded = false;
+    this.emit('interval-start');
+
+    if (!this[_paused]) while (!interval.check()) this[_integrate]();
+
+    this.emit('interval-complete');
+  }
+
+  // API **********************************************************************/
+  constructor() {
+    let updateDelta = arguments.length <= 0 || arguments[0] === undefined ? 20 : arguments[0];
+    let g = arguments.length <= 1 || arguments[1] === undefined ? 0.225 : arguments[1];
+
+    super();
+    //this.updateDelta readonly
+    Object.defineProperty(this, 'updateDelta', { value: updateDelta });
+    //this.g readonly
+    Object.defineProperty(this, 'g', { value: g });
+    this[_bodies] = new Array();
+    this[_update] = this[_update].bind(this);
+    this[_interval] = {
+      id: null,
+      start: 0,
+      exceeded: false,
+      currentTick: 0,
+
+      bodyIndex: 0,
+      bodySubIndex: 0,
+
+      check: function check() {
+        const delta = (0, _performanceNow2.default)() - this.start;
+        this.exceeded = delta >= this.updateDelta;
+        return this.exceeded;
+      }
+    };
+  }
+
+  start() {
+
+    if (!this[_paused]) return;
+
+    const interval = this[interval];
+
+    if (!interval.id) interval.id = setInterval(this[_update], this.updateDelta);
+
+    this[_paused] = false;
+  }
+
+  stop() {
+    const interval = this[_interval];
+    if (interval.id !== null) clearInterval(interval.id);
+
+    this[_paused] = true;
+  }
+
+  get running() {
+    return this[_interval].id !== null;
+  }
+
+  get paused() {
+    return this[_paused];
+  }
+
+  set paused(value) {
+    this[_paused] = value;
+  }
+
+  createBody(mass, pos, vel) {
+    const body = new _body2.default(mass, new _vector2.default(pos.x, pos.y), new _vector2.default(vel.x, vel.y));
+
+    this[_bodies].push(body);
+    this.emit('body-create', body);
+
+    return body;
+  }
+
+  copy() {
+    const duplicate = new Simulation(this.updateDelta, this.g);
+    for (const body of this[_bodies]) if (!body.destroyed) duplicate.createBody(body.mass, body.pos, body.vec);
+
+    return duplicate;
+  }
+
+}
+
+exports.default = Simulation;
+new Simulation();
+//# sourceMappingURL=/Users/bengaumond/Programming/gravity-toy/source-maps/modules/simulation/simulation.js.map

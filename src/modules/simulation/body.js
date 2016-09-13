@@ -1,24 +1,30 @@
 import { EventEmitter } from 'events'
+import Vector from './vector'
+import is from 'is-explicit'
 
 export class Body extends EventEmitter {
 
-  static collide(b1, b2) {
-    const [big, small] = b1.mass >= b2.mass ? [b1,b2] : [b2,b1]
+  constructor(mass, pos, vel) {
+    super()
 
-    small.destroyed = true
-    small.emit('collision', big)
-    big.emit('colliision', small)
+    if (!is(mass, Number))
+      throw new TypeError('mass must be a Number')
 
-    small.emit('collision-perished', big)
-    big.emit('collision-survived', small)
+    if (!is(pos, Vector))
+      throw new TypeError('pos must be a Vector')
 
-    const totalMass = big.mass + small.mass
+    if (!is(vel, Vector))
+      throw new TypeError('vel must be a Vector')
 
-    big.pos.x = (big.pos.x * big.mass + small.pos.x * small.mass) / totalMass
-    big.pos.y = (big.pos.y * big.mass + small.pos.y * small.mass) / totalMass
-    big.vel.x = (big.vel.x * big.mass + small.vel.x * small.mass) / totalMass
-    big.vel.y = (big.vel.y * big.mass + small.vel.y * small.mass) / totalMass
+    this.mass = mass
+    this.pos = pos
+    this.vel = vel
+    this.cache = []
+    
+  }
 
+  get destroyed() {
+    return this.mass <= 0
   }
 
 }
