@@ -1,44 +1,36 @@
-const webpack = require("webpack"),
-      path = require("path");
+const webpack = require('webpack'),
+  path = require('path')
 
 const PATHS = {
-  app: path.join(__dirname, 'app'),
-  build: path.join(__dirname, 'build')
-};
+  src: path.join(__dirname, 'src'),
+  app: path.join(__dirname, 'app')
+}
 
 module.exports = {
   entry: {
-    app: PATHS.app,
+    src: PATHS.src,
   },
   output: {
-    path: PATHS.build,
-    filename: "bundle.js"
+    path: PATHS.app,
+    filename: 'bundle.js'
   },
   resolve: {
-    extensions: ["", ".webpack.js", ".web.js", ".js", ".jsx", ".coffee", ".cjsx"]
+    extensions: ['', '.webpack.js', '.web.js', '.js', '.jsx']
   },
   module: {
-	  loaders: [
-      { test: /\.s?css$/,                             loaders: ["style", "css", "sass"]},
-      { test: /\.coffee$/,                            loader: "coffee" },
-      { test: /\.cjsx$/,                              loaders: ["coffee", "cjsx"] },
-      { test: /\.(coffee\.md|litcoffee)$/,            loaders: ["coffee", "literate"] },
-      { test: /\.(woff|woff2)(\?v=\d+\.\d+\.\d+)?$/,  loader: 'url?limit=10000&mimetype=application/font-woff'},
-      { test: /\.ttf(\?v=\d+\.\d+\.\d+)?$/,           loader: 'url?limit=10000&mimetype=application/octet-stream'},
-      { test: /\.eot(\?v=\d+\.\d+\.\d+)?$/,           loader: 'file'},
-      { test: /\.svg(\?v=\d+\.\d+\.\d+)?$/,           loader: 'url?limit=10000&mimetype=image/svg+xml'},
-
+    loaders: [
+      { test: /\.s?css$/,                             loaders: ['style', 'css', 'sass']},
       { test: /\.jsx?$/,
         loader: 'babel',
         query: {
           cacheDirectory: true,
           presets: ['react', 'es2015']
         },
-        include: PATHS.app }
-	  ]
+        include: PATHS.src }
+    ]
   },
   devServer: {
-    contentBase: PATHS.build,
+    contentBase: PATHS.app,
 
     // Enable history API fallback so HTML5 History API based
     // routing works. This is a good default that will come
@@ -64,12 +56,7 @@ module.exports = {
   plugins: [
     new webpack.HotModuleReplacementPlugin(),
     new webpack.ProvidePlugin({
-      $: "jquery",
-      jQuery: "jquery",
-      "window.jQuery": "jquery"
-    }),
-    new webpack.ProvidePlugin({
-      React: "react"
+      React: 'react'
     })
   ]
 }

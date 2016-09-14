@@ -1,0 +1,17 @@
+)]}
+{
+ "version": 3,
+ "sources": "/Volumes/GM Production 02 External/Projects/Git/gravity-toy/src/modules/simulation/body.js",
+ "file": "/Volumes/GM Production 02 External/Projects/Git/gravity-toy/lib/body.js",
+ "sourceRoot": "",
+ "names": [
+  "Body",
+  "mass",
+  "pos",
+  "vel",
+  "Number",
+  "TypeError",
+  "cache"
+ ],
+ "mappings": ";;;;;;;;;AAAA;;AACA;;;;AACA;;;;;;;;;;;;IAEaA,I,WAAAA,I;;;AAEX,gBAAYC,IAAZ,EAAkBC,GAAlB,EAAuBC,GAAvB,EAA4B;AAAA;;AAAA;;AAG1B,QAAI,CAAC,0BAAGF,IAAH,EAASG,MAAT,CAAL,EACE,MAAM,IAAIC,SAAJ,CAAc,uBAAd,CAAN;;AAEF,QAAI,CAAC,0BAAGH,GAAH,mBAAL,EACE,MAAM,IAAIG,SAAJ,CAAc,sBAAd,CAAN;;AAEF,QAAI,CAAC,0BAAGF,GAAH,mBAAL,EACE,MAAM,IAAIE,SAAJ,CAAc,sBAAd,CAAN;;AAEF,UAAKJ,IAAL,GAAYA,IAAZ;AACA,UAAKC,GAAL,GAAWA,GAAX;AACA,UAAKC,GAAL,GAAWA,GAAX;AACA,UAAKG,KAAL,GAAa,EAAb;;AAf0B;AAiB3B;;;;wBAEe;AACd,aAAO,KAAKL,IAAL,IAAa,CAApB;AACD"
+}

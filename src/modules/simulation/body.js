@@ -20,7 +20,7 @@ export class Body extends EventEmitter {
     this.pos = pos
     this.vel = vel
     this.cache = []
-    
+
   }
 
   get destroyed() {

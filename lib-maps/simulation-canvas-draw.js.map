@@ -1,0 +1,27 @@
+)]}
+{
+ "version": 3,
+ "sources": "/Volumes/GM Production 02 External/Projects/Git/gravity-toy/src/modules/simulation/simulation-canvas-draw.js",
+ "file": "/Volumes/GM Production 02 External/Projects/Git/gravity-toy/lib/simulation-canvas-draw.js",
+ "sourceRoot": "",
+ "names": [
+  "CameraDefaults",
+  "speed",
+  "minScale",
+  "maxScale",
+  "blurFactor",
+  "CameraCoords",
+  "pos",
+  "zero",
+  "scale",
+  "Camera",
+  "canvas",
+  "current",
+  "target",
+  "center",
+  "point",
+  "SimulationCanvasDraw",
+  "simulation"
+ ],
+ "mappings": ";;;;;;;;AAAA;;;;AACA;;;;;;;;AAEA,IAAMA,iBAAiB;AACrBC,SAAO,CADc;AAErBC,YAAU,GAFW;AAGrBC,YAAU,IAHW;AAIrBC,cAAY;AAJS,CAAvB;;IAOMC,Y,GACJ,wBAAc;AAAA;;AACZ,OAAKC,GAAL,GAAW,iBAAOC,IAAlB;AACA,OAAKC,KAAL,GAAa,CAAb;AACD,C;;IAGGC,M;AACJ,kBAAYC,MAAZ,EAAoB;AAAA;;AAClB,SAAKA,MAAL,GAAcA,MAAd;AACA,SAAKC,OAAL,GAAe,IAAIN,YAAJ,EAAf;AACA,SAAKO,MAAL,GAAc,IAAIP,YAAJ,EAAd;AACA,SAAKJ,KAAL,GAAa,iBAAOM,IAAP,EAAb;;AAEA,SAAKM,MAAL,GAAc,IAAd;AACD;;;;gCAEW,CAAE;;;kCAEAC,K,EAAO,CAAE;;;kCAETA,K,EAAO,CAAE;;;6BAEd,CAAE;;;;;;AAIb;AACA;AACA;;IAEqBC,oB,GAEnB,8BAAYC,UAAZ,EAAwBN,MAAxB,EAAgC;AAAA;AAAG,C;;kBAFhBK,oB"
+}

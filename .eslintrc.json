@@ -17,6 +17,9 @@
         "react"
     ],
     "rules": {
+        "no-var": "error",
+        "prefer-const": "error",
+        "no-extra-parens": "error",
         "indent": [
             "error",
             2
