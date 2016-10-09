@@ -8,7 +8,9 @@ import Vector from './vector'
 // Simulation Class
 /******************************************************************************/
 
+//Used to make the interval between updates more consistent
 const UPDATE_SLACK = 10
+const MAX_CACHE_SIZE = 33 * 60 * 30 // 10 minutes, assuming the default UpdateDelta
 
 //Symbols for "private" properties
 const _bodies = Symbol('bodies'),
@@ -22,7 +24,6 @@ const _bodies = Symbol('bodies'),
 export default class Simulation extends EventEmitter {
 
   // UPDATE *******************************************************************/
-
   [_integrate]() {
 
     const bodies = this[_bodies]
@@ -33,14 +34,14 @@ export default class Simulation extends EventEmitter {
       this[_calculate](bodies[interval.bodyIndex])
 
       if (interval.exceeded)
-        break
+        return
 
       interval.bodySubIndex = 0
       interval.bodyIndex += 1
     }
 
-    const TIME_STEP = this.UpdateDelta * 0.001
-    
+    const TIME_STEP = this.UPDATE_DELTA * 0.001
+
     //apply loop
     for (let i = 0; i < bodies.length; i++) {
       const body = bodies[i]
@@ -49,23 +50,21 @@ export default class Simulation extends EventEmitter {
       const oldVel = body.vel.copy()
       const newVel = oldVel.add(body.force.mult(TIME_STEP))
       body.vel = oldVel.add(newVel).mult(0.5)
-      body.pos.iadd(body.vel.mult(TIME_STEP))
+
+      body.pos.iadd(body.vel)
 
       body.cache(interval.currentTick)
     }
 
-    if (interval.bodyIndex === bodies.length) {
-      interval.bodyIndex = 0
-      interval.currentTick ++
-    }
+    interval.bodyIndex = 0
+    interval.currentTick ++
   }
 
+  //This function gets called a lot, so there are
+  //some manual inlining and optimizations
+  //i've made. I dunno if they make a difference in the
+  //grand scheme of things, but it helps my OCD
   [_calculate](body) {
-
-    //This function gets called a lot, so there are
-    //some manual inlining and optimizations
-    //i've made. I dunno if they make a difference in the
-    //grand scheme of things, but it helps my OCD
 
     const bodies = this[_bodies]
     const interval = this[_interval]
@@ -75,6 +74,9 @@ export default class Simulation extends EventEmitter {
     // to save garbage collections on Vector objects
     const relative = Vector.zero
 
+    //if the body sub index is zero, that means we
+    //didn't leave in the middle of a force calculation
+    //and we can reset
     if (interval.bodySubIndex === 0)
       body.force.x = 0, body.force.y = 0
 
@@ -87,8 +89,8 @@ export default class Simulation extends EventEmitter {
       if (body != otherBody && !otherBody.destroyed) {
 
         //inlining body.pos.sub(otherBody.pos)
-        relative.x = body.pos.x - otherBody.pos.x
-        relative.y = body.pos.y - otherBody.pos.y
+        relative.x = otherBody.pos.x - body.pos.x
+        relative.y = otherBody.pos.y - body.pos.y
 
         const distSqr = relative.sqrMagnitude
 
@@ -100,7 +102,7 @@ export default class Simulation extends EventEmitter {
 
         const G = this.G * (body.mass / distSqr)
 
-        //inlining body.iadd(new Vector(G * relative.x / dist, G * relative.y / dist)
+        //inlining body.iadd(relative.imult(G).idiv(dist))
         body.force.x += G * relative.x / dist
         body.force.y += G * relative.y / dist
 
@@ -138,33 +140,42 @@ export default class Simulation extends EventEmitter {
 
   [_update]() {
     const interval = this[_interval]
+    const bodies = this[_bodies]
 
     interval.start = now()
     interval.exceeded = false
     this.emit('interval-start')
 
-    if (!this[_paused] && this[_bodies].length > 0)
+    if (!this[_paused] && this[_bodies].length > 0 && interval.currentTick < MAX_CACHE_SIZE)
       while(!interval.check())
         this[_integrate]()
 
-    this.emit('interval-complete', interval.currentTick)
+    for (let i = 0; i < bodies.length; i ++)
+      this.emit('interval-body-update', bodies[i])
+
+    interval.check() //to update interval.delta after interval-body-update listeners
+
+    this.emit('interval-complete', Math.max(this.UPDATE_DELTA + UPDATE_SLACK, interval.delta))
   }
 
   // API **********************************************************************/
-  constructor(UpdateDelta = 20, G = 0.225) {
+  constructor(UPDATE_DELTA = 20, G = 0.225) {
     super()
-    //this.UpdateDelta readonly
-    Object.defineProperty(this, 'UpdateDelta', { value: UpdateDelta })
+
+    //this.UPDATE_DELTA readonly
+    Object.defineProperty(this, 'UPDATE_DELTA', { value: UPDATE_DELTA })
+
     //this.G readonly
     Object.defineProperty(this, 'G', { value: G })
 
-    this[_bodies] = new Array()
     this[_update] = this[_update].bind(this)
     this[_paused] = true
+    this[_bodies] = []
 
     this[_interval] = {
       id: null,
       start: 0,
+      delta: 0,
       exceeded: false,
       currentTick: 0,
 
@@ -172,28 +183,30 @@ export default class Simulation extends EventEmitter {
       bodySubIndex: 0,
 
       check() {
-        const delta = now() - this.start
-
-        return this.exceeded = delta >= UpdateDelta
+        this.delta = now() - this.start
+        return this.exceeded = this.delta >= UPDATE_DELTA
       }
     }
   }
 
   start() {
-
     if (!this[_paused])
       return
 
     const interval = this[_interval]
 
+    //because the integrator will run for the number of milliseconds specified
+    //by update delta, it's still going to take a small amount of time to perform
+    //commands after the integration is complete. Things like caching/updating
+    //body positions and firing event subscribers. Adding UPDATE_SLACK will help
+    //to make the framerate more consistent
     if (!interval.id)
-      interval.id = setInterval(this[_update], this.UpdateDelta + UPDATE_SLACK)
+      interval.id = setInterval(this[_update], this.UPDATE_DELTA + UPDATE_SLACK)
 
     this[_paused] = false
   }
 
   stop() {
-
     const interval = this[_interval]
 
     if (interval.id !== null)
@@ -214,9 +227,13 @@ export default class Simulation extends EventEmitter {
     this[_paused] = !!value
   }
 
+  get cacheSize() {
+    return this[_interval].currentTick
+  }
+
   createBody(mass, pos = Vector.zero, vel = Vector.zero, tick) {
 
-    tick = tick || this[_interval].currentTick
+    tick = tick || this.cacheSize
 
     const body = new Body(mass,
         new Vector(pos.x, pos.y),
@@ -231,8 +248,15 @@ export default class Simulation extends EventEmitter {
     return body
   }
 
+  shiftCache(tick) {
+    const newBodies = []
+
+    // for ()
+
+  }
+
   copy() {
-    const duplicate = new Simulation(this.UpdateDelta, this.G)
+    const duplicate = new Simulation(this.UPDATE_DELTA, this.G)
     for (const body of this[_bodies])
       if (!body.destroyed)
         duplicate.createBody(body.mass, body.pos, body.vec)
@@ -241,5 +265,3 @@ export default class Simulation extends EventEmitter {
   }
 
 }
-
-new Simulation()

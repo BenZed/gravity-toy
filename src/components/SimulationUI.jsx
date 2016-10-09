@@ -1,6 +1,6 @@
 import React from 'react'
 
-import { Vector, Simulation } from '../modules/simulation'
+import { Vector, Simulation, SimulationCanvasDraw } from '../modules/simulation'
 
 export default class extends React.Component {
 
@@ -9,15 +9,25 @@ export default class extends React.Component {
     this.state = {
       bodies: []
     }
-    this.simulation = new Simulation()
+  }
+
+  onResize() {
+    this.canvas.width = window.innerWidth
+    this.canvas.height = window.innerHeight
   }
 
   componentDidMount() {
+
+    onresize = this.onResize.bind(this)
+    onresize()
+
+    this.simulation = new Simulation()
+    this.draw = new SimulationCanvasDraw(this.simulation, this.canvas)
+
     this.simulation.start()
-    this.simulation.createBody(200)
-    this.simulation.createBody(200, new Vector(525,525))
-    this.simulation.on('interval-complete', tick => console.log('cached ticks: ', tick))
-    setTimeout(() => this.simulation.stop(), 1000)
+    this.simulation.createBody(2000, new Vector(250,250))
+    this.simulation.createBody(2000, new Vector(300,300))
+
   }
 
   render() {
