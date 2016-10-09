@@ -3,14 +3,14 @@ const
   path = require('path')
 
 const PATHS = {
-  app: path.join(__dirname, 'web'),
-  build: path.join(__dirname, 'src')
+  build: path.join(__dirname, 'web'),
+  src: path.join(__dirname, 'src')
 }
 
 module.exports = {
 
   entry: {
-    app: PATHS.app,
+    src: PATHS.src,
   },
 
   output: {
@@ -38,9 +38,9 @@ module.exports = {
         loader: 'babel',
         query: {
           cacheDirectory: true,
-          presets: ['react', 'es2015']
+          presets: ['es2015','react']
         },
-        include: PATHS.app
+        include: PATHS.src
       }
     ]
   },
@@ -50,7 +50,7 @@ module.exports = {
   },
 
   devServer: {
-    contentBase: PATHS.build,
+    contentBase: PATHS.app,
 
     historyApiFallback: true,
     inline: true,

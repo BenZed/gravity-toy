@@ -1,4 +1,5 @@
 //Dependencies
+import React from 'react'
 import is from 'is-explicit'
 
 import { Vector, Simulation, SimulationDraw2D } from '../modules/simulation'
@@ -62,7 +63,9 @@ export default class GravityUI extends React.Component {
         const pos = Vector.randomInCircle(cloudRadius).add(cloudOffset).add(offset)
 
         const relPos = pos.sub(offset)
-        const edgefactor = 1 - (relPos.magnitude / radius)
+
+        const edgefactor = 1 - relPos.magnitude / radius
+
         const mag = Math.random() * turbulence
 
         const vel = Vector.randomInCircle(mag).mult(edgefactor)
@@ -82,7 +85,8 @@ export default class GravityUI extends React.Component {
     while (total < radius * density) {
       const pos = Vector.randomInCircle(radius).add(offset)
       const relPos = pos.sub(offset)
-      const edgefactor = 1 - (relPos.magnitude / radius)
+
+      const edgefactor = 1 - relPos.magnitude / radius
 
       const mass = Math.max(Math.random() * 10000 * Math.pow(edgefactor, 2), 500)
       const speed = Math.sqrt(radius) * (relPos.magnitude / radius)
@@ -109,17 +113,18 @@ export default class GravityUI extends React.Component {
     event.stopPropagation()
     event.returnValue = false
 
-    let delta = new Vector(event.deltaX, event.deltaY)
+    const delta = new Vector(event.deltaX, event.deltaY)
 
     if (!event.shiftKey) {
-      let scale = Math.min(this.draw.camera.target.scale, 50)
-      let zoomSpeed = scale * 0.001
-      let sign = delta.y > 0 ? 1 : -1
+      const scale = Math.min(this.draw.camera.target.scale, 50)
+      const zoomSpeed = scale * 0.001
+      const sign = delta.y > 0 ? 1 : -1
 
       this.draw.camera.target.scale += delta.magnitude * zoomSpeed * sign
 
     } else {
-      let translateSpeed = this.draw.camera.target.scale * 0.2
+
+      const translateSpeed = this.draw.camera.target.scale * 0.2
       delta.imult(translateSpeed)
 
       this.draw.camera.target.pos.iadd(delta)
@@ -154,7 +159,7 @@ export default class GravityUI extends React.Component {
 
   changeActionButton(e) {
 
-    name = e.target.dataset.action
+    const name = e.target.dataset.action
 
     if (actions[name])
       this.input.mouseAction = new actions[name](this)
@@ -164,21 +169,6 @@ export default class GravityUI extends React.Component {
 
     const changeActionButton = this.changeActionButton.bind(this)
 
-    return <div className='container'>
-        <div className='row'>
-          <div className='col-sm-3'>
-            <h1 className='text-'>Gravity Toy</h1>
-          </div>
-        </div>
-        <div className='row'>
-          <div className='col-sm-1'>
-            <button className='btn btn-primary' onClick={changeActionButton} data-action='CreateBody'>Create</button>
-          </div>
-          <div className='col-sm-1'>
-            <button className='btn btn-primary' onClick={changeActionButton} data-action='SelectBody'>Select</button>
-          </div>
-          <Speedometer speed={this.state.speed} />
-        </div>
-      </div>
+    return <div className='container'/>
   }
 }
