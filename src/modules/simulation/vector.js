@@ -3,7 +3,7 @@ import lerp from './lerp'
 export default class Vector {
 
   static get zero() {
-    return new Vector()
+    return new Vector
   }
 
   static lerp(from, to, delta=0) {

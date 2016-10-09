@@ -17,9 +17,15 @@
         "react"
     ],
     "rules": {
+        "react/jsx-uses-react": "error",
+        "react/jsx-uses-vars": "error",
         "no-var": "error",
         "prefer-const": "error",
         "no-extra-parens": "error",
+        "jsx-quotes": [
+          "error",
+          "prefer-single"
+        ],
         "indent": [
             "error",
             2

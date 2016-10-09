@@ -35,6 +35,10 @@ class Camera {
     this.canvas = canvas
     this.target = new CameraCoords()
 
+    this.target.scale = 1
+    this.target.pos.x = canvas.width * 0.5
+    this.target.pos.y = canvas.height * 0.5
+
     this[_current] = new CameraCoords()
     this[_velocity] = Vector.zero
     this[_focusBody] = null
@@ -100,8 +104,24 @@ class Camera {
 // SimulationCanvasDraw Class
 /******************************************************************************/
 
+const _drawStart = Symbol('draw-start')
+
 export default class SimulationCanvasDraw {
 
-  constructor(simulation, canvas) { }
+  constructor(simulation, canvas) {
 
+    Object.defineProperty(this, 'canvas', { value: canvas })
+    Object.defineProperty(this, 'context', { value: canvas.getContext('2d')})
+    Object.defineProperty(this, 'camera', { value: new Camera(canvas)})
+
+    this.simulation = simulation
+
+    this[_drawStart] = this[_drawStart].bind(this)
+
+    this.simulation.on('interval-start', this[_drawStart])
+  }
+
+  [_drawStart]() {
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height)
+  }
 }

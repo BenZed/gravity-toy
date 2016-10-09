@@ -2,6 +2,10 @@ const
   //webpack = require('webpack'),
   path = require('path')
 
+const ExtractTextPlugin = require('extract-text-webpack-plugin')
+
+const PORT = 5000
+
 const PATHS = {
   build: path.join(__dirname, 'web'),
   src: path.join(__dirname, 'src')
@@ -9,12 +13,14 @@ const PATHS = {
 
 module.exports = {
 
-  entry: {
-    src: PATHS.src,
-  },
+  entry: [
+    'webpack-dev-server/client?http://0.0.0.0:' + PORT,
+    PATHS.src,
+  ],
 
   output: {
     path: PATHS.build,
+    publicPath: '/',
     filename: 'gravity-toy-web.js'
   },
 
@@ -36,30 +42,28 @@ module.exports = {
       {
         test: /\.jsx?$/,
         loader: 'babel',
-        query: {
-          cacheDirectory: true,
-          presets: ['es2015','react']
-        },
         include: PATHS.src
+      },
+
+      {
+        test: /\.html$/,
+        loader: 'html'
       }
     ]
   },
 
   externals: {
-    'react' : 'React'
+    'react' : 'React',
+    'react-dom' : 'ReactDOM'
   },
 
   devServer: {
-    contentBase: PATHS.app,
+    contentBase: PATHS.src,
+    port: PORT
+  },
 
-    historyApiFallback: true,
-    inline: true,
-    progress: true,
-
-    stats: 'errors-only',
-
-    host: process.env.HOST,
-    port: process.env.PORT || 3100
-  }
+  plugins: [
+    new ExtractTextPlugin('styles.css')
+  ]
 
 }
