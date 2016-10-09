@@ -1,7 +1,7 @@
 import is from 'is-explicit'
 import EventEmitter from 'events'
 import now from 'performance-now'
-import Body from './body'
+import Body, {NUM_CACHE_PROPERTIES} from './body'
 import Vector from './vector'
 
 /******************************************************************************/
@@ -10,7 +10,13 @@ import Vector from './vector'
 
 //Used to make the interval between updates more consistent
 const UPDATE_SLACK = 10
-const MAX_CACHE_SIZE = 33 * 60 * 30 // 10 minutes, assuming the default UpdateDelta
+
+const ONE_GIG = 1073741824 //bytes
+const MAX_MEMORY = ONE_GIG * 0.675
+const MAX_NUMBER_ALLOCATIONS = MAX_MEMORY / 8
+const MAX_CACHE_ALLOCATIONS = MAX_NUMBER_ALLOCATIONS / NUM_CACHE_PROPERTIES
+
+const maxCacheSize = numBodies => Math.floor(MAX_CACHE_ALLOCATIONS / numBodies)
 
 //Symbols for "private" properties
 const _bodies = Symbol('bodies'),
@@ -146,7 +152,9 @@ export default class Simulation extends EventEmitter {
     interval.exceeded = false
     this.emit('interval-start')
 
-    if (!this[_paused] && this[_bodies].length > 0 && interval.currentTick < MAX_CACHE_SIZE)
+    const MaxCacheSize = maxCacheSize(bodies.length)
+
+    if (!this[_paused] && bodies.length > 0 && interval.currentTick < MaxCacheSize)
       while(!interval.check())
         this[_integrate]()
 
