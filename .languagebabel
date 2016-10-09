@@ -1,0 +1,14 @@
+{
+  "babelMapsPath":                    "lib-maps",
+  "babelMapsAddUrl":                  true,
+  "babelSourcePath":                  "src/modules/simulation",
+  "babelTranspilePath":               "lib",
+  "createMap":                        false,
+  "createTargetDirectories":          true,
+  "createTranspiledCode":             true,
+  "disableWhenNoBabelrcFileInPath":   true,
+  "projectRoot":                      true,
+  "suppressSourcePathMessages":       true,
+  "suppressTranspileOnSaveMessages":  true,
+  "transpileOnSave":                  true
+}

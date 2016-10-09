@@ -1,0 +1,6 @@
+src
+web
+.babelrc
+.eslint.json
+.languagebabel
+.webpack.config.js
