@@ -29,7 +29,7 @@ const SPEED = 5,
   MIN_SCALE = 0.1,
   MAX_SCALE = 1000,
   MIN_DRAW_RADIUS = 0.5,
-  BLUR_FACTOR = 5
+  BLUR_FACTOR = 0.4
 
 /******************************************************************************/
 // Camera Classes
@@ -37,7 +37,6 @@ const SPEED = 5,
 
 const _focusBody = Symbol('focus-body'),
   _current = Symbol('current'),
-  _velocity = Symbol('velocity'),
   _canvasCenter = Symbol('canvas-center')
 
 class CameraCoords {
@@ -59,8 +58,8 @@ class Camera {
     this.target.pos.y = canvas.height * 0.5
 
     this[_current] = new CameraCoords()
-    this[_velocity] = Vector.zero
     this[_focusBody] = null
+    this.vel = Vector.zero
 
     this.update = this.update.bind(this)
   }
@@ -108,10 +107,10 @@ class Camera {
     this[_current].pos.ilerp(targetPos, deltaTime * SPEED)
 
     //speed is new position minus old
-    this[_velocity] = oldPos.isub(this[_current].pos)
+    this.vel = oldPos.isub(this[_current].pos)
 
     if (hasFocusBody)
-      this[_velocity].iadd(this.focusBody.vel)
+      this.vel.iadd(this.focusBody.vel)
 
     //apply scale
     this.target.scale = clamp(this.target.scale, MIN_SCALE, MAX_SCALE)
@@ -128,7 +127,8 @@ class Camera {
 const _drawStart = Symbol('draw-start'),
   _drawBody = Symbol('draw-body'),
   _drawComplete = Symbol('draw-complete'),
-  _drawGrid = Symbol('draw-grid')
+  _drawGrid = Symbol('draw-grid'),
+  _drawTrails = Symbol('draw-trails')
 
 export default class SimulationCanvasDraw {
 
@@ -198,22 +198,23 @@ export default class SimulationCanvasDraw {
     if (!stats)
       return
 
-    const current = this.camera[_current]
+    const  camera = this.camera, current = camera[_current]
 
+    //position speed and size of body in relation to camera
     const radius = stats.radius / current.scale
     const pos = this.camera.worldToCanvas(stats.pos)
+    const vel = stats.vel.sub(camera.vel).div(current.scale)
 
-    //velocity of body in relation to camera
-    const vel = stats.vel.sub(this.camera.speed).div(current.scale).mult(0.001 * this.simulation.UPDATE_DELTA * 0.5)
+    this[_drawTrails](body, pos)
 
-    //speedRadius will warp the body from a circle to an ellipse if it is moving fasting enough
-    let speedRadius = vel.magnitude
+    //blurRadius will warp the body from a circle to an ellipse if it is moving fasting enough
+    let blurRadius = vel.magnitude * BLUR_FACTOR
 
     //circularize if speed is too slow or simulation is paused
-    speedRadius = speedRadius < radius || this.simulation.paused ? radius : speedRadius
+    blurRadius = blurRadius < radius || this.simulation.paused ? radius : blurRadius
 
     //in addition to warping, the body will be faded if moving sufficiently fast
-    const opacity = lerp(0.5, 1, radius / speedRadius)
+    const opacity = lerp(0.5, 1, radius / blurRadius)
 
     //angle of the ellipse
     const angle = (vel.angle - 90) * Math.PI / 180
@@ -231,11 +232,15 @@ export default class SimulationCanvasDraw {
     //small or if we're zoomed too far out
     this.context.ellipse(pos.x, pos.y,
       Math.max(radius, MIN_DRAW_RADIUS),
-      Math.max(speedRadius, MIN_DRAW_RADIUS),
+      Math.max(blurRadius, MIN_DRAW_RADIUS),
       angle, 0, 2 * Math.PI)
 
     this.context.closePath()
     this.context.fill()
+
+  }
+
+  [_drawTrails](body, relpos) {
 
   }
 

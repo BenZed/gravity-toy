@@ -6,10 +6,12 @@
     },
     "extends": "eslint:recommended",
     "installedESLint": true,
+    "parser": "babel-eslint",
     "parserOptions": {
         "ecmaFeatures": {
             "experimentalObjectRestSpread": true,
-            "jsx": true
+            "jsx": true,
+            "classes": true
         },
         "sourceType": "module"
     },

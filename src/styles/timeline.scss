@@ -1,4 +1,4 @@
-#timeline {
+.timeline {
   position: relative;
   height: 0.7em;
   width: 100%;
@@ -8,14 +8,14 @@
   border-radius: 1em;
 }
 
-#timeline-cached {
+.timeline-cached {
   height: 100%;
   width: 0%;
   background-color: green;
 }
 
-#timeline-playhead {
-  @extend #timeline-cached;
+.timeline-playhead {
+  @extend .timeline-cached;
   position: absolute;
   top: 0;
   left: 0;

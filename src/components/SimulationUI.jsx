@@ -1,50 +1,58 @@
 import React from 'react'
 
-import { Vector, Simulation, SimulationCanvasDraw, clamp } from '../modules/simulation'
-import Timeline from './Timeline'
+import { Simulation, SimulationCanvasDraw, Vector, clamp } from '../modules/simulation'
 import Mousetrap from 'mousetrap'
 
-export default class extends React.Component {
+import Timeline from './Timeline'
 
-  constructor(props) {
-    super(props)
-    this.state = {
-      //bodies: [],
-      cached: 0,
-      cachedMax: 100,
-      playhead: 0
-    }
+export default class SimulationUI extends React.Component {
 
-    this.setTiming = this.setTiming.bind(this)
-    this.setPlayhead = this.setPlayhead.bind(this)
-    this.setPlayDelta = this.setPlayDelta.bind(this)
-    this.handleCameraMove = this.handleCameraMove.bind(this)
+  static propTypes = {
+    simulation: React.PropTypes.instanceOf(Simulation).isRequired,
+    id: React.PropTypes.string.isRequired,
+    title: React.PropTypes.string.isRequired
   }
 
-  onResize() {
-    this.canvas.width = window.innerWidth
-    this.canvas.height = window.innerHeight
+  static defaultProps = {
+    get simulation() { return new Simulation() },
+    id: 'simulation-ui',
+    title: 'Simulation UI'
   }
 
-  setTiming() {
+  state = {
+    //bodies: [],
+    cached: 0,
+    cachedMax: 100,
+    playhead: 0
+
+  }
+
+  receiveSimulationData = () => {
     this.setState({
-      cached: this.simulation.cacheSize,
-      cachedMax: this.simulation.maxCacheSize,
+      cached: this.props.simulation.cacheSize,
+      cachedMax: this.props.simulation.maxCacheSize,
       playhead: this.draw.tick
     })
   }
 
-  setPlayhead(e) {
+  onWindowResize = () => {
+    this.canvas.width = innerWidth
+    this.canvas.height = innerHeight
+  }
+
+  setPlayhead = e => {
 
     const x = e.clientX - e.currentTarget.offsetLeft
     const xMax = e.currentTarget.offsetWidth
 
-    const targetTick = Math.min(x / xMax * this.simulation.maxCacheSize, this.simulation.cacheSize - 1)
+    const simulation = this.props.simulation
+
+    const targetTick = Math.min(x / xMax * simulation.maxCacheSize, simulation.cacheSize - 1)
 
     this.draw.tick = Math.floor(targetTick)
   }
 
-  setPlayDelta(e) {
+  setPlayDelta = e => {
     let value = e.code === 'ArrowRight' ? 1 : -1
 
     if (this.draw.tickDelta + value === 0)
@@ -53,12 +61,12 @@ export default class extends React.Component {
     this.draw.tickDelta = clamp(this.draw.tickDelta + value, -5, 5)
   }
 
-  handleCameraMove(e) {
+  handleCameraMove = e => {
     e.preventDefault()
 
     const delta = new Vector(e.deltaX, e.deltaY)
 
-    if (!e.shiftKey) {
+    if (e.shiftKey) {
       const scale = Math.min(this.draw.camera.target.scale, 50)
       const zoomSpeed = scale * 0.001
       const sign = delta.y > 0 ? 1 : -1
@@ -76,34 +84,56 @@ export default class extends React.Component {
 
   componentDidMount() {
 
-    onresize = this.onResize.bind(this)
+    this.createEventHandlers()
+    this.createCanvasDraw()
+    this.createKeyboardShortcuts()
+    this.createTestBodies()
+
+    this.props.simulation.start()
+
+  }
+
+  createEventHandlers() {
+    onresize = this.onWindowResize
     onresize()
 
+    this.props.simulation.on('interval-complete', this.receiveSimulationData)
+
+  }
+
+  createCanvasDraw() {
+    this.draw = new SimulationCanvasDraw(this.props.simulation, this.canvas)
+  }
+
+  createKeyboardShortcuts() {
     Mousetrap.bind(['left', 'right'], this.setPlayDelta)
+  }
 
-    this.simulation = new Simulation()
-    this.draw = new SimulationCanvasDraw(this.simulation, this.canvas)
-
-    this.simulation.start()
-    this.simulation.on('interval-complete', this.setTiming)
+  createTestBodies() {
+    const simulation = this.props.simulation
 
     const randMass = () => 125 + Math.random() * 2675
-    const randPos = () => new Vector(Math.random() * this.canvas.width, Math.random() * this.canvas.height)
-    const randVel = () => new Vector(Math.random() * 2, Math.random() * 2)
+    const randPos = () => new Vector(Math.random() * innerWidth, Math.random() * innerHeight)
+    const randVel = (n = 2) => new Vector(-n * 0.5 + Math.random() * n, -n * 0.5 + Math.random() * n)
     const addedPos = n => new Vector(n * 100, n * 200)
 
-    for (let i = 0; i < 100; i++)
-      setTimeout(() => this.simulation.createBody(randMass(), randPos(), undefined, this.draw.tick), i * 50)
+    for (let i = 0; i < 1000; i++)
+      simulation.createBody(randMass(), randPos(), randVel(4), this.draw.tick)
+    // for (let i = 0; i < 100; i++)
+    //   setTimeout(() => simulation.createBody(randMass(), randPos(), undefined, this.draw.tick), i * 50)
 
   }
 
   render() {
 
+    const { id, title, ...other } = this.props
     const { cached, cachedMax, playhead } = this.state
 
-    return <div id='gravity-toy-root'>
+    delete other.simulation
+
+    return <div id={id} {...other}>
       <Timeline cached={cached} cachedMax={cachedMax} onClick={this.setPlayhead} playhead={playhead}/>
-      <h1>Gravity Toy</h1>
+      <h1>{title}</h1>
       <canvas ref={canvas => this.canvas = canvas} onWheel={this.handleCameraMove}/>
     </div>
   }

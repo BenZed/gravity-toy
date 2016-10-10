@@ -9,5 +9,5 @@ import SimulationUI from './components/SimulationUI'
 onload = () => {
   const main = document.querySelector('main')
 
-  render(<SimulationUI/>, main)
+  render(<SimulationUI title='Gravity Toy'/>, main)
 }
