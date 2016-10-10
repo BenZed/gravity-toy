@@ -12,11 +12,9 @@ import Vector from './vector'
 const UPDATE_SLACK = 10
 
 const ONE_GIG = 1073741824 //bytes
-const MAX_MEMORY = ONE_GIG * 0.675
+const MAX_MEMORY = ONE_GIG * 0.5
 const MAX_NUMBER_ALLOCATIONS = MAX_MEMORY / 8
 const MAX_CACHE_ALLOCATIONS = MAX_NUMBER_ALLOCATIONS / NUM_CACHE_PROPERTIES
-
-const maxCacheSize = numBodies => Math.floor(MAX_CACHE_ALLOCATIONS / numBodies)
 
 //Symbols for "private" properties
 const _bodies = Symbol('bodies'),
@@ -51,6 +49,9 @@ export default class Simulation extends EventEmitter {
     //apply loop
     for (let i = 0; i < bodies.length; i++) {
       const body = bodies[i]
+
+      if (body.destroyed)
+        continue
 
       //velocity verlette integrator
       const oldVel = body.vel.copy()
@@ -103,10 +104,10 @@ export default class Simulation extends EventEmitter {
         //inlining relative.magnitude
         const dist = Math.sqrt(distSqr)
 
-        if (dist < otherBody.collisionRadius + body.collisionRadius)
+        if (dist < body.collisionRadius + otherBody.collisionRadius)
           this[_collide](body, otherBody)
 
-        const G = this.G * (body.mass / distSqr)
+        const G = this.G * (otherBody.mass / distSqr)
 
         //inlining body.iadd(relative.imult(G).idiv(dist))
         body.force.x += G * relative.x / dist
@@ -152,7 +153,7 @@ export default class Simulation extends EventEmitter {
     interval.exceeded = false
     this.emit('interval-start')
 
-    const MaxCacheSize = maxCacheSize(bodies.length)
+    const MaxCacheSize = this.maxCacheSize
 
     if (!this[_paused] && bodies.length > 0 && interval.currentTick < MaxCacheSize)
       while(!interval.check())
@@ -237,6 +238,14 @@ export default class Simulation extends EventEmitter {
 
   get cacheSize() {
     return this[_interval].currentTick
+  }
+
+  get maxCacheSize() {
+    return Math.floor(MAX_CACHE_ALLOCATIONS / this[_bodies].length)
+  }
+
+  get maxCacheSeconds() {
+    return this.maxCacheSize / (this.UPDATE_DELTA + UPDATE_SLACK)
   }
 
   createBody(mass, pos = Vector.zero, vel = Vector.zero, tick) {

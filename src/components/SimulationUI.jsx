@@ -25,8 +25,12 @@ export default class extends React.Component {
     this.draw = new SimulationCanvasDraw(this.simulation, this.canvas)
 
     this.simulation.start()
-    this.simulation.createBody(2000, new Vector(250,250))
-    this.simulation.createBody(2000, new Vector(300,300))
+
+    for (let i = 0; i < 250; i++)
+      this.simulation.createBody(125 + Math.random() * 675,
+          new Vector(Math.random() * this.canvas.width, Math.random() * this.canvas.height))
+
+    console.log(this.simulation.maxCacheSeconds / 60)
 
   }
 

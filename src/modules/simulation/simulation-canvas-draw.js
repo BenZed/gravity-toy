@@ -237,7 +237,7 @@ export default class SimulationCanvasDraw {
     this.camera.update(deltaTime)
     //this prevents us from trying to draw a tick that hasn't finished calculating
     //yet, in the event the simulation is large and moving very slowly
-    this.tick = Math.min(this.simulation.cacheSize, this.tick + 1)
+    this.tick = Math.min(this.simulation.cacheSize - 1, this.tick + 1)
   }
 
 }

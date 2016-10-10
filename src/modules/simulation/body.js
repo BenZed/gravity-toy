@@ -8,8 +8,8 @@ import is from 'is-explicit'
 
 const BASE_RADIUS = 0.25
 const RADIUS_MULTIPLIER = 0.1
-const COLLIDE_LOW_THRESHOLD = 2
-const COLLIDE_RADIUS_FACTOR = 0.75
+const COLLIDE_LOW_THRESHOLD = 4
+const COLLIDE_RADIUS_FACTOR = 0.9
 
 export const NUM_CACHE_PROPERTIES = 5
 
