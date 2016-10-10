@@ -139,6 +139,7 @@ export default class SimulationCanvasDraw {
     Object.defineProperty(this, 'camera', { value: new Camera(canvas) })
     Object.defineProperty(this, 'simulation', { value: simulation })
     Object.defineProperty(this, 'tick', { value: 0, writable: true })
+    Object.defineProperty(this, 'tickDelta', { value: 1, writable: true })
 
     this.options = Object.assign({}, options, OptionDefaults)
 
@@ -217,7 +218,13 @@ export default class SimulationCanvasDraw {
     //angle of the ellipse
     const angle = (vel.angle - 90) * Math.PI / 180
 
-    this.context.fillStyle = `rgba(255,255,255,${opacity})`
+    const mass = stats.mass
+
+    this.context.fillStyle = `rgba(255,
+      ${Math.round(256 / (1 + Math.pow(mass / 100000, 1)))},
+      ${Math.round(256 / (1 + Math.pow(mass / 10000, 1)))},
+      ${opacity})`
+
     this.context.beginPath()
 
     //ellipse is draw with minum radii so we can still see bodies if they're too
@@ -232,12 +239,11 @@ export default class SimulationCanvasDraw {
 
   }
 
-
   [_drawComplete](deltaTime) {
     this.camera.update(deltaTime)
     //this prevents us from trying to draw a tick that hasn't finished calculating
     //yet, in the event the simulation is large and moving very slowly
-    this.tick = Math.min(this.simulation.cacheSize - 1, this.tick + 1)
+    this.tick = clamp(this.tick + this.tickDelta, 0, this.simulation.cacheSize - 1)
   }
 
 }

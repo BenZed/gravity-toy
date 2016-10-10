@@ -6,8 +6,8 @@ import is from 'is-explicit'
 // Constants
 /******************************************************************************/
 
-const BASE_RADIUS = 0.25
-const RADIUS_MULTIPLIER = 0.1
+const BASE_RADIUS = 0.1
+const RADIUS_MULTIPLIER = 0.225
 const COLLIDE_LOW_THRESHOLD = 4
 const COLLIDE_RADIUS_FACTOR = 0.9
 
@@ -22,7 +22,8 @@ function radiusFromMass(mass) {
 }
 
 function collisionRadiusFromRadius(radius) {
-  return radius < COLLIDE_LOW_THRESHOLD ? radius
+  return radius < COLLIDE_LOW_THRESHOLD
+    ? radius
     : (radius - COLLIDE_LOW_THRESHOLD) * COLLIDE_RADIUS_FACTOR + COLLIDE_LOW_THRESHOLD
 }
 
@@ -69,6 +70,7 @@ export default class Body extends EventEmitter {
   }
 
   cache(tick) {
+
     const index = (tick - this[_startTick]) * NUM_CACHE_PROPERTIES
 
     const cache = this[_cache]
@@ -91,10 +93,7 @@ export default class Body extends EventEmitter {
     if (index >= 0)
       cache.splice(0, index)
 
-    this[_startTick] -= tick
-    if (this[_startTick] < 0)
-      this[_startTick] = 0
-
+    this[_startTick] = Math.max(this[_startTick] - tick, 0)
   }
 
   statsAtTick(tick) {
@@ -116,6 +115,24 @@ export default class Body extends EventEmitter {
       pos: new Vector(cache[index + 1], cache[index + 2]),
       vel: new Vector(cache[index + 3], cache[index + 4])
     }
+  }
+
+  applyStatsAtTick(tick) {
+    const stats = this.statsAtTick(tick)
+
+    if (tick < this[_startTick])
+      return false
+
+    if (!stats) {
+      this.mass = 0
+      return true
+    }
+
+    this.mass = stats.mass
+    this.pos = stats.pos
+    this.vel = stats.vel
+
+    return true
   }
 
   get mass() {

@@ -153,16 +153,14 @@ export default class Simulation extends EventEmitter {
     interval.exceeded = false
     this.emit('interval-start')
 
+    for (let i = 0; i < bodies.length; i ++)
+      this.emit('interval-body-update', bodies[i])
+
     const MaxCacheSize = this.maxCacheSize
 
     if (!this[_paused] && bodies.length > 0 && interval.currentTick < MaxCacheSize)
       while(!interval.check())
         this[_integrate]()
-
-    for (let i = 0; i < bodies.length; i ++)
-      this.emit('interval-body-update', bodies[i])
-
-    interval.check() //to update interval.delta after interval-body-update listeners
 
     this.emit('interval-complete', Math.max(this.UPDATE_DELTA + UPDATE_SLACK, interval.delta))
   }
@@ -244,6 +242,10 @@ export default class Simulation extends EventEmitter {
     return Math.floor(MAX_CACHE_ALLOCATIONS / this[_bodies].length)
   }
 
+  get cacheSeconds() {
+    return this[_interval].currentTick / (this.UPDATE_DELTA + UPDATE_SLACK)
+  }
+
   get maxCacheSeconds() {
     return this.maxCacheSize / (this.UPDATE_DELTA + UPDATE_SLACK)
   }
@@ -258,11 +260,32 @@ export default class Simulation extends EventEmitter {
         tick)
 
     body.cache(tick)
-
     this[_bodies].push(body)
     this.emit('body-create', body)
 
+    this.applyCacheAtTick(tick)
+
     return body
+  }
+
+  applyCacheAtTick(tick) {
+
+    const interval = this[_interval]
+    const bodies = this[_bodies]
+
+    if (tick > interval.currentTick)
+      throw new Error('Can\'t apply cache that hasn\'t been created yet.')
+
+    interval.currentTick = tick
+
+    let i = 0
+    while(i < bodies.length) {
+      const body = bodies[i]
+
+      if (body.applyStatsAtTick(tick))
+        i++
+      else bodies.splice(i, 1)
+    }
   }
 
   shiftCache(tick) {
