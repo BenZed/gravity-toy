@@ -5,6 +5,9 @@ import Mousetrap from 'mousetrap'
 
 import Timeline from './Timeline'
 
+
+const Speeds = [-1000, -500, -200, -100, -70, -30, -10, -4, -2, -1, 1, 2, 4, 10, 30, 70, 100, 200, 500, 1000]
+
 export default class SimulationUI extends React.Component {
 
   static propTypes = {
@@ -29,8 +32,9 @@ export default class SimulationUI extends React.Component {
 
   receiveSimulationData = () => {
     this.setState({
-      cached: this.props.simulation.cacheSize,
-      cachedMax: this.props.simulation.maxCacheSize,
+      cached: this.props.simulation.cachedTicks,
+      cachedMax: this.props.simulation.maxCacheTicks,
+      secondsMax: this.props.simulation.maxCacheSeconds,
       playhead: this.draw.tick
     })
   }
@@ -47,18 +51,18 @@ export default class SimulationUI extends React.Component {
 
     const simulation = this.props.simulation
 
-    const targetTick = Math.min(x / xMax * simulation.maxCacheSize, simulation.cacheSize - 1)
+    const targetTick = Math.min(x / xMax * simulation.maxCacheTicks, simulation.cachedTicks - 1)
 
     this.draw.tick = Math.floor(targetTick)
   }
 
-  setPlayDelta = e => {
-    let value = e.code === 'ArrowRight' ? 1 : -1
+  setSpeed = e => {
 
-    if (this.draw.tickDelta + value === 0)
-      value *= 2
+    const delta = e.code === 'ArrowRight' ? 1 : -1
+    const newIndex = clamp(Speeds.indexOf(this.draw.tickDelta) + delta, 0, Speeds.length - 1)
 
-    this.draw.tickDelta = clamp(this.draw.tickDelta + value, -5, 5)
+    this.draw.tickDelta = Speeds[newIndex]
+
   }
 
   handleCameraMove = e => {
@@ -106,19 +110,19 @@ export default class SimulationUI extends React.Component {
   }
 
   createKeyboardShortcuts() {
-    Mousetrap.bind(['left', 'right'], this.setPlayDelta)
+    Mousetrap.bind(['left', 'right'], this.setSpeed)
   }
 
   createTestBodies() {
     const simulation = this.props.simulation
 
-    const randMass = () => 125 + Math.random() * 2675
+    const randMass = () => 125 + Math.random() > 0.50 ? Math.random() * 19875 : Math.random() * 1875
     const randPos = () => new Vector(Math.random() * innerWidth, Math.random() * innerHeight)
     const randVel = (n = 2) => new Vector(-n * 0.5 + Math.random() * n, -n * 0.5 + Math.random() * n)
     const addedPos = n => new Vector(n * 100, n * 200)
 
-    for (let i = 0; i < 1000; i++)
-      simulation.createBody(randMass(), randPos(), randVel(4), this.draw.tick)
+    for (let i = 0; i < 100; i++)
+      simulation.createBody(randMass(), randPos(), randVel(3), this.draw.tick)
     // for (let i = 0; i < 100; i++)
     //   setTimeout(() => simulation.createBody(randMass(), randPos(), undefined, this.draw.tick), i * 50)
 
@@ -127,12 +131,12 @@ export default class SimulationUI extends React.Component {
   render() {
 
     const { id, title, ...other } = this.props
-    const { cached, cachedMax, playhead } = this.state
+    const { cached, cachedMax, secondsMax, playhead } = this.state
 
     delete other.simulation
 
     return <div id={id} {...other}>
-      <Timeline cached={cached} cachedMax={cachedMax} onClick={this.setPlayhead} playhead={playhead}/>
+      <Timeline cached={cached} cachedMax={cachedMax} secondsMax={secondsMax} onClick={this.setPlayhead} playhead={playhead}/>
       <h1>{title}</h1>
       <canvas ref={canvas => this.canvas = canvas} onWheel={this.handleCameraMove}/>
     </div>

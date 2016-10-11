@@ -86,6 +86,10 @@ export default class Body extends EventEmitter {
 
   }
 
+  get cacheSize() {
+    return this[_cache].length / NUM_CACHE_PROPERTIES
+  }
+
   shiftCache(tick) {
     const index = (tick - this[_startTick]) * NUM_CACHE_PROPERTIES
     const cache = this[_cache]

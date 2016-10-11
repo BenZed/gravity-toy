@@ -29,7 +29,8 @@ const SPEED = 5,
   MIN_SCALE = 0.1,
   MAX_SCALE = 1000,
   MIN_DRAW_RADIUS = 0.5,
-  BLUR_FACTOR = 0.4
+  BLUR_FACTOR = 0.4,
+  MAX_TIME_DIALATION = 50
 
 /******************************************************************************/
 // Camera Classes
@@ -148,7 +149,6 @@ export default class SimulationCanvasDraw {
     this[_drawComplete] = this[_drawComplete].bind(this)
 
     this.simulation.on('interval-start', this[_drawStart])
-    this.simulation.on('interval-body-update', this[_drawBody])
     this.simulation.on('interval-complete', this[_drawComplete])
   }
 
@@ -200,10 +200,16 @@ export default class SimulationCanvasDraw {
 
     const  camera = this.camera, current = camera[_current]
 
-    //position speed and size of body in relation to camera
+    //position and size of body in relation to camera
     const radius = stats.radius / current.scale
     const pos = this.camera.worldToCanvas(stats.pos)
-    const vel = stats.vel.sub(camera.vel).div(current.scale)
+
+    //time dialation will warp the body more if the simulation is being viewed
+    //at faster than 1x
+    const timeDialation = Math.min(Math.abs(this.tickDelta), MAX_TIME_DIALATION)
+
+    //velocity in relation to camera
+    const vel = stats.vel.mult(timeDialation).isub(camera.vel).idiv(current.scale)
 
     this[_drawTrails](body, pos)
 
@@ -240,15 +246,27 @@ export default class SimulationCanvasDraw {
 
   }
 
-  [_drawTrails](body, relpos) {
+  [_drawTrails](body, relPos) {
 
   }
 
   [_drawComplete](deltaTime) {
+
+    //draw all the bodies
+    this.simulation.forEachBody(this[_drawBody])
+
     this.camera.update(deltaTime)
+
     //this prevents us from trying to draw a tick that hasn't finished calculating
     //yet, in the event the simulation is large and moving very slowly
-    this.tick = clamp(this.tick + this.tickDelta, 0, this.simulation.cacheSize - 1)
+    const nextTick = clamp(this.tick + this.tickDelta, 0, this.simulation.cachedTicks - 1)
+
+    //if the next tick isn't what we're expecting it to be, we reduce the playback
+    //speed to 1 or -1 in case we're playing back faster
+    if (nextTick !== this.tick + this.tickDelta)
+      this.tickDelta = Math.sign(this.tickDelta)
+
+    this.tick = nextTick
   }
 
 }

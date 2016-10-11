@@ -1,7 +1,7 @@
 import is from 'is-explicit'
 import EventEmitter from 'events'
 import now from 'performance-now'
-import Body, {NUM_CACHE_PROPERTIES} from './body'
+import Body, { NUM_CACHE_PROPERTIES } from './body'
 import Vector from './vector'
 
 /******************************************************************************/
@@ -14,7 +14,7 @@ const UPDATE_SLACK = 10
 const ONE_GIG = 1073741824 //bytes
 const MAX_MEMORY = ONE_GIG * 0.5
 const MAX_NUMBER_ALLOCATIONS = MAX_MEMORY / 8
-const MAX_CACHE_ALLOCATIONS = MAX_NUMBER_ALLOCATIONS / NUM_CACHE_PROPERTIES
+const MAX_CACHE_ALLOCATIONS = Math.floor(MAX_NUMBER_ALLOCATIONS / NUM_CACHE_PROPERTIES)
 
 //Symbols for "private" properties
 const _bodies = Symbol('bodies'),
@@ -23,7 +23,9 @@ const _bodies = Symbol('bodies'),
   _interval   = Symbol('interval'),
   _calculate  = Symbol('calculate'),
   _integrate  = Symbol('intergrate'),
-  _collide    = Symbol('collide')
+  _collide    = Symbol('collide'),
+  _cacheSize  = Symbol('cache-size')
+
 
 export default class Simulation extends EventEmitter {
 
@@ -44,23 +46,26 @@ export default class Simulation extends EventEmitter {
       interval.bodyIndex += 1
     }
 
-    const TIME_STEP = this.UPDATE_DELTA * 0.001
+    //count the cache and apply the physics integrator
 
-    //apply loop
+    this[_cacheSize] = 0
     for (let i = 0; i < bodies.length; i++) {
       const body = bodies[i]
 
-      if (body.destroyed)
+      if (body.destroyed) {
+        this[_cacheSize] += body.cacheSize
         continue
+      }
 
       //velocity verlette integrator
       const oldVel = body.vel.copy()
-      const newVel = oldVel.add(body.force.mult(TIME_STEP))
+      const newVel = oldVel.add(body.force.mult(this.UPDATE_DELTA * 0.001))
       body.vel = oldVel.add(newVel).mult(0.5)
 
       body.pos.iadd(body.vel)
 
       body.cache(interval.currentTick)
+      this[_cacheSize] += body.cacheSize
     }
 
     interval.bodyIndex = 0
@@ -141,28 +146,26 @@ export default class Simulation extends EventEmitter {
 
     small.emit('body-collision', big)
     big.emit('body-collision', small)
-
     this.emit('body-collision', small, big)
   }
 
-  [_update]() {
+  [_update] = () => {
     const interval = this[_interval]
     const bodies = this[_bodies]
 
+    //start the interval
     interval.start = now()
     interval.exceeded = false
-    this.emit('interval-start')
+    this.emit('interval-start', deltaTime)
 
-    for (let i = 0; i < bodies.length; i ++)
-      this.emit('interval-body-update', bodies[i])
-
-    const MaxCacheSize = this.maxCacheSize
-
-    if (!this[_paused] && bodies.length > 0 && interval.currentTick < MaxCacheSize)
+    //integrate until the time budget has been used up or the cache is full
+    if (!this[_paused] && bodies.length > 0 && interval.currentTick < this.maxCacheTicks)
       while(!interval.check())
         this[_integrate]()
 
-    this.emit('interval-complete', Math.max(this.UPDATE_DELTA + UPDATE_SLACK, interval.delta))
+    const deltaTime = Math.max(this.UPDATE_DELTA + UPDATE_SLACK, interval.delta)
+
+    this.emit('interval-complete', deltaTime)
   }
 
   // API **********************************************************************/
@@ -175,9 +178,9 @@ export default class Simulation extends EventEmitter {
     //this.G readonly
     Object.defineProperty(this, 'G', { value: G })
 
-    this[_update] = this[_update].bind(this)
     this[_paused] = true
     this[_bodies] = []
+    this[_cacheSize] = 0
 
     this[_interval] = {
       id: null,
@@ -234,30 +237,35 @@ export default class Simulation extends EventEmitter {
     this[_paused] = !!value
   }
 
-  get cacheSize() {
+  get cachedTicks() {
     return this[_interval].currentTick
   }
 
-  get maxCacheSize() {
-    return Math.floor(MAX_CACHE_ALLOCATIONS / this[_bodies].length)
+  get maxCacheTicks() {
+    const totalCacheUsed = this[_cacheSize] / MAX_CACHE_ALLOCATIONS
+
+    const maxCacheTicks = Math.floor(this[_interval].currentTick / totalCacheUsed)
+
+    return is(maxCacheTicks, Number) ? maxCacheTicks : Infinity
   }
 
-  get cacheSeconds() {
+  get cachedSeconds() {
     return this[_interval].currentTick / (this.UPDATE_DELTA + UPDATE_SLACK)
   }
 
   get maxCacheSeconds() {
-    return this.maxCacheSize / (this.UPDATE_DELTA + UPDATE_SLACK)
+    return this.maxCacheTicks / (this.UPDATE_DELTA + UPDATE_SLACK)
   }
 
   createBody(mass, pos = Vector.zero, vel = Vector.zero, tick) {
 
-    tick = tick || this.cacheSize
+    tick = is(tick, Number) ? tick : this.cachedTicks
 
     const body = new Body(mass,
         new Vector(pos.x, pos.y),
         new Vector(vel.x, vel.y),
         tick)
+
 
     body.cache(tick)
     this[_bodies].push(body)
@@ -266,6 +274,10 @@ export default class Simulation extends EventEmitter {
     this.applyCacheAtTick(tick)
 
     return body
+  }
+
+  forEachBody(func) {
+    this[_bodies].forEach(func)
   }
 
   applyCacheAtTick(tick) {
@@ -288,12 +300,12 @@ export default class Simulation extends EventEmitter {
     }
   }
 
-  shiftCache(tick) {
-    const newBodies = []
-
-    // for ()
-
-  }
+  // shiftCache(tick) {
+  //   const newBodies = []
+  //
+  //   // for ()
+  //
+  // }
 
   copy() {
     const duplicate = new Simulation(this.UPDATE_DELTA, this.G)
