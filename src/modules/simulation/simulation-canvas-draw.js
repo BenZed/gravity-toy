@@ -1,6 +1,6 @@
 import Vector from './vector'
-import lerp from './lerp'
-import clamp from './clamp'
+import Body from './Body'
+import { lerp, clamp } from './helper'
 
 import is from 'is-explicit'
 
@@ -15,7 +15,7 @@ const OptionDefaults = {
   nameRadiusThreshold: 10,
 
   gridColor: 'rgba(255,255,255,0.75)',
-  gridWidth: 0.1,
+  gridWidth: 0.2,
 
   nameFont: '12px Helvetica',
   nameColor: 'white',
@@ -27,10 +27,10 @@ const OptionDefaults = {
 
 const SPEED = 5,
   MIN_SCALE = 0.1,
-  MAX_SCALE = 1000,
+  MAX_SCALE = 250,
   MIN_DRAW_RADIUS = 0.5,
   BLUR_FACTOR = 0.4,
-  MAX_TIME_DIALATION = 50
+  MAX_TIME_DIALATION = 48
 
 /******************************************************************************/
 // Camera Classes
@@ -98,11 +98,11 @@ class Camera {
       .iadd(this[_current].pos)
   }
 
-  update(deltaTime) {
+  update(deltaTime, tick) {
 
-    const hasFocusBody = this.focusBody && !this.focusBody.destroyed
+    const focusBodyStats = this.focusBody ? this.focusBody.statsAtTick(tick) : null
     const oldPos = this[_current].pos.copy()
-    const targetPos = hasFocusBody ? this.target.pos.add(this.focusBody.pos) : this.target.pos
+    const targetPos = focusBodyStats ? this.target.pos.add(focusBodyStats.pos) : this.target.pos
 
     //new position
     this[_current].pos.ilerp(targetPos, deltaTime * SPEED)
@@ -110,8 +110,8 @@ class Camera {
     //speed is new position minus old
     this.vel = oldPos.isub(this[_current].pos)
 
-    if (hasFocusBody)
-      this.vel.iadd(this.focusBody.vel)
+    if (focusBodyStats)
+      this.vel.iadd(focusBodyStats.vel)
 
     //apply scale
     this.target.scale = clamp(this.target.scale, MIN_SCALE, MAX_SCALE)
@@ -125,6 +125,7 @@ class Camera {
 // SimulationCanvasDraw Class
 /******************************************************************************/
 
+//symbols for 'private' members
 const _drawStart = Symbol('draw-start'),
   _drawBody = Symbol('draw-body'),
   _drawComplete = Symbol('draw-complete'),
@@ -146,6 +147,7 @@ export default class SimulationCanvasDraw {
 
     this[_drawStart] = this[_drawStart].bind(this)
     this[_drawBody] = this[_drawBody].bind(this)
+    this[_drawTrails] = this[_drawTrails].bind(this)
     this[_drawComplete] = this[_drawComplete].bind(this)
 
     this.simulation.on('interval-start', this[_drawStart])
@@ -211,8 +213,6 @@ export default class SimulationCanvasDraw {
     //velocity in relation to camera
     const vel = stats.vel.mult(timeDialation).isub(camera.vel).idiv(current.scale)
 
-    this[_drawTrails](body, pos)
-
     //blurRadius will warp the body from a circle to an ellipse if it is moving fasting enough
     let blurRadius = vel.magnitude * BLUR_FACTOR
 
@@ -246,16 +246,74 @@ export default class SimulationCanvasDraw {
 
   }
 
-  [_drawTrails](body, relPos) {
+  [_drawTrails](body, back) {
+    const focusBody = this.camera.focusBody
+
+    if (focusBody === body)
+      return
+
+    let drawTick = this.tick
+    let pos
+
+    const fOrg = focusBody ? focusBody.posAtTick(drawTick) : null
+
+    const scale = Math.max(this.camera[_current].scale, 1)
+
+    let alpha = 1
+    let aIter = 60
+    const style = back ? '0,0,255' : '0,255,0'
+    this.context.strokeStyle = `rgba(${style},${alpha})`
+    this.context.lineWidth = 0.25
+
+    const skip = Math.floor(4 * scale)
+    drawTick -= drawTick % skip
+
+    this.context.beginPath()
+
+    while (back ? drawTick > 0 : drawTick < this.simulation.cachedTicks) {
+
+      pos = body.posAtTick(drawTick += back ? -skip : skip)
+      aIter--
+
+      if (aIter === 0) {
+        this.context.stroke()
+        this.context.beginPath()
+        this.context.strokeStyle = `rgba(${style},${alpha -= 0.1})`
+        aIter = 60
+      }
+
+      if (alpha <= 0.2)
+        break
+
+      if (!pos)
+        continue
+
+      if (focusBody) {
+        const fPos = focusBody.posAtTick(drawTick)
+        pos.isub(fPos).iadd(fOrg)
+      }
+
+      pos = this.camera.worldToCanvas(pos)
+
+      this.context.lineTo(pos.x, pos.y)
+
+    }
+
+    this.context.stroke()
 
   }
 
   [_drawComplete](deltaTime) {
 
     //draw all the bodies
+
+    this.simulation.forEachBody(body => {
+      this[_drawTrails](body, true)
+      // this[_drawTrails](body, false)
+    })
     this.simulation.forEachBody(this[_drawBody])
 
-    this.camera.update(deltaTime)
+    this.camera.update(deltaTime, this.tick)
 
     //this prevents us from trying to draw a tick that hasn't finished calculating
     //yet, in the event the simulation is large and moving very slowly

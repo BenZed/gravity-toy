@@ -6,8 +6,8 @@ import is from 'is-explicit'
 // Constants
 /******************************************************************************/
 
-const BASE_RADIUS = 0.1
-const RADIUS_MULTIPLIER = 0.225
+const BASE_RADIUS = 0.01
+const RADIUS_MULTIPLIER = 0.2
 const COLLIDE_LOW_THRESHOLD = 4
 const COLLIDE_RADIUS_FACTOR = 0.9
 
@@ -27,7 +27,6 @@ function collisionRadiusFromRadius(radius) {
     : (radius - COLLIDE_LOW_THRESHOLD) * COLLIDE_RADIUS_FACTOR + COLLIDE_LOW_THRESHOLD
 }
 
-
 /******************************************************************************/
 // Private Symbols
 /******************************************************************************/
@@ -36,10 +35,18 @@ const _mass = Symbol('mass'),
   _radius = Symbol('radius'),
   _collisionRadius = Symbol('collision-radius'),
   _cache = Symbol('cache'),
-  _startTick = Symbol('start-tick')
-
+  _startTick = Symbol('start-tick'),
+  _writeCacheAtTick = Symbol('write-cache-at-tick'),
+  _applyStatsAtTick = Symbol('apply-stats-at-tick'),
+  _tickIndex = Symbol('tick-index'),
+  _shiftCache = Symbol('shift-cache')
 
 export default class Body extends EventEmitter {
+
+  //static symbols for 'protected' properties
+  static [_writeCacheAtTick] = 'write-cache-at-tick'
+
+  static [_applyStatsAtTick] = 'apply-stats-at-tick'
 
   constructor(mass, pos, vel, startTick) {
     super()
@@ -69,39 +76,46 @@ export default class Body extends EventEmitter {
 
   }
 
-  cache(tick) {
+  get mass() {
+    return this[_mass]
+  }
 
-    const index = (tick - this[_startTick]) * NUM_CACHE_PROPERTIES
+  set mass(value) {
+    this[_mass] = Math.max(value, 0)
+    this[_radius] = radiusFromMass(this[_mass])
+    this[_collisionRadius] = collisionRadiusFromRadius(this[_radius])
+  }
 
-    const cache = this[_cache]
+  get radius() {
+    return this[_radius]
+  }
 
-    //the cache is a single serialized array full of numbers.
-    //I'm imagining that the less object references put into the cache array,
-    //the longer they can be.
-    cache[index] = this[_mass]
-    cache[index + 1] = this.pos.x
-    cache[index + 2] = this.pos.y
-    cache[index + 3] = this.vel.x
-    cache[index + 4] = this.vel.y
+  get collisionRadius() {
+    return this[_collisionRadius]
+  }
 
+  get destroyed() {
+    return this.mass <= 0
   }
 
   get cacheSize() {
     return this[_cache].length / NUM_CACHE_PROPERTIES
   }
 
-  shiftCache(tick) {
-    const index = (tick - this[_startTick]) * NUM_CACHE_PROPERTIES
+  posAtTick(tick) {
+    const index = this[_tickIndex](tick)
     const cache = this[_cache]
 
-    if (index >= 0)
-      cache.splice(0, index)
+    const mass = cache[index]
+    //only return stats if body exists at this tick
+    if (!mass || mass <= 0)
+      return null
 
-    this[_startTick] = Math.max(this[_startTick] - tick, 0)
+    return new Vector(cache[index + 1], cache[index + 2])
   }
 
   statsAtTick(tick) {
-    const index = (tick - this[_startTick]) * NUM_CACHE_PROPERTIES
+    const index = this[_tickIndex](tick)
     const cache = this[_cache]
 
     const mass = cache[index]
@@ -121,11 +135,33 @@ export default class Body extends EventEmitter {
     }
   }
 
-  applyStatsAtTick(tick) {
-    const stats = this.statsAtTick(tick)
+  [_tickIndex](tick) {
+    return (tick - this[_startTick]) * NUM_CACHE_PROPERTIES
+  }
+
+  [_writeCacheAtTick](tick) {
+
+    const index = (tick - this[_startTick]) * NUM_CACHE_PROPERTIES
+
+    const cache = this[_cache]
+
+    //the cache is a single serialized array full of numbers.
+    //I'm imagining that the less object references put into the cache array,
+    //the longer they can be.
+    cache[index] = this[_mass]
+    cache[index + 1] = this.pos.x
+    cache[index + 2] = this.pos.y
+    cache[index + 3] = this.vel.x
+    cache[index + 4] = this.vel.y
+
+  }
+
+  [_applyStatsAtTick](tick) {
 
     if (tick < this[_startTick])
       return false
+
+    const stats = this.statsAtTick(tick)
 
     if (!stats) {
       this.mass = 0
@@ -139,26 +175,35 @@ export default class Body extends EventEmitter {
     return true
   }
 
-  get mass() {
-    return this[_mass]
+  [_applyStatsAtTick](tick) {
+    const index = this[_tickIndex](tick)
+    const cache = this[_cache]
+
+    const mass = cache[index]
+
+    //only return stats if body exists at this tick
+    if (!mass || mass <= 0)
+      return null
+
+    const radius = radiusFromMass(mass)
+
+    return {
+      mass,
+      radius,
+      collisionRadius: collisionRadiusFromRadius(radius),
+      pos: new Vector(cache[index + 1], cache[index + 2]),
+      vel: new Vector(cache[index + 3], cache[index + 4])
+    }
   }
 
-  set mass(value) {
-    this[_mass] = value
-    this[_radius] = radiusFromMass(this[_mass])
-    this[_collisionRadius] = collisionRadiusFromRadius(this[_radius])
-  }
+  [_shiftCache](tick) {
+    const index = this[_tickIndex](tick)
+    const cache = this[_cache]
 
-  get radius() {
-    return this[_radius]
-  }
+    if (index >= 0)
+      cache.splice(0, index)
 
-  get collisionRadius() {
-    return this[_collisionRadius]
-  }
-
-  get destroyed() {
-    return this.mass <= 0
+    this[_startTick] = Math.max(this[_startTick] - tick, 0)
   }
 
 }

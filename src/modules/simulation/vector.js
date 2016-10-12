@@ -1,4 +1,4 @@
-import lerp from './lerp'
+import { lerp } from './helper'
 
 export default class Vector {
 

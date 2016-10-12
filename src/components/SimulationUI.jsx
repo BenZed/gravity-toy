@@ -1,10 +1,11 @@
 import React from 'react'
 
-import { Simulation, SimulationCanvasDraw, Vector, clamp } from '../modules/simulation'
+import { Simulation, SimulationCanvasDraw, Vector } from '../modules/simulation'
+import { clamp } from '../modules/simulation/helper'
+
 import Mousetrap from 'mousetrap'
 
 import Timeline from './Timeline'
-
 
 const Speeds = [-1000, -500, -200, -100, -70, -30, -10, -4, -2, -1, 1, 2, 4, 10, 30, 70, 100, 200, 500, 1000]
 
@@ -101,7 +102,37 @@ export default class SimulationUI extends React.Component {
     onresize = this.onWindowResize
     onresize()
 
-    this.props.simulation.on('interval-complete', this.receiveSimulationData)
+    const { simulation } = this.props
+
+    simulation.on('interval-complete', this.receiveSimulationData)
+
+    //for testing purposes, we're going to make the largest body the focusBody
+    //and we're going to remove any object too far away from the largest body
+    //this will only happen on the latest cached frame for now,
+    simulation.on('interval-complete', () => {
+      const MAX_DISTANCE_SQR = 100000 * 100000
+      let largest = null
+      simulation.forEachBody(body => {
+        if (body.destroyed)
+          return
+
+        if (largest === null || body.mass > largest.mass)
+          largest = body
+
+      })
+
+      this.draw.camera.focusBody = largest
+
+      simulation.forEachBody((body, i) => {
+        if (body === largest || body.destroyed)
+          return
+
+        if (body.pos.sub(largest.pos).sqrMagnitude > MAX_DISTANCE_SQR)
+          body.mass = Math.floor(body.mass * 0.99)
+
+      })
+
+    })
 
   }
 
@@ -116,13 +147,15 @@ export default class SimulationUI extends React.Component {
   createTestBodies() {
     const simulation = this.props.simulation
 
-    const randMass = () => 125 + Math.random() > 0.50 ? Math.random() * 19875 : Math.random() * 1875
-    const randPos = () => new Vector(Math.random() * innerWidth, Math.random() * innerHeight)
+    const randMass = () => 125 + (Math.random() > 0.925 ? Math.random() * 49875 : Math.random() * 875)
+    const randPos = () => new Vector(-600 + Math.random() * 1200, -600 + Math.random() * 1200)
     const randVel = (n = 2) => new Vector(-n * 0.5 + Math.random() * n, -n * 0.5 + Math.random() * n)
     const addedPos = n => new Vector(n * 100, n * 200)
 
-    for (let i = 0; i < 100; i++)
-      simulation.createBody(randMass(), randPos(), randVel(3), this.draw.tick)
+    for (let i = 0; i < 250; i++) {
+      const mass = randMass()
+      simulation.createBodyAtTick(mass, randPos(), randVel(1 + 1 * (1 - mass/50000)), this.draw.tick)
+    }
     // for (let i = 0; i < 100; i++)
     //   setTimeout(() => simulation.createBody(randMass(), randPos(), undefined, this.draw.tick), i * 50)
 

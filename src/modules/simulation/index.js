@@ -2,9 +2,8 @@ import Simulation from './simulation'
 import SimulationCanvasDraw from './simulation-canvas-draw'
 import Vector from './vector'
 import Body from './body'
-import lerp from './lerp'
-import clamp from './clamp'
+import * as helper from './helper'
 
 export default Simulation
 
-export { Simulation, SimulationCanvasDraw, Body, Vector, lerp, clamp }
+export { Simulation, SimulationCanvasDraw,  Vector, Body, helper }
