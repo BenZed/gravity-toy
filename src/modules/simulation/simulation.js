@@ -155,7 +155,7 @@ export default class Simulation extends EventEmitter {
   copy() {
     const duplicate = new Simulation(this.UPDATE_DELTA, this.G)
     for (const body of this[_bodies])
-      if (!body.destroyed)
+      if (body.exists)
         duplicate.createBody(body.mass, body.pos, body.vec)
 
     return duplicate
@@ -203,7 +203,7 @@ export default class Simulation extends EventEmitter {
     for (let i = 0; i < bodies.length; i++) {
       const body = bodies[i]
 
-      if (body.destroyed) {
+      if (!body.exists) {
         this[_cacheSize] += body.cacheSize
         continue
       }
@@ -244,13 +244,13 @@ export default class Simulation extends EventEmitter {
     if (interval.bodySubIndex === 0)
       body.force.x = 0, body.force.y = 0
 
-    if (body.destroyed)
+    if (!body.exists)
       return
 
     while (interval.bodySubIndex < bodies.length) {
       const otherBody = bodies[interval.bodySubIndex]
 
-      if (body != otherBody && !otherBody.destroyed) {
+      if (body != otherBody && otherBody.exists) {
 
         //inlining body.pos.sub(otherBody.pos)
         relative.x = otherBody.pos.x - body.pos.x
@@ -293,7 +293,7 @@ export default class Simulation extends EventEmitter {
       .iadd(small.vel.mult(small.mass))
       .idiv(totalMass)
 
-    small.mass = 0 //this sets the destroyed flag to true
+    small.mass = 0 //this sets the exists flag to false
     big.mass = totalMass
 
     small.emit('body-collision', big)

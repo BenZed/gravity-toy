@@ -113,7 +113,7 @@ export default class SimulationUI extends React.Component {
       const MAX_DISTANCE_SQR = 100000 * 100000
       let largest = null
       simulation.forEachBody(body => {
-        if (body.destroyed)
+        if (!body.exists)
           return
 
         if (largest === null || body.mass > largest.mass)
@@ -123,13 +123,12 @@ export default class SimulationUI extends React.Component {
 
       this.draw.camera.focusBody = largest
 
-      simulation.forEachBody((body, i) => {
-        if (body === largest || body.destroyed)
+      simulation.forEachBody(body => {
+        if (body === largest || !body.exists)
           return
 
-        if (body.pos.sub(largest.pos).sqrMagnitude > MAX_DISTANCE_SQR)
+        if (body.exists && body.pos.sub(largest.pos).sqrMagnitude > MAX_DISTANCE_SQR)
           body.mass = Math.floor(body.mass * 0.99)
-
       })
 
     })

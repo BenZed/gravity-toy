@@ -35,11 +35,12 @@ const _mass = Symbol('mass'),
   _radius = Symbol('radius'),
   _collisionRadius = Symbol('collision-radius'),
   _cache = Symbol('cache'),
-  _startTick = Symbol('start-tick'),
   _writeCacheAtTick = Symbol('write-cache-at-tick'),
   _applyStatsAtTick = Symbol('apply-stats-at-tick'),
   _tickIndex = Symbol('tick-index'),
-  _shiftCache = Symbol('shift-cache')
+  _shiftCache = Symbol('shift-cache'),
+  _endTick = Symbol('end-tick'),
+  _startTick = Symbol('start-tick')
 
 export default class Body extends EventEmitter {
 
@@ -63,16 +64,15 @@ export default class Body extends EventEmitter {
     if (!is(startTick, Number))
       throw new TypeError('startTick must be a Number')
 
-    this[_radius] = null
-    this[_collisionRadius] = null
-    this.mass = mass
-
-    this.pos = pos.copy()
-    this.vel = vel.copy()
-    this.force = Vector.zero
 
     this[_cache] = []
     this[_startTick] = startTick
+    this[_endTick] = null
+
+    this.mass = mass
+    this.pos = pos.copy()
+    this.vel = vel.copy()
+    this.force = Vector.zero
 
   }
 
@@ -81,6 +81,10 @@ export default class Body extends EventEmitter {
   }
 
   set mass(value) {
+
+    if (!this.exists)
+      return console.warn('cannot set a body\'s mass, once it\'s been destroyed.')
+
     this[_mass] = Math.max(value, 0)
     this[_radius] = radiusFromMass(this[_mass])
     this[_collisionRadius] = collisionRadiusFromRadius(this[_radius])
@@ -94,12 +98,20 @@ export default class Body extends EventEmitter {
     return this[_collisionRadius]
   }
 
-  get destroyed() {
-    return this.mass <= 0
+  get exists() {
+    return this[_endTick] === null
   }
 
   get cacheSize() {
     return this[_cache].length / NUM_CACHE_PROPERTIES
+  }
+
+  get startTick() {
+    return this[_startTick]
+  }
+
+  get endTick() {
+    return this[_endTick]
   }
 
   posAtTick(tick) {
@@ -154,10 +166,14 @@ export default class Body extends EventEmitter {
     cache[index + 3] = this.vel.x
     cache[index + 4] = this.vel.y
 
+    if (this[_mass] <= 0 && !is(this[_endTick], Number))
+      this[_endTick] = tick
+
   }
 
   [_applyStatsAtTick](tick) {
 
+    // throw new Error('applyStatsAtTick doens\'t yet work')
     if (tick < this[_startTick])
       return false
 

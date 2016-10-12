@@ -30,7 +30,10 @@ const SPEED = 5,
   MAX_SCALE = 250,
   MIN_DRAW_RADIUS = 0.5,
   BLUR_FACTOR = 0.4,
-  MAX_TIME_DIALATION = 48
+  MAX_TIME_DIALATION = 48,
+  TRAIL_STEP = 3,
+  TRAIL_LENGTH = 250,
+  TRAIL_FADE_START = 30
 
 /******************************************************************************/
 // Camera Classes
@@ -256,34 +259,25 @@ export default class SimulationCanvasDraw {
     let pos
 
     const fOrg = focusBody ? focusBody.posAtTick(drawTick) : null
-
     const scale = Math.max(this.camera[_current].scale, 1)
 
-    let alpha = 1
-    let aIter = 60
+    const step = Math.floor(TRAIL_STEP * scale)
+    drawTick -= drawTick % step
+
+    let length = back ? body.startTick : body.endTick || this.simulation.cachedTicks
+    length = Math.min(Math.abs(drawTick - length), TRAIL_LENGTH * scale)
+    length = Math.floor(length / step)
+
     const style = back ? '0,0,255' : '0,255,0'
-    this.context.strokeStyle = `rgba(${style},${alpha})`
-    this.context.lineWidth = 0.25
-
-    const skip = Math.floor(4 * scale)
-    drawTick -= drawTick % skip
-
     this.context.beginPath()
+    this.context.strokeStyle = `rgba(${style},1)`
+    this.context.lineWidth = 0.5
 
-    while (back ? drawTick > 0 : drawTick < this.simulation.cachedTicks) {
+    while (length > 0) {
 
-      pos = body.posAtTick(drawTick += back ? -skip : skip)
-      aIter--
-
-      if (aIter === 0) {
-        this.context.stroke()
-        this.context.beginPath()
-        this.context.strokeStyle = `rgba(${style},${alpha -= 0.1})`
-        aIter = 60
-      }
-
-      if (alpha <= 0.2)
-        break
+      pos = body.posAtTick(drawTick)
+      drawTick += back ? -step : step
+      length -= 1
 
       if (!pos)
         continue
@@ -294,9 +288,15 @@ export default class SimulationCanvasDraw {
       }
 
       pos = this.camera.worldToCanvas(pos)
-
       this.context.lineTo(pos.x, pos.y)
 
+      if (length >= TRAIL_FADE_START)
+        continue
+
+      this.context.stroke()
+      this.context.beginPath()
+      this.context.moveTo(pos.x, pos.y)
+      this.context.strokeStyle = `rgba(${style},${length/TRAIL_FADE_START})`
     }
 
     this.context.stroke()
