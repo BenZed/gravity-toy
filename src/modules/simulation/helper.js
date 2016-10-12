@@ -1,3 +1,18 @@
+//Body helpers
+//Can receive either stats or body
+export function getBaryCenter(a, b) {
+
+  const relative = a.pos.sub(b.pos)
+  const distance = relative.magnitude
+  const baryRadius = distance / (1 + a.mass / b.mass)
+
+  return relative
+    .normalized()
+    .mult(baryRadius)
+    .add(b.pos)
+
+}
+
 //Math helpers
 export function clamp(num, min, max) {
   return num < min ? min : num > max ? max : num
@@ -8,6 +23,13 @@ export function lerp(from, to, delta, clamped = true) {
 
   return from + delta * (to - from)
 }
+
+export function pseudoRandom(seed = defaultSeed++) {
+
+  const n = Math.sin(seed) * 10000 //10000 is the 'scatter coefficient'
+  return n - Math.floor(n)
+}
+let defaultSeed = 1
 
 //Class helpers
 export function getProtectedSymbol(obj, key) {

@@ -4,7 +4,7 @@ import now from 'performance-now'
 
 import Body, { NUM_CACHE_PROPERTIES } from './body'
 import Vector from './vector'
-import { getProtectedSymbol, constProperty } from './helper'
+import { getProtectedSymbol, constProperty, pseudoRandom } from './helper'
 
 /******************************************************************************/
 // Simulation Class
@@ -14,12 +14,22 @@ import { getProtectedSymbol, constProperty } from './helper'
 const UPDATE_SLACK = 10
 
 const ONE_MEG = 1048576 //bytes
-const MAX_MEMORY = ONE_MEG * (256 + 128)
+const MAX_MEMORY = ONE_MEG * 320
 const MAX_NUMBER_ALLOCATIONS = MAX_MEMORY / 8 //bytes
 const MAX_CACHE_ALLOCATIONS = Math.floor(MAX_NUMBER_ALLOCATIONS / NUM_CACHE_PROPERTIES)
 
-//Symbols for "private" properties
+const TIDAL_DISTRIBUTION = [{
+  massFactor: 0.2,
+  radiusFactor: -1
+}, {
+  massFactor: 0.60,
+  radiusFactor: 0
+}, {
+  massFactor: 0.2,
+  radiusFactor: 1
+}]
 
+//Symbols for "private" properties
 const _bodies = Symbol('bodies'),
   _update     = Symbol('update'),
   _paused     = Symbol('paused'),
@@ -125,7 +135,7 @@ export default class Simulation extends EventEmitter {
     return this.maxCacheTicks / (this.UPDATE_DELTA + UPDATE_SLACK)
   }
 
-  createBodyAtTick(mass, pos = Vector.zero, vel = Vector.zero, tick) {
+  createBodyAtTick(tick, mass, pos = Vector.zero, vel = Vector.zero) {
 
     tick = is(tick, Number) ? tick : this.cachedTicks
 
@@ -226,56 +236,61 @@ export default class Simulation extends EventEmitter {
 
   //This function gets called a lot, so there are
   //some manual inlining and optimizations
-  //i've made. I dunno if they make a difference in the
+  //I've made. I dunno if they make a difference in the
   //grand scheme of things, but it helps my OCD
   [_calculate](body) {
-
-    const bodies = this[_bodies]
-    const interval = this[_interval]
-
-    // relative position vector between two bodies
-    // declared outside of the while loop
-    // to save garbage collections on Vector objects
-    const relative = Vector.zero
-
-    //if the body sub index is zero, that means we
-    //didn't leave in the middle of a force calculation
-    //and we can reset
-    if (interval.bodySubIndex === 0)
-      body.force.x = 0, body.force.y = 0
 
     if (!body.exists)
       return
 
+    const bodies = this[_bodies]
+    const interval = this[_interval]
+
+    // Relative position vector between two bodies.
+    // Declared outside of the while loop to save
+    // garbage collections on Vector objects
+    const relative = Vector.zero
+
+    const normal = Vector.zero
+
+    //If the bodySubIndex is zero, that means we
+    //didn't leave in the middle of a force calculation
+    //and we can reset.
+    if (interval.bodySubIndex === 0)
+      body.force.x = 0, body.force.y = 0
+
     while (interval.bodySubIndex < bodies.length) {
-      const otherBody = bodies[interval.bodySubIndex]
 
-      if (body != otherBody && otherBody.exists) {
+      const otherBody = bodies[interval.bodySubIndex++]
+      const otherRadius = otherBody.collisionRadius
 
-        //inlining body.pos.sub(otherBody.pos)
-        relative.x = otherBody.pos.x - body.pos.x
-        relative.y = otherBody.pos.y - body.pos.y
+      if (body === otherBody || !otherBody.exists)
+        continue
 
-        const distSqr = relative.sqrMagnitude
+      //inlining otherBody.pos.sub(body.pos)
+      relative.x = otherBody.pos.x - body.pos.x
+      relative.y = otherBody.pos.y - body.pos.y
 
-        //inlining relative.magnitude
-        const dist = Math.sqrt(distSqr)
+      const distSqr = relative.sqrMagnitude
+      //inlining relative.magnitude
+      const dist = Math.sqrt(distSqr)
 
-        if (dist < body.collisionRadius + otherBody.collisionRadius)
-          this[_collide](body, otherBody)
+      //inlining normal = relative.normalized()
+      normal.x = relative.x / dist
+      normal.y = relative.y / dist
 
-        const G = this.G * (otherBody.mass / distSqr)
+      const G = this.G * otherBody.mass / distSqr
 
-        //inlining body.iadd(relative.imult(G).idiv(dist))
-        body.force.x += G * relative.x / dist
-        body.force.y += G * relative.y / dist
+      //inlining body.force.iadd(relative.iadd(normal.perpendicular(otherRadius * tidal.radiusFactor)).imult(G).idiv(dist)
+      body.force.x += G * relative.x / dist
+      body.force.y += G * relative.y / dist
 
-      }
-
-      interval.bodySubIndex++
+      //check for collisions
+      if (dist < body.collisionRadius + otherRadius)
+        this[_collide](body, otherBody)
 
       if (interval.check())
-        return
+        break
     }
   }
 

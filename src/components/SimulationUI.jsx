@@ -112,6 +112,7 @@ export default class SimulationUI extends React.Component {
     simulation.on('interval-complete', () => {
       const MAX_DISTANCE_SQR = 100000 * 100000
       let largest = null
+
       simulation.forEachBody(body => {
         if (!body.exists)
           return
@@ -120,8 +121,6 @@ export default class SimulationUI extends React.Component {
           largest = body
 
       })
-
-      this.draw.camera.focusBody = largest
 
       simulation.forEachBody(body => {
         if (body === largest || !body.exists)
@@ -147,16 +146,13 @@ export default class SimulationUI extends React.Component {
     const simulation = this.props.simulation
 
     const randMass = () => 125 + (Math.random() > 0.925 ? Math.random() * 49875 : Math.random() * 875)
-    const randPos = () => new Vector(-600 + Math.random() * 1200, -600 + Math.random() * 1200)
+    const randPos = () => new Vector(-300 + Math.random() * 600, -300 + Math.random() * 600)
     const randVel = (n = 2) => new Vector(-n * 0.5 + Math.random() * n, -n * 0.5 + Math.random() * n)
-    const addedPos = n => new Vector(n * 100, n * 200)
 
-    for (let i = 0; i < 250; i++) {
+    for (let i = 0; i < 150; i++) {
       const mass = randMass()
-      simulation.createBodyAtTick(mass, randPos(), randVel(1 + 1 * (1 - mass/50000)), this.draw.tick)
+      simulation.createBodyAtTick( this.draw.tick, mass, randPos(), randVel(1 + 1 * (1 - mass/50000)))
     }
-    // for (let i = 0; i < 100; i++)
-    //   setTimeout(() => simulation.createBody(randMass(), randPos(), undefined, this.draw.tick), i * 50)
 
   }
 

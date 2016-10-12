@@ -1,1 +1,5 @@
-console.log(Math.pow(1024,2))
+let num = 0
+const arr = ['a','b','c']
+
+for (const a of arr)
+  console.log(a)

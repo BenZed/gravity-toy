@@ -101,7 +101,7 @@ class Camera {
       .iadd(this[_current].pos)
   }
 
-  update(deltaTime, tick) {
+  update(deltaTime, tick, tickDelta) {
 
     const focusBodyStats = this.focusBody ? this.focusBody.statsAtTick(tick) : null
     const oldPos = this[_current].pos.copy()
@@ -111,7 +111,7 @@ class Camera {
     this[_current].pos.ilerp(targetPos, deltaTime * SPEED)
 
     //speed is new position minus old
-    this.vel = oldPos.isub(this[_current].pos)
+    this.vel = oldPos.isub(this[_current].pos).idiv(Math.min(tickDelta, MAX_TIME_DIALATION))
 
     if (focusBodyStats)
       this.vel.iadd(focusBodyStats.vel)
@@ -273,6 +273,7 @@ export default class SimulationCanvasDraw {
     this.context.strokeStyle = `rgba(${style},1)`
     this.context.lineWidth = 0.5
 
+
     while (length > 0) {
 
       pos = body.posAtTick(drawTick)
@@ -284,7 +285,9 @@ export default class SimulationCanvasDraw {
 
       if (focusBody) {
         const fPos = focusBody.posAtTick(drawTick)
-        pos.isub(fPos).iadd(fOrg)
+
+        if (fPos)
+          pos.isub(fPos).iadd(fOrg)
       }
 
       pos = this.camera.worldToCanvas(pos)
@@ -309,11 +312,11 @@ export default class SimulationCanvasDraw {
 
     this.simulation.forEachBody(body => {
       this[_drawTrails](body, true)
-      // this[_drawTrails](body, false)
+    //  this[_drawTrails](body, false)
     })
     this.simulation.forEachBody(this[_drawBody])
 
-    this.camera.update(deltaTime, this.tick)
+    this.camera.update(deltaTime, this.tick, this.tickDelta)
 
     //this prevents us from trying to draw a tick that hasn't finished calculating
     //yet, in the event the simulation is large and moving very slowly
