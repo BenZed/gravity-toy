@@ -1,5 +1,3 @@
-let num = 0
-const arr = ['a','b','c']
+var ace = [] + {}
 
-for (const a of arr)
-  console.log(a)
+console.log(ace, typeof ace, ace.length)

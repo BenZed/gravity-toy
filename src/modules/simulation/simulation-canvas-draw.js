@@ -1,38 +1,54 @@
 import Vector from './vector'
-import Body from './Body'
+
 import { lerp, clamp } from './helper'
 
-import is from 'is-explicit'
+export const DrawTypes = {
+  SELECTED: 'SELECTED',
+  ON: 'ON',
+  OFF: 'OFF'
+}
 
 const OptionDefaults = {
 
   grid: true,
-  parents: true,
-  trails: true,
-  trailLength: 120, //seconds
+  trails: DrawTypes.ON,
+  predictions: DrawTypes.OFF,
+  parents: DrawTypes.SELECTED,
 
-  names: true,
+  names: DrawTypes.ON,
+  nameFont: '12px Helvetica',
+  nameColor: 'white',
   nameRadiusThreshold: 10,
 
   gridColor: 'rgba(255,255,255,0.75)',
   gridWidth: 0.2,
 
-  nameFont: '12px Helvetica',
-  nameColor: 'white',
-
   selectionColor: 'rgba(255,255,85,0.5)',
-  trailColor: 'rgba(85,85,225,0.25)'
+  trailColor: [0,0,255],
+  predictionColor: [0,255,0],
+  trailLength: 200,
+  predictionLength: 200,
 
+  trailStep: 3,
+
+  minZoom: 0.1,
+  maxZoom: 250
 }
 
-const SPEED = 5,
-  MIN_SCALE = 0.1,
-  MAX_SCALE = 250,
+const BodyOptionDefaults = {
+  trails: false,
+  predictions: false,
+  selected: false,
+  name: null
+}
+
+const CAMERA_LERP_FACTOR = 5,
+
   MIN_DRAW_RADIUS = 0.5,
-  BLUR_FACTOR = 0.4,
+
   MAX_TIME_DIALATION = 48,
-  TRAIL_STEP = 3,
-  TRAIL_LENGTH = 250,
+  BLUR_FACTOR = 0.4,
+
   TRAIL_FADE_START = 30
 
 /******************************************************************************/
@@ -101,24 +117,24 @@ class Camera {
       .iadd(this[_current].pos)
   }
 
-  update(deltaTime, tick, tickDelta) {
+  update(deltaTime, draw) {
 
-    const focusBodyStats = this.focusBody ? this.focusBody.statsAtTick(tick) : null
+    const focusBodyStats = this.focusBody ? this.focusBody.statsAtTick(draw.tick) : null
     const oldPos = this[_current].pos.copy()
     const targetPos = focusBodyStats ? this.target.pos.add(focusBodyStats.pos) : this.target.pos
 
     //new position
-    this[_current].pos.ilerp(targetPos, deltaTime * SPEED)
+    this[_current].pos.ilerp(targetPos, deltaTime * CAMERA_LERP_FACTOR)
 
     //speed is new position minus old
-    this.vel = oldPos.isub(this[_current].pos).idiv(Math.min(tickDelta, MAX_TIME_DIALATION))
+    this.vel = oldPos.isub(this[_current].pos).idiv(Math.min(draw.tickDelta, MAX_TIME_DIALATION))
 
     if (focusBodyStats)
       this.vel.iadd(focusBodyStats.vel)
 
     //apply scale
-    this.target.scale = clamp(this.target.scale, MIN_SCALE, MAX_SCALE)
-    this[_current].scale = lerp(this[_current].scale, this.target.scale, deltaTime * SPEED)
+    this.target.scale = clamp(this.target.scale, draw.options.minZoom, draw.options.maxZoom)
+    this[_current].scale = lerp(this[_current].scale, this.target.scale, deltaTime * CAMERA_LERP_FACTOR)
 
   }
 
@@ -133,7 +149,8 @@ const _drawStart = Symbol('draw-start'),
   _drawBody = Symbol('draw-body'),
   _drawComplete = Symbol('draw-complete'),
   _drawGrid = Symbol('draw-grid'),
-  _drawTrails = Symbol('draw-trails')
+  _drawTrails = Symbol('draw-trails'),
+  _setBodyDrawOptions = Symbol('set-body-draw-options')
 
 export default class SimulationCanvasDraw {
 
@@ -148,16 +165,12 @@ export default class SimulationCanvasDraw {
 
     this.options = Object.assign({}, options, OptionDefaults)
 
-    this[_drawStart] = this[_drawStart].bind(this)
-    this[_drawBody] = this[_drawBody].bind(this)
-    this[_drawTrails] = this[_drawTrails].bind(this)
-    this[_drawComplete] = this[_drawComplete].bind(this)
-
     this.simulation.on('interval-start', this[_drawStart])
     this.simulation.on('interval-complete', this[_drawComplete])
+    this.simulation.on('body-create', this[_setBodyDrawOptions])
   }
 
-  [_drawStart]() {
+  [_drawStart] = () => {
     //clear the canvas
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height)
 
@@ -167,6 +180,9 @@ export default class SimulationCanvasDraw {
 
   [_drawGrid]() {
 
+    if (!this.options.grid)
+      return
+      
     //draw a grid
     this.context.lineWidth = this.options.gridWidth
     this.context.strokeStyle = this.options.gridColor
@@ -196,7 +212,7 @@ export default class SimulationCanvasDraw {
     }
   }
 
-  [_drawBody](body) {
+  [_drawBody] = body => {
     const stats = body.statsAtTick(this.tick)
 
     //body doesn't exist at this.ticks
@@ -249,7 +265,7 @@ export default class SimulationCanvasDraw {
 
   }
 
-  [_drawTrails](body, back) {
+  [_drawTrails] = (body, back) => {
     const focusBody = this.camera.focusBody
 
     if (focusBody === body)
@@ -261,18 +277,17 @@ export default class SimulationCanvasDraw {
     const fOrg = focusBody ? focusBody.posAtTick(drawTick) : null
     const scale = Math.max(this.camera[_current].scale, 1)
 
-    const step = Math.floor(TRAIL_STEP * scale)
+    const step = Math.floor(this.options.trailStep * scale)
     drawTick -= drawTick % step
 
     let length = back ? body.startTick : body.endTick || this.simulation.cachedTicks
-    length = Math.min(Math.abs(drawTick - length), TRAIL_LENGTH * scale)
+    length = Math.min(Math.abs(drawTick - length), (back ? body.trailLength : body.predictionLength) * scale)
     length = Math.floor(length / step)
 
     const style = back ? '0,0,255' : '0,255,0'
     this.context.beginPath()
     this.context.strokeStyle = `rgba(${style},1)`
     this.context.lineWidth = 0.5
-
 
     while (length > 0) {
 
@@ -306,17 +321,20 @@ export default class SimulationCanvasDraw {
 
   }
 
-  [_drawComplete](deltaTime) {
+  [_drawComplete] = deltaTime => {
 
     //draw all the bodies
 
     this.simulation.forEachBody(body => {
-      this[_drawTrails](body, true)
-    //  this[_drawTrails](body, false)
+      if (body.trails)
+        this[_drawTrails](body, true)
+
+      if (body.predictions)
+        this[_drawTrails](body, false)
     })
     this.simulation.forEachBody(this[_drawBody])
 
-    this.camera.update(deltaTime, this.tick, this.tickDelta)
+    this.camera.update(deltaTime, this)
 
     //this prevents us from trying to draw a tick that hasn't finished calculating
     //yet, in the event the simulation is large and moving very slowly
@@ -328,6 +346,11 @@ export default class SimulationCanvasDraw {
       this.tickDelta = Math.sign(this.tickDelta)
 
     this.tick = nextTick
+  }
+
+  [_setBodyDrawOptions] = body => {
+    for (const i in BodyOptionDefaults)
+      body[i] = i in body ? body[i] : BodyOptionDefaults[i]
   }
 
 }

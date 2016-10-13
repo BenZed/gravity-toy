@@ -122,6 +122,9 @@ export default class SimulationUI extends React.Component {
 
       })
 
+      if (this.draw.camera.focusBody != largest)
+        this.draw.camera.focusBody = largest
+
       simulation.forEachBody(body => {
         if (body === largest || !body.exists)
           return
@@ -145,14 +148,105 @@ export default class SimulationUI extends React.Component {
   createTestBodies() {
     const simulation = this.props.simulation
 
-    const randMass = () => 125 + (Math.random() > 0.925 ? Math.random() * 49875 : Math.random() * 875)
-    const randPos = () => new Vector(-300 + Math.random() * 600, -300 + Math.random() * 600)
-    const randVel = (n = 2) => new Vector(-n * 0.5 + Math.random() * n, -n * 0.5 + Math.random() * n)
+    const center = new Vector(innerWidth, innerHeight).mult(0.5)
 
-    for (let i = 0; i < 150; i++) {
-      const mass = randMass()
-      simulation.createBodyAtTick( this.draw.tick, mass, randPos(), randVel(1 + 1 * (1 - mass/50000)))
+    const randVec = (maxR = 1, minR = 0) => {
+      const angle = Math.random() * 2 * Math.PI
+      let radius
+      do {
+
+        radius = minR + Math.random() * maxR
+
+      } while (radius > maxR)
+
+      const x = radius * Math.cos(angle)
+      const y = radius * Math.sin(angle)
+
+      return new Vector(x,y)
     }
+
+    const maxRadius = 200
+    const maxMass = 1000
+    const minMass = 100
+    const slopMass = 50
+    const maxVel = 5
+
+    for (let i = 0; i < 1000; i++) {
+      const pos = randVec(maxRadius, maxRadius * Math.random() * 0.6).iadd(center)
+
+      const edgeFactor = pos.sub(center).magnitude / maxRadius
+
+      const massMult = maxMass * (1 - edgeFactor)
+      const mass = minMass + Math.random() * (massMult - minMass) + Math.random() * slopMass
+
+      const speed = maxVel * edgeFactor * Math.random()
+      const vel = pos.sub(center).normalized().perpendicular(speed).add(randVec(1))
+
+      simulation.createBodyAtTick( this.draw.tick, mass, pos, vel)
+    }
+
+    // const ctx = this.draw.context
+    //
+    // const circle = (x,y,r, style='white') => {
+    //   ctx.fillStyle = style
+    //   ctx.moveTo(center.x, center.y)
+    //   ctx.beginPath()
+    //   ctx.arc(x,y,r,0,2*Math.PI)
+    //   ctx.fill()
+    // }
+    //
+    // const draw = (body, style = 'white') => {
+    //   circle(body.pos.x, body.pos.y, body.radius, style)
+    // }
+
+  //   this.draw.camera.target.scale = 1
+  //
+  //   const body = simulation.createBodyAtTick(this.draw.tick, 10000, center, new Vector(50, 20))
+  //   const otherBody = simulation.createBodyAtTick(this.draw.tick, 100, center.add(new Vector(60,-54)))
+  //
+  // //  draw(body)
+  //   draw(otherBody, 'green')
+  //
+  //   const vcf = body.vel.magnitude / body.collisionRadius
+  //   const collisionPoints = [body.pos]
+  //
+  //   //Fill the positions if necessary
+  //   if (vcf > 1) {
+  //
+  //     //The COLLISION_POINT_VECTOR_FACTOR reduces the number of points
+  //     //we need to create by reducing the amount they overlap
+  //     const length = vcf * 0.7
+  //     const inc = body.vel.div(length)
+  //     const pos = body.pos.copy()
+  //
+  //     while (collisionPoints.length < length)
+  //       collisionPoints.push(pos.iadd(inc).copy())
+  //
+  //   }
+  //
+  //   console.log('points', collisionPoints.length)
+  //
+  //   const relative = Vector.zero
+  //   const sqrCollisionRadius = body.collisionRadius ** 2
+  //   let frame = null
+  //
+  //   for (let i = 0; i < collisionPoints.length; i++) {
+  //     frame = collisionPoints[i]
+  //     relative.x = otherBody.pos.x - frame.x
+  //     relative.y = otherBody.pos.y - frame.y
+  //
+  //     const distSqr = relative.sqrMagnitude
+  //
+  //     circle(frame.x, frame.y, body.collisionRadius, i == 0 ? 'rgba(255,255,255,0.5)' : 'rgba(255,0,0,0.5)')
+  //
+  //     if (sqrCollisionRadius + otherBody.collisionRadius ** 2 > distSqr) {
+  //     // if (body.collisionRadius + otherBody.collisionRadius > Math.sqrt(distSqr)) {
+  //       console.log('collision!', i)
+  //       break
+  //     }
+  //
+  //   }
+  //   circle(body.pos.x + body.vel.x, body.pos.y + body.vel.y, body.radius, 'rgba(255,255,255,0.5)')
 
   }
 

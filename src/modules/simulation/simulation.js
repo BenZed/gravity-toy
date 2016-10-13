@@ -16,18 +16,8 @@ const UPDATE_SLACK = 10
 const ONE_MEG = 1048576 //bytes
 const MAX_MEMORY = ONE_MEG * 320
 const MAX_NUMBER_ALLOCATIONS = MAX_MEMORY / 8 //bytes
+const COLLISION_POINT_VECTOR_FACTOR = 0.75
 const MAX_CACHE_ALLOCATIONS = Math.floor(MAX_NUMBER_ALLOCATIONS / NUM_CACHE_PROPERTIES)
-
-const TIDAL_DISTRIBUTION = [{
-  massFactor: 0.2,
-  radiusFactor: -1
-}, {
-  massFactor: 0.60,
-  radiusFactor: 0
-}, {
-  massFactor: 0.2,
-  radiusFactor: 1
-}]
 
 //Symbols for "private" properties
 const _bodies = Symbol('bodies'),
@@ -48,13 +38,12 @@ const _writeCacheAtTick = getProtectedSymbol(Body, 'write-cache-at-tick'),
 export default class Simulation extends EventEmitter {
 
   // API **********************************************************************/
-  constructor(UPDATE_DELTA = 20, G = 0.225) {
+  constructor(UPDATE_DELTA = 20, G = 2) {
     super()
 
     constProperty(this, 'UPDATE_DELTA', UPDATE_DELTA)
 
     constProperty(this, 'G', G)
-
 
     this[_paused] = true
     this[_bodies] = []
@@ -177,7 +166,7 @@ export default class Simulation extends EventEmitter {
     const bodies = this[_bodies]
 
     if (tick > interval.currentTick)
-      throw new Error('Can\'t apply cache that hasn\'t been created yet.')
+      throw new Error('Can\'t apply tick that hasn\'t happened yet.')
 
     interval.currentTick = tick
 
@@ -251,7 +240,33 @@ export default class Simulation extends EventEmitter {
     // garbage collections on Vector objects
     const relative = Vector.zero
 
-    const normal = Vector.zero
+    //Series of points to test collisions from.
+    //If the body is moving slow enough, this should only include one point.
+    const collisionPoints = [body.pos]
+
+    //During the collision detection phase, we'll save time by using
+    //squard distances
+    const collisionRadiusSqr = body.collisionRadius ** 2
+
+    //Velocity Collision Factor. If this number
+    //is greater than one, we need to add collisionPoints,
+    //because the object is moving so fast that a regular
+    //circle-overlap test could miss.
+    const vcf = body.vel.magnitude / body.collisionRadius
+
+    //Fill the positions if necessary
+    if (vcf > 1) {
+
+      //The COLLISION_POINT_VECTOR_FACTOR reduces the number of points
+      //we need to create by taking into account how much they'll overlap
+      //with the collisinRadius
+      const length = vcf * COLLISION_POINT_VECTOR_FACTOR
+      const inc = body.vel.div(length)
+      const pos = body.pos.copy()
+
+      while (collisionPoints.length < length)
+        collisionPoints.push(pos.iadd(inc).copy())
+    }
 
     //If the bodySubIndex is zero, that means we
     //didn't leave in the middle of a force calculation
@@ -262,7 +277,6 @@ export default class Simulation extends EventEmitter {
     while (interval.bodySubIndex < bodies.length) {
 
       const otherBody = bodies[interval.bodySubIndex++]
-      const otherRadius = otherBody.collisionRadius
 
       if (body === otherBody || !otherBody.exists)
         continue
@@ -271,23 +285,30 @@ export default class Simulation extends EventEmitter {
       relative.x = otherBody.pos.x - body.pos.x
       relative.y = otherBody.pos.y - body.pos.y
 
-      const distSqr = relative.sqrMagnitude
+      let distSqr = relative.sqrMagnitude
       //inlining relative.magnitude
       const dist = Math.sqrt(distSqr)
 
-      //inlining normal = relative.normalized()
-      normal.x = relative.x / dist
-      normal.y = relative.y / dist
-
       const G = this.G * otherBody.mass / distSqr
 
-      //inlining body.force.iadd(relative.iadd(normal.perpendicular(otherRadius * tidal.radiusFactor)).imult(G).idiv(dist)
+      //inlining with squared distances
       body.force.x += G * relative.x / dist
       body.force.y += G * relative.y / dist
 
-      //check for collisions
-      if (dist < body.collisionRadius + otherRadius)
-        this[_collide](body, otherBody)
+      for (let i = 0; i < collisionPoints.length; i++) {
+        //reuse relative because we dont need it for the rest of this iteration
+        relative.x = otherBody.pos.x - collisionPoints[i].x
+        relative.y = otherBody.pos.y - collisionPoints[i].y
+
+        //reuse distSqr cuz fuck it, why not?
+        distSqr = relative.sqrMagnitude
+
+        //ta daaaa
+        if (collisionRadiusSqr + otherBody.collisionRadius ** 2 > distSqr) {
+          this[_collide](body, otherBody)
+          break
+        }
+      }
 
       if (interval.check())
         break
