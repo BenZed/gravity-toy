@@ -165,13 +165,13 @@ export default class SimulationUI extends React.Component {
       return new Vector(x,y)
     }
 
-    const maxRadius = 200
+    const maxRadius = 500
     const maxMass = 5000
     const minMass = 100
     const slopMass = 50
     const maxVel = 6
 
-    for (let i = 0; i < 450; i++) {
+    for (let i = 0; i <1000; i++) {
       const pos = randVec(maxRadius, maxRadius * Math.random() * 0.2).iadd(center)
 
       const edgeFactor = pos.sub(center).magnitude / maxRadius

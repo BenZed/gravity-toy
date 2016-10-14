@@ -291,7 +291,7 @@ export default class Simulation extends EventEmitter {
       relative.x = otherBody.pos.x - body.pos.x
       relative.y = otherBody.pos.y - body.pos.y
 
-      let distSqr = relative.sqrMagnitude
+      const distSqr = relative.sqrMagnitude
 
       const otherCollisionRadiusSqr = otherBody.collisionRadius ** 2
 
@@ -300,12 +300,11 @@ export default class Simulation extends EventEmitter {
 
         //check all of the collisionPoints
         for (let i = 0; i < collisionPoints.length; i++) {
-          //reuse relative because we dont need it for the rest of this iteration
-          relative.x = otherBody.pos.x - collisionPoints[i].x
-          relative.y = otherBody.pos.y - collisionPoints[i].y
 
-          //reuse distSqr cuz fuck it, why not?
-          distSqr = relative.sqrMagnitude
+          //Rather than allocating another Vector object and calling it's sqrMagnitude
+          //function, I'm doing this fancy inline bit.
+          const distSqr = (otherBody.pos.x - collisionPoints[i].x) ** 2 +
+                          (otherBody.pos.y - collisionPoints[i].y) ** 2
 
           //ta daaaa
           if (collisionRadiusSqr + otherCollisionRadiusSqr > distSqr) {
