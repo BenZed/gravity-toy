@@ -1,3 +1,5 @@
+const { sin, floor } = Math
+
 //Body helpers
 //Can receive either stats or body
 export function getBaryCenter(a, b) {
@@ -26,8 +28,8 @@ export function lerp(from, to, delta, clamped = true) {
 
 export function pseudoRandom(seed = defaultSeed++) {
 
-  const n = Math.sin(seed) * 10000 //10000 is the 'scatter coefficient'
-  return n - Math.floor(n)
+  const n = sin(seed) * 10000 //10000 is the 'scatter coefficient'
+  return n - floor(n)
 }
 let defaultSeed = 1
 

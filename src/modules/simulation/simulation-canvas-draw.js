@@ -2,6 +2,8 @@ import Vector from './vector'
 
 import { lerp, clamp } from './helper'
 
+const { max, min, floor, round, pow, abs, sign, sqrt, PI } = Math
+
 export const DrawTypes = {
   SELECTED: 'SELECTED',
   ON: 'ON',
@@ -20,16 +22,17 @@ const OptionDefaults = {
   nameColor: 'white',
   nameRadiusThreshold: 10,
 
-  gridColor: 'rgba(255,255,255,0.75)',
-  gridWidth: 0.2,
+  gridColor: 'rgba(255,255,255,0.25)',
+  gridWidth: 1,
 
   selectionColor: 'rgba(255,255,85,0.5)',
   trailColor: [0,0,255],
   predictionColor: [0,255,0],
-  trailLength: 200,
-  predictionLength: 200,
+  trailLength: 30,
+  predictionLength: 30,
 
-  trailStep: 3,
+  trailStep: 1,
+  trailWidth: 0.5,
 
   minZoom: 0.1,
   maxZoom: 250
@@ -127,7 +130,7 @@ class Camera {
     this[_current].pos.ilerp(targetPos, deltaTime * CAMERA_LERP_FACTOR)
 
     //speed is new position minus old
-    this.vel = oldPos.isub(this[_current].pos).idiv(Math.min(draw.tickDelta, MAX_TIME_DIALATION))
+    this.vel = oldPos.isub(this[_current].pos).idiv(min(draw.tickDelta, MAX_TIME_DIALATION))
 
     if (focusBodyStats)
       this.vel.iadd(focusBodyStats.vel)
@@ -182,7 +185,7 @@ export default class SimulationCanvasDraw {
 
     if (!this.options.grid)
       return
-      
+
     //draw a grid
     this.context.lineWidth = this.options.gridWidth
     this.context.strokeStyle = this.options.gridColor
@@ -219,7 +222,7 @@ export default class SimulationCanvasDraw {
     if (!stats)
       return
 
-    const  camera = this.camera, current = camera[_current]
+    const camera = this.camera, current = camera[_current]
 
     //position and size of body in relation to camera
     const radius = stats.radius / current.scale
@@ -227,7 +230,7 @@ export default class SimulationCanvasDraw {
 
     //time dialation will warp the body more if the simulation is being viewed
     //at faster than 1x
-    const timeDialation = Math.min(Math.abs(this.tickDelta), MAX_TIME_DIALATION)
+    const timeDialation = min(abs(this.tickDelta), MAX_TIME_DIALATION)
 
     //velocity in relation to camera
     const vel = stats.vel.mult(timeDialation).isub(camera.vel).idiv(current.scale)
@@ -242,13 +245,13 @@ export default class SimulationCanvasDraw {
     const opacity = lerp(0.5, 1, radius / blurRadius)
 
     //angle of the ellipse
-    const angle = (vel.angle - 90) * Math.PI / 180
+    const angle = (vel.angle - 90) * PI / 180
 
     const mass = stats.mass
 
     this.context.fillStyle = `rgba(255,
-      ${Math.round(256 / (1 + Math.pow(mass / 100000, 1)))},
-      ${Math.round(256 / (1 + Math.pow(mass / 10000, 1)))},
+      ${round(256 / (1 + pow(mass / 100000, 1)))},
+      ${round(256 / (1 + pow(mass / 10000, 1)))},
       ${opacity})`
 
     this.context.beginPath()
@@ -256,9 +259,9 @@ export default class SimulationCanvasDraw {
     //ellipse is draw with minum radii so we can still see bodies if they're too
     //small or if we're zoomed too far out
     this.context.ellipse(pos.x, pos.y,
-      Math.max(radius, MIN_DRAW_RADIUS),
-      Math.max(blurRadius, MIN_DRAW_RADIUS),
-      angle, 0, 2 * Math.PI)
+      max(radius, MIN_DRAW_RADIUS),
+      max(blurRadius, MIN_DRAW_RADIUS),
+      angle, 0, 2 * PI)
 
     this.context.closePath()
     this.context.fill()
@@ -275,19 +278,21 @@ export default class SimulationCanvasDraw {
     let pos
 
     const fOrg = focusBody ? focusBody.posAtTick(drawTick) : null
-    const scale = Math.max(this.camera[_current].scale, 1)
+    const scale = max(this.camera[_current].scale, 1)
 
-    const step = Math.floor(this.options.trailStep * scale)
+    const step = floor(this.options.trailStep * scale)
     drawTick -= drawTick % step
 
     let length = back ? body.startTick : body.endTick || this.simulation.cachedTicks
-    length = Math.min(Math.abs(drawTick - length), (back ? body.trailLength : body.predictionLength) * scale)
-    length = Math.floor(length / step)
+    length = min(abs(drawTick - length), (back ? this.options.trailLength : this.options.predictionLength) * scale)
+    length = floor(length / step)
 
-    const style = back ? '0,0,255' : '0,255,0'
+    const style = back ? this.options.trailColor : this.options.predictionColor
     this.context.beginPath()
     this.context.strokeStyle = `rgba(${style},1)`
-    this.context.lineWidth = 0.5
+    this.context.lineWidth = this.options.trailWidth
+
+    const fadeStart = floor(TRAIL_FADE_START / sqrt(scale))
 
     while (length > 0) {
 
@@ -308,13 +313,13 @@ export default class SimulationCanvasDraw {
       pos = this.camera.worldToCanvas(pos)
       this.context.lineTo(pos.x, pos.y)
 
-      if (length >= TRAIL_FADE_START)
+      if (length >= fadeStart)
         continue
 
+      this.context.strokeStyle = `rgba(${style},${length/fadeStart})`
       this.context.stroke()
       this.context.beginPath()
       this.context.moveTo(pos.x, pos.y)
-      this.context.strokeStyle = `rgba(${style},${length/TRAIL_FADE_START})`
     }
 
     this.context.stroke()
@@ -324,12 +329,11 @@ export default class SimulationCanvasDraw {
   [_drawComplete] = deltaTime => {
 
     //draw all the bodies
-
     this.simulation.forEachBody(body => {
-      if (body.trails)
+      if (this.options.trails === DrawTypes.ON)
         this[_drawTrails](body, true)
 
-      if (body.predictions)
+      if (this.options.predictions === DrawTypes.ON)
         this[_drawTrails](body, false)
     })
     this.simulation.forEachBody(this[_drawBody])
@@ -343,7 +347,7 @@ export default class SimulationCanvasDraw {
     //if the next tick isn't what we're expecting it to be, we reduce the playback
     //speed to 1 or -1 in case we're playing back faster
     if (nextTick !== this.tick + this.tickDelta)
-      this.tickDelta = Math.sign(this.tickDelta)
+      this.tickDelta = sign(this.tickDelta)
 
     this.tick = nextTick
   }

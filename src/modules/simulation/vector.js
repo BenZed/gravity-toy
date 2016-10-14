@@ -1,5 +1,7 @@
 import { lerp } from './helper'
 
+const { cos, sin, sqrt, atan2, PI } = Math
+
 export default class Vector {
 
   static get zero() {
@@ -14,7 +16,7 @@ export default class Vector {
   }
 
   static distance(from, to) {
-    return Math.sqrt(this.sqrDistance(from, to))
+    return sqrt(this.sqrDistance(from, to))
   }
 
   static sqrDistance(from, to) {
@@ -91,12 +93,12 @@ export default class Vector {
   }
 
   rotate(deg) {
-    const rad = deg * Math.PI / 180
-    const cos = Math.cos(rad)
-    const sin = Math.sin(rad)
+    const rad = deg * PI / 180
+    const c = cos(rad)
+    const s = sin(rad)
 
-    return new Vector(this.x * cos - this.y * sin,
-                      this.y * cos + this.y * sin)
+    return new Vector(this.x * c - this.y * s,
+                      this.y * c + this.y * s)
   }
 
   perpendicular(h = 1) {
@@ -110,15 +112,15 @@ export default class Vector {
   }
 
   get angle() {
-    return Math.atan2(this.y, this.x) * 180 / Math.PI
+    return atan2(this.y, this.x) * 180 / PI
   }
 
   get magnitude() {
-    return Math.sqrt(this.sqrMagnitude)
+    return sqrt(this.sqrMagnitude)
   }
 
   get sqrMagnitude() {
-    return Math.pow(this.x, 2) + Math.pow(this.y, 2)
+    return this.x ** 2 + this.y ** 2
   }
 
 }

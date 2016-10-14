@@ -8,11 +8,13 @@ import is from 'is-explicit'
 
 const BASE_RADIUS = 0.5
 const BASE_MASS = 100
-const RADIUS_MULTIPLIER = 0.3
+const RADIUS_MULTIPLIER = 0.25
 const COLLIDE_LOW_THRESHOLD = 4
 const COLLIDE_RADIUS_FACTOR = 1
 
 export const NUM_CACHE_PROPERTIES = 5
+
+const { max, cbrt } = Math
 
 /******************************************************************************/
 // Helpers
@@ -22,7 +24,7 @@ function radiusFromMass(mass) {
 
   return mass < BASE_MASS
     ? BASE_RADIUS * mass / BASE_MASS
-    : BASE_RADIUS + Math.cbrt(mass - BASE_MASS) * RADIUS_MULTIPLIER
+    : BASE_RADIUS + cbrt(mass - BASE_MASS) * RADIUS_MULTIPLIER
 }
 
 function collisionRadiusFromRadius(radius) {
@@ -88,7 +90,7 @@ export default class Body extends EventEmitter {
     if (!this.exists && this[_mass] !== undefined && value > 0)
       return console.warn('cannot set a body\'s mass, once it\'s been destroyed.') //eslint-disable-line no-console
 
-    this[_mass] = Math.max(value, 0)
+    this[_mass] = max(value, 0)
     this[_radius] = radiusFromMass(this[_mass])
     this[_collisionRadius] = collisionRadiusFromRadius(this[_radius])
   }
@@ -222,7 +224,7 @@ export default class Body extends EventEmitter {
     if (index >= 0)
       cache.splice(0, index)
 
-    this[_startTick] = Math.max(this[_startTick] - tick, 0)
+    this[_startTick] = max(this[_startTick] - tick, 0)
   }
 
 }

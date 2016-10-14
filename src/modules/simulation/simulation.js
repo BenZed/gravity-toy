@@ -4,7 +4,9 @@ import now from 'performance-now'
 
 import Body, { NUM_CACHE_PROPERTIES } from './body'
 import Vector from './vector'
-import { getProtectedSymbol, constProperty, pseudoRandom } from './helper'
+import { getProtectedSymbol, constProperty } from './helper'
+
+const { floor, sqrt, max } = Math
 
 /******************************************************************************/
 // Simulation Class
@@ -17,7 +19,7 @@ const ONE_MEG = 1048576 //bytes
 const MAX_MEMORY = ONE_MEG * 320
 const MAX_NUMBER_ALLOCATIONS = MAX_MEMORY / 8 //bytes
 const COLLISION_POINT_VECTOR_FACTOR = 0.75
-const MAX_CACHE_ALLOCATIONS = Math.floor(MAX_NUMBER_ALLOCATIONS / NUM_CACHE_PROPERTIES)
+const MAX_CACHE_ALLOCATIONS = floor(MAX_NUMBER_ALLOCATIONS / NUM_CACHE_PROPERTIES)
 
 //Symbols for "private" properties
 const _bodies = Symbol('bodies'),
@@ -38,7 +40,7 @@ const _writeCacheAtTick = getProtectedSymbol(Body, 'write-cache-at-tick'),
 export default class Simulation extends EventEmitter {
 
   // API **********************************************************************/
-  constructor(UPDATE_DELTA = 20, G = 2) {
+  constructor(UPDATE_DELTA = 20, G = 0.75) {
     super()
 
     constProperty(this, 'UPDATE_DELTA', UPDATE_DELTA)
@@ -111,7 +113,7 @@ export default class Simulation extends EventEmitter {
   get maxCacheTicks() {
     const totalCacheUsed = this[_cacheSize] / MAX_CACHE_ALLOCATIONS
 
-    const maxCacheTicks = Math.floor(this[_interval].currentTick / totalCacheUsed)
+    const maxCacheTicks = floor(this[_interval].currentTick / totalCacheUsed)
 
     return is(maxCacheTicks, Number) ? maxCacheTicks : Infinity
   }
@@ -247,12 +249,13 @@ export default class Simulation extends EventEmitter {
     //During the collision detection phase, we'll save time by using
     //squard distances
     const collisionRadiusSqr = body.collisionRadius ** 2
+    const velMagnitudeSqr = body.vel.sqrMagnitude
 
     //Velocity Collision Factor. If this number
     //is greater than one, we need to add collisionPoints,
     //because the object is moving so fast that a regular
     //circle-overlap test could miss.
-    const vcf = body.vel.magnitude / body.collisionRadius
+    const vcf = velMagnitudeSqr / collisionRadiusSqr
 
     //Fill the positions if necessary
     if (vcf > 1) {
@@ -278,6 +281,9 @@ export default class Simulation extends EventEmitter {
 
       const otherBody = bodies[interval.bodySubIndex++]
 
+      if (interval.check())
+        break
+
       if (body === otherBody || !otherBody.exists)
         continue
 
@@ -286,32 +292,41 @@ export default class Simulation extends EventEmitter {
       relative.y = otherBody.pos.y - body.pos.y
 
       let distSqr = relative.sqrMagnitude
+
+      const otherCollisionRadiusSqr = otherBody.collisionRadius ** 2
+
+      //skip collisionPoint checking if the otherBody is too far away to warrant
+      if (!(collisionRadiusSqr + velMagnitudeSqr + otherCollisionRadiusSqr < distSqr)) {
+
+        //check all of the collisionPoints
+        for (let i = 0; i < collisionPoints.length; i++) {
+          //reuse relative because we dont need it for the rest of this iteration
+          relative.x = otherBody.pos.x - collisionPoints[i].x
+          relative.y = otherBody.pos.y - collisionPoints[i].y
+
+          //reuse distSqr cuz fuck it, why not?
+          distSqr = relative.sqrMagnitude
+
+          //ta daaaa
+          if (collisionRadiusSqr + otherCollisionRadiusSqr > distSqr) {
+            this[_collide](body, otherBody)
+            break
+          }
+        }
+      }
+
+      //Don't calculate forces if we just collided
+      if (!body.exists || !otherBody.exists)
+        continue
+
       //inlining relative.magnitude
-      const dist = Math.sqrt(distSqr)
+      const dist = sqrt(distSqr)
 
       const G = this.G * otherBody.mass / distSqr
 
       //inlining with squared distances
       body.force.x += G * relative.x / dist
       body.force.y += G * relative.y / dist
-
-      for (let i = 0; i < collisionPoints.length; i++) {
-        //reuse relative because we dont need it for the rest of this iteration
-        relative.x = otherBody.pos.x - collisionPoints[i].x
-        relative.y = otherBody.pos.y - collisionPoints[i].y
-
-        //reuse distSqr cuz fuck it, why not?
-        distSqr = relative.sqrMagnitude
-
-        //ta daaaa
-        if (collisionRadiusSqr + otherBody.collisionRadius ** 2 > distSqr) {
-          this[_collide](body, otherBody)
-          break
-        }
-      }
-
-      if (interval.check())
-        break
     }
   }
 
@@ -351,7 +366,7 @@ export default class Simulation extends EventEmitter {
       while(!interval.check())
         this[_integrate]()
 
-    const deltaTime = Math.max(this.UPDATE_DELTA + UPDATE_SLACK, interval.delta)
+    const deltaTime = max(this.UPDATE_DELTA + UPDATE_SLACK, interval.delta)
 
     this.emit('interval-complete', deltaTime)
   }

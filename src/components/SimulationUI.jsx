@@ -122,8 +122,8 @@ export default class SimulationUI extends React.Component {
 
       })
 
-      if (this.draw.camera.focusBody != largest)
-        this.draw.camera.focusBody = largest
+      // if (this.draw.camera.focusBody != largest)
+      //   this.draw.camera.focusBody = largest
 
       simulation.forEachBody(body => {
         if (body === largest || !body.exists)
@@ -166,38 +166,38 @@ export default class SimulationUI extends React.Component {
     }
 
     const maxRadius = 200
-    const maxMass = 1000
+    const maxMass = 5000
     const minMass = 100
     const slopMass = 50
-    const maxVel = 5
+    const maxVel = 6
 
-    for (let i = 0; i < 1000; i++) {
-      const pos = randVec(maxRadius, maxRadius * Math.random() * 0.6).iadd(center)
+    for (let i = 0; i < 450; i++) {
+      const pos = randVec(maxRadius, maxRadius * Math.random() * 0.2).iadd(center)
 
       const edgeFactor = pos.sub(center).magnitude / maxRadius
 
       const massMult = maxMass * (1 - edgeFactor)
       const mass = minMass + Math.random() * (massMult - minMass) + Math.random() * slopMass
 
-      const speed = maxVel * edgeFactor * Math.random()
+      const speed = maxVel * edgeFactor
       const vel = pos.sub(center).normalized().perpendicular(speed).add(randVec(1))
 
       simulation.createBodyAtTick( this.draw.tick, mass, pos, vel)
     }
 
-    // const ctx = this.draw.context
-    //
-    // const circle = (x,y,r, style='white') => {
-    //   ctx.fillStyle = style
-    //   ctx.moveTo(center.x, center.y)
-    //   ctx.beginPath()
-    //   ctx.arc(x,y,r,0,2*Math.PI)
-    //   ctx.fill()
-    // }
-    //
-    // const draw = (body, style = 'white') => {
-    //   circle(body.pos.x, body.pos.y, body.radius, style)
-    // }
+  // const ctx = this.draw.context
+  //
+  // const circle = (x,y,r, style='white') => {
+  //   ctx.fillStyle = style
+  //   ctx.moveTo(center.x, center.y)
+  //   ctx.beginPath()
+  //   ctx.arc(x,y,r,0,2*Math.PI)
+  //   ctx.fill()
+  // }
+  //
+  // const draw = (body, style = 'white') => {
+  //   circle(body.pos.x, body.pos.y, body.radius, style)
+  // }
 
   //   this.draw.camera.target.scale = 1
   //
