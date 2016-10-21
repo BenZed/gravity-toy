@@ -13,7 +13,7 @@ const { floor, sqrt, max } = Math
 /******************************************************************************/
 
 //Used to make the interval between updates as consistent as possible
-const UPDATE_SLACK = 10
+const UPDATE_SLACK = 0
 
 const ONE_MEG = 1048576 //bytes
 const MAX_MEMORY = ONE_MEG * 320
@@ -35,7 +35,8 @@ const _bodies = Symbol('bodies'),
 //Symbols for Body "protected" peropties
 
 const _writeCacheAtTick = getProtectedSymbol(Body, 'write-cache-at-tick'),
-  _applyStatsAtTick = getProtectedSymbol(Body, 'apply-stats-at-tick')
+      _applyStatsAtTick = getProtectedSymbol(Body, 'apply-stats-at-tick'),
+      _cache =            getProtectedSymbol(Body, 'cache')
 
 export default class Simulation extends EventEmitter {
 
@@ -162,6 +163,31 @@ export default class Simulation extends EventEmitter {
     return duplicate
   }
 
+  toJSON(stringify = true, onlyCurrentTick = false) {
+    const json = {}
+    json.cacheSize = this.cacheSize
+    json.interval = {
+      currentTick: this[_interval].currentTick,
+      bodyIndex: this[_interval].bodyIndex,
+      bodySubIndex: this[_interval].bodySubIndex
+    }
+    json.UPDATE_DELTA = this.UPDATE_DELTA
+    json.G = this.G
+    json.bodies = this[_bodies]
+      .filter(body => body.exists || !onlyCurrentTick)
+      .map(body => Object({
+        mass: body.mass,
+        pos: body.pos,
+        vel: body.vel,
+        force: body.force,
+        cache: onlyCurrentTick ? null : body[_cache].slice(),
+        startTick: body.startTick,
+        endTick: body.endTick
+      }))
+
+    return stringify ? JSON.stringify(json, null, 2) : json
+  }
+
   [_applyCacheAtTick](tick) {
 
     const interval = this[_interval]
@@ -222,7 +248,7 @@ export default class Simulation extends EventEmitter {
     }
 
     interval.bodyIndex = 0
-    interval.currentTick ++
+    this.emit('tick-complete', interval.currentTick++)
   }
 
   //This function gets called a lot, so there are

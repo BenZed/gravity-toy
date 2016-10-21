@@ -89,12 +89,17 @@ export default class SimulationUI extends React.Component {
 
   componentDidMount() {
 
-    this.createEventHandlers()
-    this.createCanvasDraw()
-    this.createKeyboardShortcuts()
     this.createTestBodies()
-
     this.props.simulation.start()
+
+    setTimeout(() => {
+
+      this.createEventHandlers()
+      this.createCanvasDraw()
+      this.createKeyboardShortcuts()
+
+    }, 1000)
+
 
   }
 
@@ -165,24 +170,24 @@ export default class SimulationUI extends React.Component {
       return new Vector(x,y)
     }
 
-    const maxRadius = 500
-    const maxMass = 5000
+    const maxRadius = 400
+    const maxMass = 14000
     const minMass = 100
     const slopMass = 50
-    const maxVel = 6
+    const maxVel = 3
 
-    for (let i = 0; i <1000; i++) {
-      const pos = randVec(maxRadius, maxRadius * Math.random() * 0.2).iadd(center)
+    for (let i = 0; i < 400; i++) {
+      const pos = randVec(maxRadius, maxRadius * Math.random() * 0.45).iadd(center)
 
       const edgeFactor = pos.sub(center).magnitude / maxRadius
 
-      const massMult = maxMass * (1 - edgeFactor)
+      const massMult = maxMass * (1 - edgeFactor) * Math.random()
       const mass = minMass + Math.random() * (massMult - minMass) + Math.random() * slopMass
 
       const speed = maxVel * edgeFactor
       const vel = pos.sub(center).normalized().perpendicular(speed).add(randVec(1))
 
-      simulation.createBodyAtTick( this.draw.tick, mass, pos, vel)
+      simulation.createBodyAtTick( 0, mass, pos, vel)
     }
 
   // const ctx = this.draw.context

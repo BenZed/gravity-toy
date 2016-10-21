@@ -28,10 +28,10 @@ const OptionDefaults = {
   selectionColor: 'rgba(255,255,85,0.5)',
   trailColor: [0,0,255],
   predictionColor: [0,255,0],
-  trailLength: 30,
+  trailLength: 60,
   predictionLength: 30,
 
-  trailStep: 1,
+  trailStep: 2,
   trailWidth: 0.5,
 
   minZoom: 0.1,

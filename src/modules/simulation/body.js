@@ -55,6 +55,8 @@ export default class Body extends EventEmitter {
 
   static [_applyStatsAtTick] = 'apply-stats-at-tick'
 
+  static [_cache] = 'cache'
+
   constructor(mass, pos, vel, startTick) {
     super()
 

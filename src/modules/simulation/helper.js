@@ -28,7 +28,7 @@ export function lerp(from, to, delta, clamped = true) {
 
 export function pseudoRandom(seed = defaultSeed++) {
 
-  const n = sin(seed) * 10000 //10000 is the 'scatter coefficient'
+  const n = sin(seed) * 1000 //1000 is the 'scatter coefficient'
   return n - floor(n)
 }
 let defaultSeed = 1
