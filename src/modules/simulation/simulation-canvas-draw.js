@@ -76,9 +76,9 @@ class Camera {
     this.canvas = canvas
     this.target = new CameraCoords()
 
-    this.target.scale = 1
-    this.target.pos.x = canvas.width * 0.5
-    this.target.pos.y = canvas.height * 0.5
+    this.target.scale = 2
+    // this.target.pos.x = canvas.width * 0.5
+    // this.target.pos.y = canvas.height * 0.5
 
     this[_current] = new CameraCoords()
     this[_focusBody] = null
@@ -225,7 +225,8 @@ export default class SimulationCanvasDraw {
     const camera = this.camera, current = camera[_current]
 
     //position and size of body in relation to camera
-    const radius = stats.radius / current.scale
+    const ar = stats.radius // actual radius
+    const radius = ar / current.scale
     const pos = this.camera.worldToCanvas(stats.pos)
 
     //time dialation will warp the body more if the simulation is being viewed
@@ -247,11 +248,11 @@ export default class SimulationCanvasDraw {
     //angle of the ellipse
     const angle = (vel.angle - 90) * PI / 180
 
-    const mass = stats.mass
-
-    this.context.fillStyle = `rgba(255,
-      ${round(256 / (1 + pow(mass / 100000, 1)))},
-      ${round(256 / (1 + pow(mass / 10000, 1)))},
+    this.context.fillStyle = body.escaping ?
+      `rgba(0,255,255,${opacity})`
+    : `rgba(255,
+      ${round(lerp(255, 0, (ar - 3) / 50))},
+      ${round(lerp(255, 0, (ar - 3) / 5))},
       ${opacity})`
 
     this.context.beginPath()

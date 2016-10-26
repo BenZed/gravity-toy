@@ -89,7 +89,6 @@ export default class SimulationUI extends React.Component {
 
   componentDidMount() {
 
-    this.createTestBodies()
     this.props.simulation.start()
 
     setTimeout(() => {
@@ -127,8 +126,8 @@ export default class SimulationUI extends React.Component {
 
       })
 
-      // if (this.draw.camera.focusBody != largest)
-      //   this.draw.camera.focusBody = largest
+      if (this.draw.camera.focusBody != largest)
+        this.draw.camera.focusBody = largest
 
       simulation.forEachBody(body => {
         if (body === largest || !body.exists)
@@ -148,111 +147,6 @@ export default class SimulationUI extends React.Component {
 
   createKeyboardShortcuts() {
     Mousetrap.bind(['left', 'right'], this.setSpeed)
-  }
-
-  createTestBodies() {
-    const simulation = this.props.simulation
-
-    const center = new Vector(innerWidth, innerHeight).mult(0.5)
-
-    const randVec = (maxR = 1, minR = 0) => {
-      const angle = Math.random() * 2 * Math.PI
-      let radius
-      do {
-
-        radius = minR + Math.random() * maxR
-
-      } while (radius > maxR)
-
-      const x = radius * Math.cos(angle)
-      const y = radius * Math.sin(angle)
-
-      return new Vector(x,y)
-    }
-
-    const maxRadius = 400
-    const maxMass = 14000
-    const minMass = 100
-    const slopMass = 50
-    const maxVel = 3
-
-    for (let i = 0; i < 400; i++) {
-      const pos = randVec(maxRadius, maxRadius * Math.random() * 0.45).iadd(center)
-
-      const edgeFactor = pos.sub(center).magnitude / maxRadius
-
-      const massMult = maxMass * (1 - edgeFactor) * Math.random()
-      const mass = minMass + Math.random() * (massMult - minMass) + Math.random() * slopMass
-
-      const speed = maxVel * edgeFactor
-      const vel = pos.sub(center).normalized().perpendicular(speed).add(randVec(1))
-
-      simulation.createBodyAtTick( 0, mass, pos, vel)
-    }
-
-  // const ctx = this.draw.context
-  //
-  // const circle = (x,y,r, style='white') => {
-  //   ctx.fillStyle = style
-  //   ctx.moveTo(center.x, center.y)
-  //   ctx.beginPath()
-  //   ctx.arc(x,y,r,0,2*Math.PI)
-  //   ctx.fill()
-  // }
-  //
-  // const draw = (body, style = 'white') => {
-  //   circle(body.pos.x, body.pos.y, body.radius, style)
-  // }
-
-  //   this.draw.camera.target.scale = 1
-  //
-  //   const body = simulation.createBodyAtTick(this.draw.tick, 10000, center, new Vector(50, 20))
-  //   const otherBody = simulation.createBodyAtTick(this.draw.tick, 100, center.add(new Vector(60,-54)))
-  //
-  // //  draw(body)
-  //   draw(otherBody, 'green')
-  //
-  //   const vcf = body.vel.magnitude / body.collisionRadius
-  //   const collisionPoints = [body.pos]
-  //
-  //   //Fill the positions if necessary
-  //   if (vcf > 1) {
-  //
-  //     //The COLLISION_POINT_VECTOR_FACTOR reduces the number of points
-  //     //we need to create by reducing the amount they overlap
-  //     const length = vcf * 0.7
-  //     const inc = body.vel.div(length)
-  //     const pos = body.pos.copy()
-  //
-  //     while (collisionPoints.length < length)
-  //       collisionPoints.push(pos.iadd(inc).copy())
-  //
-  //   }
-  //
-  //   console.log('points', collisionPoints.length)
-  //
-  //   const relative = Vector.zero
-  //   const sqrCollisionRadius = body.collisionRadius ** 2
-  //   let frame = null
-  //
-  //   for (let i = 0; i < collisionPoints.length; i++) {
-  //     frame = collisionPoints[i]
-  //     relative.x = otherBody.pos.x - frame.x
-  //     relative.y = otherBody.pos.y - frame.y
-  //
-  //     const distSqr = relative.sqrMagnitude
-  //
-  //     circle(frame.x, frame.y, body.collisionRadius, i == 0 ? 'rgba(255,255,255,0.5)' : 'rgba(255,0,0,0.5)')
-  //
-  //     if (sqrCollisionRadius + otherBody.collisionRadius ** 2 > distSqr) {
-  //     // if (body.collisionRadius + otherBody.collisionRadius > Math.sqrt(distSqr)) {
-  //       console.log('collision!', i)
-  //       break
-  //     }
-  //
-  //   }
-  //   circle(body.pos.x + body.vel.x, body.pos.y + body.vel.y, body.radius, 'rgba(255,255,255,0.5)')
-
   }
 
   render() {

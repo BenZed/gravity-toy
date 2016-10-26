@@ -1,14 +1,12 @@
 import { EventEmitter } from 'events'
+import { constProperty } from './helper'
 import Vector from './vector'
 import is from 'is-explicit'
-
 /******************************************************************************/
 // Constants
 /******************************************************************************/
 
-const BASE_RADIUS = 0.5
 const BASE_MASS = 100
-const RADIUS_MULTIPLIER = 0.25
 const COLLIDE_LOW_THRESHOLD = 4
 const COLLIDE_RADIUS_FACTOR = 1
 
@@ -20,11 +18,11 @@ const { max, cbrt } = Math
 // Helpers
 /******************************************************************************/
 
-function radiusFromMass(mass) {
+function radiusFromMass(mass, rBase, rFactor) {
 
   return mass < BASE_MASS
-    ? BASE_RADIUS * mass / BASE_MASS
-    : BASE_RADIUS + cbrt(mass - BASE_MASS) * RADIUS_MULTIPLIER
+    ? rBase * mass / BASE_MASS
+    : rBase + cbrt(mass - BASE_MASS) * rFactor
 }
 
 function collisionRadiusFromRadius(radius) {
@@ -57,7 +55,7 @@ export default class Body extends EventEmitter {
 
   static [_cache] = 'cache'
 
-  constructor(mass, pos, vel, startTick) {
+  constructor(mass, pos, vel, startTick, radiusBase, radiusFactor) {
     super()
 
     if (!is(mass, Number))
@@ -76,6 +74,9 @@ export default class Body extends EventEmitter {
     this[_startTick] = startTick
     this[_endTick] = null
 
+    constProperty(this, 'radiusBase', radiusBase)
+    constProperty(this, 'radiusFactor', radiusFactor)
+
     this.mass = mass
     this.pos = pos.copy()
     this.vel = vel.copy()
@@ -93,7 +94,7 @@ export default class Body extends EventEmitter {
       return console.warn('cannot set a body\'s mass, once it\'s been destroyed.') //eslint-disable-line no-console
 
     this[_mass] = max(value, 0)
-    this[_radius] = radiusFromMass(this[_mass])
+    this[_radius] = radiusFromMass(this[_mass], this.radiusBase, this.radiusFactor)
     this[_collisionRadius] = collisionRadiusFromRadius(this[_radius])
   }
 
@@ -143,7 +144,7 @@ export default class Body extends EventEmitter {
     if (!mass || mass <= 0)
       return null
 
-    const radius = radiusFromMass(mass)
+    const radius = radiusFromMass(mass, this.radiusBase, this.radiusFactor)
 
     return {
       mass,
@@ -208,7 +209,7 @@ export default class Body extends EventEmitter {
     if (!mass || mass <= 0)
       return null
 
-    const radius = radiusFromMass(mass)
+    const radius = radiusFromMass(mass, this.radiusBase, this.radiusFactor)
 
     return {
       mass,

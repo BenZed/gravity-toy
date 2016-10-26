@@ -46,7 +46,7 @@ function createBodies(simulation, params) {
 
     const v = spin.add(randomVec(spin.magnitude).mult(velFuzzy))
 
-    simulation.createBodyAtTick( 0, m, pos, v)
+    simulation.createBody( 0, m, pos, v)
   }
 }
 

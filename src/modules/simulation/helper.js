@@ -2,7 +2,7 @@ const { sin, floor } = Math
 
 //Body helpers
 //Can receive either stats or body
-export function getBaryCenter(a, b) {
+export function baryCenter(a, b) {
 
   const relative = a.pos.sub(b.pos)
   const distance = relative.magnitude
@@ -13,6 +13,19 @@ export function getBaryCenter(a, b) {
     .mult(baryRadius)
     .add(b.pos)
 
+}
+
+export function escapeSpeed(child, parent, g) {
+  const rel = child.pos.sub(parent.pos)
+  return g * parent.mass * child.mass / rel.sqrMagnitude
+}
+
+export function escaping(child, parent, g) {
+
+  const escSpeed = escapeSpeed(child, parent, g)
+  const relSpeed = child.vel.sub(parent.vel).magnitude
+
+  return relSpeed > escSpeed
 }
 
 //Math helpers

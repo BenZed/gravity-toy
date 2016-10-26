@@ -35,22 +35,30 @@ const _bodies = Symbol('bodies'),
 //Symbols for Body "protected" peropties
 
 const _writeCacheAtTick = getProtectedSymbol(Body, 'write-cache-at-tick'),
-      _applyStatsAtTick = getProtectedSymbol(Body, 'apply-stats-at-tick'),
-      _cache =            getProtectedSymbol(Body, 'cache')
+  _applyStatsAtTick = getProtectedSymbol(Body, 'apply-stats-at-tick'),
+  _cache = getProtectedSymbol(Body, 'cache')
 
 export default class Simulation extends EventEmitter {
 
   // API **********************************************************************/
-  constructor(UPDATE_DELTA = 20, G = 0.75) {
+  constructor(props = {}) {
     super()
 
-    constProperty(this, 'UPDATE_DELTA', UPDATE_DELTA)
+    if (!is(props, Object))
+      throw new Error('First argument, if provided, must be an options object.')
 
-    constProperty(this, 'G', G)
+    const { g, delta, radiusBase, radiusFactor } = props
+
+    constProperty(this, 'radiusFactor', radiusFactor || 0.25)
+    constProperty(this, 'radiusBase', radiusBase || 0.5)
+    constProperty(this, 'delta', delta || 20)
+    constProperty(this, 'g', g || 1)
 
     this[_paused] = true
     this[_bodies] = []
     this[_cacheSize] = 0
+
+    const sim = this
 
     this[_interval] = {
       id: null,
@@ -64,7 +72,7 @@ export default class Simulation extends EventEmitter {
 
       check() {
         this.delta = now() - this.start
-        return this.exceeded = this.delta >= UPDATE_DELTA
+        return this.exceeded = this.delta >= sim.delta
       }
     }
   }
@@ -81,7 +89,7 @@ export default class Simulation extends EventEmitter {
     //body positions and firing event subscribers. Adding UPDATE_SLACK will help
     //to make the framerate more consistent
     if (!interval.id)
-      interval.id = setInterval(this[_update], this.UPDATE_DELTA + UPDATE_SLACK)
+      interval.id = setInterval(this[_update], this.delta + UPDATE_SLACK)
 
     this[_paused] = false
   }
@@ -120,21 +128,24 @@ export default class Simulation extends EventEmitter {
   }
 
   get cachedSeconds() {
-    return this[_interval].currentTick / (this.UPDATE_DELTA + UPDATE_SLACK)
+    return this[_interval].currentTick / (this.delta + UPDATE_SLACK)
   }
 
   get maxCacheSeconds() {
-    return this.maxCacheTicks / (this.UPDATE_DELTA + UPDATE_SLACK)
+    return this.maxCacheTicks / (this.delta + UPDATE_SLACK)
   }
 
-  createBodyAtTick(tick, mass, pos = Vector.zero, vel = Vector.zero) {
+  createBody(props = {}) {
 
-    tick = is(tick, Number) ? tick : this.cachedTicks
+    const mass = is(props, Number) ? props : props && props.mass ? props.mass : NaN
+    const tick = props && props.tick ? tick : this.cachedTicks
+    const pos = props && props.pos ? props.pos : Vector.zero
+    const vel = props && props.vel ? props.vel : Vector.zero
 
     const body = new Body(mass,
         new Vector(pos.x, pos.y),
         new Vector(vel.x, vel.y),
-        tick)
+        tick, this.radiusBase, this.radiusFactor)
 
 
     body[_writeCacheAtTick](tick)
@@ -155,12 +166,13 @@ export default class Simulation extends EventEmitter {
   }
 
   copy() {
-    const duplicate = new Simulation(this.UPDATE_DELTA, this.G)
-    for (const body of this[_bodies])
-      if (body.exists)
-        duplicate.createBody(body.mass, body.pos, body.vec)
-
-    return duplicate
+    throw new Error('.copy() not implemented.')
+    // const duplicate = new Simulation({delta: this.delta, g: this.g})
+    // for (const body of this[_bodies])
+    //   if (body.exists)
+    //     duplicate.createBody(body.mass, body.pos, body.vec)
+    //
+    // return duplicate
   }
 
   toJSON(stringify = true, onlyCurrentTick = false) {
@@ -171,8 +183,8 @@ export default class Simulation extends EventEmitter {
       bodyIndex: this[_interval].bodyIndex,
       bodySubIndex: this[_interval].bodySubIndex
     }
-    json.UPDATE_DELTA = this.UPDATE_DELTA
-    json.G = this.G
+    json.delta = this.delta
+    json.g = this.g
     json.bodies = this[_bodies]
       .filter(body => body.exists || !onlyCurrentTick)
       .map(body => Object({
@@ -238,7 +250,7 @@ export default class Simulation extends EventEmitter {
       //Velocity Verlet
 
       const oldVel = body.vel.copy()
-      const newVel = oldVel.add(body.force.mult(this.UPDATE_DELTA * 0.001))
+      const newVel = oldVel.add(body.force.mult(this.delta * 0.001))
       body.vel = oldVel.add(newVel).mult(0.5)
 
       body.pos.iadd(body.vel)
@@ -347,7 +359,7 @@ export default class Simulation extends EventEmitter {
       //inlining relative.magnitude
       const dist = sqrt(distSqr)
 
-      const G = this.G * otherBody.mass / distSqr
+      const G = this.g * otherBody.mass / distSqr
 
       //inlining with squared distances
       body.force.x += G * relative.x / dist
@@ -391,7 +403,7 @@ export default class Simulation extends EventEmitter {
       while(!interval.check())
         this[_integrate]()
 
-    const deltaTime = max(this.UPDATE_DELTA + UPDATE_SLACK, interval.delta)
+    const deltaTime = max(this.delta + UPDATE_SLACK, interval.delta)
 
     this.emit('interval-complete', deltaTime)
   }
