@@ -3,13 +3,17 @@ import React from 'react'
 import { Simulation, SimulationCanvasDraw, Vector } from '../modules/simulation'
 import { clamp } from '../modules/simulation/helper'
 
-import Mousetrap from 'mousetrap'
+// import Mousetrap from 'mousetrap'
 
 import Timeline from './Timeline'
 
-const Speeds = [-1000, -500, -200, -100, -70, -30, -10, -4, -2, -1, 1, 2, 4, 10, 30, 70, 100, 200, 500, 1000]
+const Speeds = [-512,-256,-128,-64,-32,-16,-4,-2,-1,1,2,4,16,32,64,128,256,512]
 
 export default class SimulationUI extends React.Component {
+
+/******************************************************************************/
+// Initializers
+/******************************************************************************/
 
   static propTypes = {
     simulation: React.PropTypes.instanceOf(Simulation).isRequired,
@@ -30,6 +34,11 @@ export default class SimulationUI extends React.Component {
     playhead: 0
 
   }
+
+
+/******************************************************************************/
+// Event Handlers
+/******************************************************************************/
 
   receiveSimulationData = () => {
     this.setState({
@@ -58,8 +67,8 @@ export default class SimulationUI extends React.Component {
   }
 
   setSpeed = e => {
-
-    const delta = e.code === 'ArrowRight' ? 1 : -1
+    const delta = e === 37 ? -1 : 1
+    // const delta = e.code === 'ArrowRight' ? 1 : -1
     const newIndex = clamp(Speeds.indexOf(this.draw.tickDelta) + delta, 0, Speeds.length - 1)
 
     this.draw.tickDelta = Speeds[newIndex]
@@ -72,7 +81,7 @@ export default class SimulationUI extends React.Component {
     const delta = new Vector(e.deltaX, e.deltaY)
 
     if (e.shiftKey) {
-      const scale = Math.min(this.draw.camera.target.scale, 50)
+      const scale = Math.min(this.draw.camera.target.scale, 40)
       const zoomSpeed = scale * 0.001
       const sign = delta.y > 0 ? 1 : -1
 
@@ -87,6 +96,81 @@ export default class SimulationUI extends React.Component {
     }
   }
 
+  handlePress = e => {
+    console.log('press')
+  }
+
+  handleMove = e => {
+    console.log('move')
+  }
+
+  handleRelease = e => {
+    console.log('release')
+  }
+
+/******************************************************************************/
+// Helper
+/******************************************************************************/
+
+  createEventHandlers() {
+    onresize = this.onWindowResize
+    onresize()
+
+    const { simulation } = this.props
+
+    simulation.on('interval-complete', this.receiveSimulationData)
+
+    setTimeout(() => {
+      let bodies = []
+      simulation.forEachBody(body => {
+        bodies.push(body)
+      })
+
+      bodies.sort((a,b) => a.mass < b.mass ? 1 : a.mass > b.mass ? -1 : 0)
+
+      let i = 0
+      const shift = code => {
+        i = code === 38 ? i - 1 : code === 40 ? i + 1 : i
+        i = i < 0 ? bodies.length - 1 : i >= bodies.length ? 0 : i
+      }
+
+      window.addEventListener('keydown', e => {
+        const k = i
+        let body
+        do {
+          shift(e.keyCode)
+          body = bodies[i]
+        } while (!body || !body.exists)
+
+        if (k == i)
+          return
+
+        this.draw.camera.focusBody = body
+        this.draw.camera.target.pos = Vector.zero
+      })
+
+      window.addEventListener('keydown', e => {
+        if (e.keyCode === 37 || e.keyCode === 39)
+          this.setSpeed(e.keyCode)
+      })
+
+
+    }, 1000)
+
+  }
+
+  createCanvasDraw() {
+    this.draw = new SimulationCanvasDraw(this.props.simulation, this.canvas)
+  }
+
+  createKeyboardShortcuts() {
+    // Mousetrap.bind(['left', 'right'], this.setSpeed)
+  }
+
+/******************************************************************************/
+// LifeCycle
+/******************************************************************************/
+
   componentDidMount() {
 
     this.props.simulation.start()
@@ -99,54 +183,6 @@ export default class SimulationUI extends React.Component {
 
     }, 1000)
 
-
-  }
-
-  createEventHandlers() {
-    onresize = this.onWindowResize
-    onresize()
-
-    const { simulation } = this.props
-
-    simulation.on('interval-complete', this.receiveSimulationData)
-
-    //for testing purposes, we're going to make the largest body the focusBody
-    //and we're going to remove any object too far away from the largest body
-    //this will only happen on the latest cached frame for now,
-    simulation.on('interval-complete', () => {
-      const MAX_DISTANCE_SQR = 100000 * 100000
-      let largest = null
-
-      simulation.forEachBody(body => {
-        if (!body.exists)
-          return
-
-        if (largest === null || body.mass > largest.mass)
-          largest = body
-
-      })
-
-      if (this.draw.camera.focusBody != largest)
-        this.draw.camera.focusBody = largest
-
-      simulation.forEachBody(body => {
-        if (body === largest || !body.exists)
-          return
-
-        if (body.exists && body.pos.sub(largest.pos).sqrMagnitude > MAX_DISTANCE_SQR)
-          body.mass = Math.floor(body.mass * 0.99)
-      })
-
-    })
-
-  }
-
-  createCanvasDraw() {
-    this.draw = new SimulationCanvasDraw(this.props.simulation, this.canvas)
-  }
-
-  createKeyboardShortcuts() {
-    Mousetrap.bind(['left', 'right'], this.setSpeed)
   }
 
   render() {
@@ -157,9 +193,16 @@ export default class SimulationUI extends React.Component {
     delete other.simulation
 
     return <div id={id} {...other}>
-      <Timeline cached={cached} cachedMax={cachedMax} secondsMax={secondsMax} onClick={this.setPlayhead} playhead={playhead}/>
-      <h1>{title}</h1>
-      <canvas ref={canvas => this.canvas = canvas} onWheel={this.handleCameraMove}/>
+      <Timeline cached={cached} cachedMax={cachedMax}
+        secondsMax={secondsMax} playhead={playhead}
+        onClick={this.setPlayhead} />
+      <h1>{title || `${this.draw ? Math.round(this.draw.camera.target.scale * 100) / 100 : '1'}x`}</h1>
+      <canvas ref={canvas => this.canvas = canvas}
+        onWheel={this.handleCameraMove}
+        onMouseDown={this.handlePress}
+        onMouseMove={this.handleMove}
+        onMouseUp={this.handleRelease}
+      />
     </div>
   }
 

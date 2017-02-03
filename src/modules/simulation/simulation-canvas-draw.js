@@ -2,7 +2,7 @@ import Vector from './vector'
 
 import { lerp, clamp } from './helper'
 
-const { max, min, floor, round, pow, abs, sign, sqrt, PI } = Math
+const { max, min, floor, round, abs, sign, sqrt, PI } = Math
 
 export const DrawTypes = {
   SELECTED: 'SELECTED',
@@ -13,6 +13,7 @@ export const DrawTypes = {
 const OptionDefaults = {
 
   grid: true,
+
   trails: DrawTypes.ON,
   predictions: DrawTypes.OFF,
   parents: DrawTypes.SELECTED,
@@ -22,16 +23,16 @@ const OptionDefaults = {
   nameColor: 'white',
   nameRadiusThreshold: 10,
 
-  gridColor: 'rgba(255,255,255,0.25)',
+  gridColor: [140,180,180],
   gridWidth: 1,
 
   selectionColor: 'rgba(255,255,85,0.5)',
   trailColor: [0,0,255],
   predictionColor: [0,255,0],
-  trailLength: 60,
-  predictionLength: 30,
+  trailLength: 100,
+  predictionLength: 50,
 
-  trailStep: 2,
+  trailStep: 1,
   trailWidth: 0.5,
 
   minZoom: 0.1,
@@ -50,9 +51,52 @@ const CAMERA_LERP_FACTOR = 5,
   MIN_DRAW_RADIUS = 0.5,
 
   MAX_TIME_DIALATION = 48,
-  BLUR_FACTOR = 0.4,
+  BLUR_FACTOR = 0.5,
 
   TRAIL_FADE_START = 30
+
+import colorLerp from 'color-interpolate'
+import is from 'is-explicit'
+
+function weightedColorLerp(colors, values) {
+
+  if (!is(colors, Array) || !is(values, Array))
+    throw new Error('weighted colorizer requires two arrays')
+
+  const map = colorLerp(colors)
+  const maxValueIndex = values.length - 1
+
+  return value => {
+
+    let pointer = 0
+
+    for (let i = 0; i < maxValueIndex; i++) {
+      const valueFrom = values[i]
+      const valueTo = values[i + 1]
+      const pointFrom = i / maxValueIndex
+      const pointTo = (i + 1) / maxValueIndex
+
+      if (value < valueFrom)
+        break
+
+      if (value >= valueFrom && value <= valueTo) {
+        const valueFactor = (value - valueFrom) / (valueTo - valueFrom)
+        pointer = lerp(pointFrom, pointTo, valueFactor)
+        break
+      }
+
+      pointer = pointTo
+    }
+
+    return map(pointer)
+
+  }
+}
+
+const colorOfMass = weightedColorLerp(
+  ['#444', 'white', 'magenta', 'yellow', 'orange', 'red', '#420300'],
+  [0, 10000, 30000, 100000, 1000000, 10000000, 100000000])
+
 
 /******************************************************************************/
 // Camera Classes
@@ -186,18 +230,18 @@ export default class SimulationCanvasDraw {
     if (!this.options.grid)
       return
 
+    const color = this.options.gridColor
+
     //draw a grid
-    this.context.lineWidth = this.options.gridWidth
-    this.context.strokeStyle = this.options.gridColor
-
     const current = this.camera[_current]
+    const opacity = lerp(0.0, 0.125, current.scale ** 0.5 / OptionDefaults.maxZoom ** 0.5)
+    this.context.lineWidth = this.options.gridWidth
+    this.context.strokeStyle = `rgba(${color[0]},${color[1]},${color[2]},${opacity})`
+
     const xLineDelta = this.canvas.width / current.scale
-    const yLineDelta = this.canvas.height / current.scale
-
     const xOff = (-current.pos.x / current.scale + this.canvas.width * 0.5) % xLineDelta
-    const yOff = (-current.pos.y / current.scale + this.canvas.height * 0.5) % yLineDelta
 
-    let x = 0, y = 0
+    let x = 0
     while (x < this.canvas.width) {
       this.context.beginPath()
       this.context.moveTo(x + xOff, 0)
@@ -206,7 +250,11 @@ export default class SimulationCanvasDraw {
       x += xLineDelta
     }
 
-    while (y < this.canvas.height) {
+    const yLineDelta = this.canvas.height / current.scale
+    const yOff = (-current.pos.y / current.scale + this.canvas.height * 0.5) % yLineDelta
+
+    let y = 0
+    while (y < this.canvas.height * 1) {
       this.context.beginPath()
       this.context.moveTo(0, y + yOff)
       this.context.lineTo(this.canvas.width, y + yOff)
@@ -236,24 +284,23 @@ export default class SimulationCanvasDraw {
     //velocity in relation to camera
     const vel = stats.vel.mult(timeDialation).isub(camera.vel).idiv(current.scale)
 
+    const speed = vel.magnitude
+
+    const overflow = speed + radius * 2
+    const visible = !(pos.x < -overflow || pos.x > this.canvas.width + overflow || pos.y < -overflow || pos.y > this.canvas.height + overflow)
+    if (!visible)
+      return
+
     //blurRadius will warp the body from a circle to an ellipse if it is moving fasting enough
-    let blurRadius = vel.magnitude * BLUR_FACTOR
+    let blurRadius = speed * BLUR_FACTOR
 
-    //circularize if speed is too slow or simulation is paused
-    blurRadius = blurRadius < radius || this.simulation.paused ? radius : blurRadius
-
-    //in addition to warping, the body will be faded if moving sufficiently fast
-    const opacity = lerp(0.5, 1, radius / blurRadius)
+    //circularize if speed is too slow
+    blurRadius = blurRadius < radius || this.tickDelta === 0 ? radius : blurRadius
 
     //angle of the ellipse
     const angle = (vel.angle - 90) * PI / 180
 
-    this.context.fillStyle = body.escaping ?
-      `rgba(0,255,255,${opacity})`
-    : `rgba(255,
-      ${round(lerp(255, 0, (ar - 3) / 50))},
-      ${round(lerp(255, 0, (ar - 3) / 5))},
-      ${opacity})`
+    this.context.fillStyle = colorOfMass(stats.mass)
 
     this.context.beginPath()
 
@@ -271,7 +318,6 @@ export default class SimulationCanvasDraw {
 
   [_drawTrails] = (body, back) => {
     const focusBody = this.camera.focusBody
-
     if (focusBody === body)
       return
 
@@ -285,7 +331,7 @@ export default class SimulationCanvasDraw {
     drawTick -= drawTick % step
 
     let length = back ? body.startTick : body.endTick || this.simulation.cachedTicks
-    length = min(abs(drawTick - length), (back ? this.options.trailLength : this.options.predictionLength) * scale)
+    length = min(abs(drawTick - length), (back ? this.options.trailLength : this.options.predictionLength) * scale )
     length = floor(length / step)
 
     const style = back ? this.options.trailColor : this.options.predictionColor
@@ -312,15 +358,20 @@ export default class SimulationCanvasDraw {
       }
 
       pos = this.camera.worldToCanvas(pos)
-      this.context.lineTo(pos.x, pos.y)
 
-      if (length >= fadeStart)
-        continue
+      const visible = !(pos.x < 0 || pos.x > this.canvas.width || pos.y < 0 || pos.y > this.canvas.height)
+      if (visible) {
+        this.context.lineTo(pos.x, pos.y)
 
-      this.context.strokeStyle = `rgba(${style},${length/fadeStart})`
-      this.context.stroke()
-      this.context.beginPath()
+        if (length >= fadeStart)
+          continue
+
+        this.context.strokeStyle = `rgba(${style},${length/fadeStart})`
+        this.context.stroke()
+        this.context.beginPath()
+      }
       this.context.moveTo(pos.x, pos.y)
+
     }
 
     this.context.stroke()

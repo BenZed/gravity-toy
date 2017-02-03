@@ -6,7 +6,7 @@ import Body, { NUM_CACHE_PROPERTIES } from './body'
 import Vector from './vector'
 import { getProtectedSymbol, constProperty } from './helper'
 
-const { floor, sqrt, max } = Math
+const { floor, sqrt, max, min } = Math
 
 /******************************************************************************/
 // Simulation Class
@@ -18,8 +18,11 @@ const UPDATE_SLACK = 0
 const ONE_MEG = 1048576 //bytes
 const MAX_MEMORY = ONE_MEG * 320
 const MAX_NUMBER_ALLOCATIONS = MAX_MEMORY / 8 //bytes
-const COLLISION_POINT_VECTOR_FACTOR = 0.75
 const MAX_CACHE_ALLOCATIONS = floor(MAX_NUMBER_ALLOCATIONS / NUM_CACHE_PROPERTIES)
+
+const COLLISION_POINT_VECTOR_FACTOR = 0.75
+const MAX_COLLISION_POINTS = 5000 //if very small bodies are going very fast,
+//we're going to lose collision detection quality so that the program wont hang
 
 //Symbols for "private" properties
 const _bodies = Symbol('bodies'),
@@ -161,6 +164,36 @@ export default class Simulation extends EventEmitter {
     this[_bodies].forEach(func)
   }
 
+  getLargestBody() {
+    let largest = null
+
+    this.forEachBody(body => {
+      if (!body.exists)
+        return
+
+      if (largest === null || largest.mass < body.mass)
+        largest = body
+    })
+
+    return largest
+  }
+
+  getBodiesInRange(pos, dist = 1000) {
+    const bodies = []
+
+    this.forEachBody(b => {
+      if (!b.exists)
+        return
+
+      if (b.pos.sub(pos).magnitude > dist)
+        return
+
+      bodies.push(b)
+    })
+
+    return bodies
+  }
+
   get numBodies() {
     return this[_bodies].length
   }
@@ -251,7 +284,7 @@ export default class Simulation extends EventEmitter {
 
       const oldVel = body.vel.copy()
       const newVel = oldVel.add(body.force.mult(this.delta * 0.001))
-      body.vel = oldVel.add(newVel).mult(0.5)
+      body.vel = oldVel.add(newVel).imult(0.5)
 
       body.pos.iadd(body.vel)
 
@@ -305,8 +338,9 @@ export default class Simulation extends EventEmitter {
       const inc = body.vel.div(length)
       const pos = body.pos.copy()
 
-      while (collisionPoints.length < length)
+      while (collisionPoints.length < min(length, MAX_COLLISION_POINTS))
         collisionPoints.push(pos.iadd(inc).copy())
+
     }
 
     //If the bodySubIndex is zero, that means we
@@ -405,7 +439,7 @@ export default class Simulation extends EventEmitter {
 
     const deltaTime = max(this.delta + UPDATE_SLACK, interval.delta)
 
-    this.emit('interval-complete', deltaTime)
+    this.emit('interval-complete', deltaTime, interval.currentTick)
   }
 
 }

@@ -5,8 +5,10 @@
   "main": "lib",
   "scripts": {
     "test": "./node_modules/.bin/mocha --compilers js:babel-core/register",
-    "build": "webpack",
-    "start": "webpack-dev-server"
+    "build:web": "webpack",
+    "start": "webpack-dev-server",
+    "build:lib": "./node_modules/.bin/babel src/modules/simulation --out-dir lib",
+    "build:lib:watch": "./node_modules/.bin/babel --watch refactor-src/modules/simulation --out-dir lib"
   },
   "author": "Ben Gaumond",
   "license": "ISC",
@@ -24,6 +26,7 @@
     "extract-text-webpack-plugin": "^1.0.1",
     "file-loader": "^0.8.5",
     "html-loader": "^0.4.4",
+    "json-loader": "^0.5.4",
     "mocha": "^3.0.2",
     "node-sass": "^3.4.2",
     "resolve-url-loader": "^1.4.3",
@@ -39,9 +42,12 @@
     "babel-preset-react": "^6.16.0",
     "bootstrap-loader": "^1.2.1",
     "coffee-script": "^1.11.1",
+    "color-interpolate": "^1.0.2",
+    "define-utility": "^1.0.2",
     "eslint": "^3.7.1",
     "eslint-plugin-react": "^6.4.1",
     "is-explicit": "^1.1.0",
+    "math-plus": "^0.1.1",
     "mocha": "^3.1.2",
     "node-sass": "^3.10.1",
     "performance-now": "^0.2.0",

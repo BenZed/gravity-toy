@@ -46,6 +46,13 @@ module.exports = {
       },
 
       {
+        test: /\.json$/,
+        loader: 'json',
+        include: PATHS.src
+      },
+
+
+      {
         test: /\.html$/,
         loader: 'html'
       }
@@ -53,9 +60,9 @@ module.exports = {
   },
 
   externals: {
-    'react' : 'React',
-    'react-dom' : 'ReactDOM',
-    'mousetrap' : 'Mousetrap'
+    // 'react' : 'React',
+    // 'react-dom' : 'ReactDOM',
+    // 'mousetrap' : 'Mousetrap'
   },
 
   devServer: {

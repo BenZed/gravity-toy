@@ -1,3 +1,5 @@
+import React from 'react'
+
 function secondsAsMessage(seconds) {
 
   let suffix = 'seconds'

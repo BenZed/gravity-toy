@@ -8,7 +8,8 @@ import is from 'is-explicit'
 
 const BASE_MASS = 100
 const COLLIDE_LOW_THRESHOLD = 4
-const COLLIDE_RADIUS_FACTOR = 1
+const COLLIDE_RADIUS_FACTOR = 0.95
+const COLLISION_RADIUS_MIN = 0.5
 
 export const NUM_CACHE_PROPERTIES = 5
 
@@ -26,9 +27,11 @@ function radiusFromMass(mass, rBase, rFactor) {
 }
 
 function collisionRadiusFromRadius(radius) {
-  return radius < COLLIDE_LOW_THRESHOLD
+  return max(radius < COLLIDE_LOW_THRESHOLD
     ? radius
     : (radius - COLLIDE_LOW_THRESHOLD) * COLLIDE_RADIUS_FACTOR + COLLIDE_LOW_THRESHOLD
+
+    , COLLISION_RADIUS_MIN)
 }
 
 /******************************************************************************/

@@ -12273,13 +12273,13 @@
 	var max = Math.max;
 	var abs = Math.abs;
 	var random = Math.random;
+	var sqrt = Math.sqrt;
 
 
 	var MAX_BODIES = 2500;
 	var TICKS_UNTIL_COMPLETION = 1000 * 60 * 60;
 
 	var CLOSE_BODY_DISTANCE = 10800;
-	var CLOSE_BODY_POINTS = 5;
 
 	function generate() {
 	  var params = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
@@ -12364,36 +12364,44 @@
 	    return sim.createBody((0, _extends3.default)({}, prop));
 	  });
 
-	  addEventHandlers(sim, originalTotalMass);
+	  addEventHandlers(sim, params, originalTotalMass, radius);
 
 	  return sim;
 	}
 
-	function addEventHandlers(sim, totalMass) {
+	function addEventHandlers(sim, params, totalMass, radius) {
 
 	  var score = 0;
 
 	  sim.on('tick-complete', function (tick) {
-	    var largest = getLargestBody(sim);
-	    var bodies = getSystemBodies(sim);
 
-	    var systemMass = 0;
-	    bodies.forEach(function (body) {
-	      return body != largest ? systemMass += body.mass : null;
+	    if (tick % 500 !== 0 || tick === 0) return;
+
+	    var bodies = 0;
+
+	    var largest = getLargestBody(sim);
+
+	    forEachSystemBody(sim, function (body) {
+	      bodies++;
+
+	      if (bodies > 400) return;
+
+	      var dist = body.pos.sub(largest.pos).magnitude;
+	      if (dist >= CLOSE_BODY_DISTANCE) return;
+
+	      score += (1 - dist / CLOSE_BODY_DISTANCE) * Math.pow(body.mass / totalMass, 2);
 	    });
 
-	    score += systemMass / totalMass;
-
-	    if (tick >= TICKS_UNTIL_COMPLETION || bodies.length < 5) complete(sim, score * sim.g);
+	    if (tick >= TICKS_UNTIL_COMPLETION || bodies < 5) complete(sim, score * sim.g * bodies, params, radius);else console.log('tick: ', tick, 'bodies:', bodies, 'score: ', score * sim.g * bodies);
 	  });
 	}
 
-	function complete(sim, score) {
+	function complete(sim, score, params, radius) {
 	  if (sim.paused) return;
 
 	  sim.paused = true;
 
-	  console.log('complete', score);
+	  sim.emit('complete', score, params, radius);
 	}
 
 	/******************************************************************************/
@@ -12412,35 +12420,32 @@
 	  return largest;
 	}
 
-	function getSystemBodies(sim) {
+	function forEachSystemBody(sim, func) {
 	  var largest = getLargestBody(sim);
-	  var bodies = [];
 
 	  sim.forEachBody(function (body) {
 	    if (!body.exists) return;
 
 	    body.escaping = body != largest && (0, _helper.escaping)(body, largest, sim.g);
-	    if (!body.escaping) bodies.push(body);
+	    if (!body.escaping) func(body);
 	  });
-
-	  return bodies;
 	}
 
-	function getCloseBodies(sim, body) {
-	  var dist = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : CLOSE_BODY_DISTANCE;
-
-	  var bodies = [];
-
-	  sim.forEachBody(function (b) {
-	    if (!b.exists) return;
-
-	    if (b.pos.sub(body.pos).magnitude > dist) return;
-
-	    bodies.push(b);
-	  });
-
-	  return bodies;
-	}
+	// function getCloseBodies(sim, body, dist = CLOSE_BODY_DISTANCE) {
+	//   const bodies = []
+	//
+	//   sim.forEachBody(b => {
+	//     if (!b.exists)
+	//       return
+	//
+	//     if (b.pos.sub(body.pos).magnitude > dist)
+	//       return
+	//
+	//     bodies.push(b)
+	//   })
+	//
+	//   return bodies
+	// }
 
 	function randomParams() {
 
