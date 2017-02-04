@@ -2,13 +2,10 @@ import Define from 'define-utility'
 import Integrator from './integrator'
 
 import is from 'is-explicit'
-import now from 'performance-now'
 
-import { Vector, floor, sqrt, max, min } from 'math-plus'
+import { floor, clamp } from 'math-plus'
 
 // import Body from './body'
-
-console.log(Integrator)
 
 /******************************************************************************/
 // Constants
@@ -36,9 +33,55 @@ const DEFAULT_PROPERTIES = {
 /******************************************************************************/
 
 //constants for symbolic properties
-const BODIES = Symbol('bodies'),
-  CACHE = Symbol('cache'),
+const CACHE = Symbol('cache'),
+  BODIES = Symbol('bodies'),
   INTEGRATOR = Symbol('integrator')
+
+class Body {
+  constructor({pos, vel, mass}, id) {
+
+    this.pos = pos
+    this.vel = vel
+    this.mass = mass
+
+    this.id = id
+
+  }
+}
+
+function Cache(maxMemory) {
+
+  if (this == null)
+    throw new Error('Cache must be instanced.')
+
+  Define(this)
+
+    .let('id', 0)
+    .let('tick', 0)
+    .let('allocations', 0)
+    .const('maxMemory', maxMemory)
+
+    .get('maxTicks', () => {
+      const maxAllocations = this.maxMemory * ALLOCATIONS_PER_MB
+      const percentUsed = this.allocations / maxAllocations
+
+      return floor(this.tick / percentUsed)
+    })
+
+    .const('invalidate', (tick, before = false) => {})
+
+    .const('read', tick => {
+      const bodies = []
+      for (const i in this) {
+        const storage = this[i]
+        bodies.push()
+      }// fuck, make this not suck
+
+    })
+
+    .const('write', bodies => console.log('write cach', bodies))
+
+}
 
 export default class Simulation {
 
@@ -47,8 +90,7 @@ export default class Simulation {
     if (!is(props, Object))
       throw new TypeError('first argument, if defined, should be an Object.')
 
-    const { g,
-      delta,
+    const { g, delta,
       maxCacheMemory,
       radiusBase,
       radiusFactor } = { ...DEFAULT_PROPERTIES, ...props }
@@ -56,34 +98,46 @@ export default class Simulation {
     Define(this)
       .const.enum('g', g)
       .const.enum('delta', delta)
-      .const(BODIES, [])
-      .const(INTEGRATOR, new Integrator(g, delta))
-      .const(CACHE, {
-        tick: 0,
-        allocations: 0,
-        get maxTicks() {
-          const maxAllocations = maxCacheMemory * ALLOCATIONS_PER_MB
-          const percentUsed = this.allocations.size / maxAllocations
+      .const(CACHE, new Cache(maxCacheMemory))
+      .const(INTEGRATOR, new Integrator(this[CACHE].write))
 
-          return floor(this.tick / percentUsed)
-        }
-      })
-
+    this[INTEGRATOR]('initialize', { g, delta })
   }
 
   start() {
-    this[INTEGRATOR].send('start')
+    this[INTEGRATOR]('start')
   }
 
   stop() {
-    this[INTEGRATOR].send('stop')
+    this[INTEGRATOR]('stop')
   }
 
-  *[Symbol.iterator]() {
-    for (const body of this[BODIES])
-      yield body
+  createBody(props, tick = this[CACHE].tick) {
+
+    const cache = this[CACHE]
+
+    if (!is(props, Object))
+      throw new Error('createBody() requires a props object as its first parameter')
+
+    if (!is(tick, Number))
+      throw new Error('tick, if provided, is expected to be a number.')
+
+    if (tick < 0 || tick > cache.tick)
+      throw new Error('tick out of range')
+
+    const id = cache.id++
+    const body = new Body(props, id)
+
+    const storage = []
+    Define(storage)
+      .const('body', body)
+      .const('startTick', tick)
+
+    cache[id] = storage
+    cache.invalidate(tick)
+
+    this[INTEGRATOR]('set-bodies', cache.read(tick))
+
   }
 
 }
-
-new Simulation

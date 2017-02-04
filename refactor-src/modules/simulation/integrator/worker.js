@@ -1,7 +1,9 @@
 import is from 'is-explicit'
+import now from 'performance-now'
+import { max, Vector } from 'math-plus'
 
 /******************************************************************************/
-// Child Process Inegration Functions
+// Worker
 /******************************************************************************/
 
 // This module doesn't need to export a class.
@@ -12,6 +14,17 @@ import is from 'is-explicit'
 // if someone wishes to run multiple simulations at once, they'll be invoking
 // multiple forks or workers, and everything will be dandy.
 
+const isWebWorker = typeof self === 'object'
+
+if (isWebWorker)
+  self.onmessage = receiveMessage
+else
+  process.on('message', receiveMessage)
+
+const sendBodies = isWebWorker
+  ? bodies => self.send(bodies)
+  : bodies => process.send(bodies)
+
 /******************************************************************************/
 // Data
 /******************************************************************************/
@@ -19,9 +32,9 @@ import is from 'is-explicit'
 let g,
   delta,
   bodies,
-  scheduleNextTick,
-  sendMessage,
   running = false
+
+const MIN_TICK_DELTA = 5
 
 /******************************************************************************/
 // Messages
@@ -34,10 +47,7 @@ const MESSAGES = {
     if (is(bodies, Array))
       throw new Error('Can only initialize once.')
 
-    if (!is(scheduleNextTick, Function))
-      throw new Error('Ensure that scheduleNextTick is set.')
-
-    if (!is(sendMessage, Function))
+    if (!is(sendBodies, Function))
       throw new Error('Ensure that sendMessage is set.');
 
     [g, delta] = args
@@ -50,7 +60,7 @@ const MESSAGES = {
 
     running = true
 
-    scheduleNextTick(integrate)
+    tick()
   },
 
   stop() {
@@ -70,54 +80,7 @@ const MESSAGES = {
 
 }
 
-/******************************************************************************/
-// Integration Methods
-/******************************************************************************/
-
-function calculateForces(body) {
-
-}
-
-function applyForces(body) {
-
-}
-
-function integrate() {
-
-  let i = bodies.length
-  while (i)
-    calculateForces(bodies[--i])
-
-  i = bodies.length
-  while (i)
-    applyForces(bodies[--i])
-
-  sendMessage({name: 'tick-complete', bodies})
-
-  if (running)
-    scheduleNextTick(integrate)
-
-}
-
-/******************************************************************************/
-// initialization exports
-/******************************************************************************/
-
-export function setTickScheduler(func) {
-  if (!is(func, Function))
-    throw new Error('setTickScheduler must take function.')
-
-  scheduleNextTick = func
-}
-
-export function setMessageSender(func) {
-  if (!is(func, Function))
-    throw new Error('setMessageSender must take function.')
-
-  sendMessage = func
-}
-
-export function receiveMessage({name, ...data}) {
+function receiveMessage({name, ...data}) {
 
   const message = MESSAGES[name]
 
@@ -125,5 +88,48 @@ export function receiveMessage({name, ...data}) {
     message(data)
 
   else throw new Error(`Unrecognized message: ${name}`)
+
+}
+
+/******************************************************************************/
+// Integration Methods
+/******************************************************************************/
+
+function integrateForces(body) {
+
+}
+
+function applyForces(body) {
+
+}
+
+function tick() {
+
+  const tickStart = now()
+
+  const numBodies = bodies.length
+
+  let i = numBodies
+  while (i)
+    integrateForces(bodies[--i])
+
+  i = numBodies
+  while (i)
+    applyForces(bodies[--i])
+
+  sendBodies(bodies)
+
+  if (running && numBodies)
+    scheduleNextTick(tickStart)
+
+}
+
+function scheduleNextTick(start) {
+
+  const delta = now() - start
+
+  const delay = max(MIN_TICK_DELTA - delta, 0)
+
+  setTimeout(tick, delay)
 
 }
