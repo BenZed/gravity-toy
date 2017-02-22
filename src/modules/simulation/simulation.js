@@ -35,7 +35,7 @@ const _bodies = Symbol('bodies'),
   _cacheSize  = Symbol('cache-size'),
   _applyCacheAtTick  = Symbol('apply-cache-at-tick')
 
-//Symbols for Body "protected" peropties
+//Symbols for Body "protected" properties
 
 const _writeCacheAtTick = getProtectedSymbol(Body, 'write-cache-at-tick'),
   _applyStatsAtTick = getProtectedSymbol(Body, 'apply-stats-at-tick'),
@@ -281,7 +281,6 @@ export default class Simulation extends EventEmitter {
       }
 
       //Velocity Verlet
-
       const oldVel = body.vel.copy()
       const newVel = oldVel.add(body.force.mult(this.delta * 0.001))
       body.vel = oldVel.add(newVel).imult(0.5)

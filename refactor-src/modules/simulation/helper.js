@@ -22,9 +22,8 @@ export function isOrderedFiniteArray(values) {
 export function WeightedColorizer(colors, values) {
 
   if (this === undefined)
-    //it doesn't actually, but fuck it. I'm enforcing obo syntax, cuz im oldschool
-    //that way. Sue me.
-    throw new Error('WeightedColorizer must be created with the \'new\' keyword.')
+    //it doesn't actually, but fuck it. I'm enforcing self documenting code. Sue me.
+    throw new Error('WeightedColorizer must be instanced.')
 
   if (!is(colors, Array) || !is(values, Array))
     throw new Error('WeightedColorizer requires an array of colors and an array of values.')

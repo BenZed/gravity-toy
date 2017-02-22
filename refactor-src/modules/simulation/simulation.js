@@ -5,8 +5,6 @@ import is from 'is-explicit'
 
 import { floor, clamp } from 'math-plus'
 
-// import Body from './body'
-
 /******************************************************************************/
 // Constants
 /******************************************************************************/
@@ -14,6 +12,7 @@ import { floor, clamp } from 'math-plus'
 const ONE_MB = 1048576 //bytes
 const NUMBER_SIZE = 8 // bytes
 const CACHABLE_PROPERTIES = 5
+const MIN_RADIUS = 0.25
 const ALLOCATIONS_PER_MB = ONE_MB / (NUMBER_SIZE * CACHABLE_PROPERTIES)
 
 const DEFAULT_PROPERTIES = {
@@ -80,6 +79,10 @@ function Cache(maxMemory) {
     })
 
     .const('write', bodies => console.log('write cach', bodies))
+
+}
+
+export function calculateRadius(mass, base, factor) {
 
 }
 

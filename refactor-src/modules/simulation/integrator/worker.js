@@ -1,6 +1,5 @@
 import is from 'is-explicit'
-import now from 'performance-now'
-import { max, Vector } from 'math-plus'
+import { sqrt, Vector } from 'math-plus'
 
 /******************************************************************************/
 // Worker
@@ -15,43 +14,48 @@ import { max, Vector } from 'math-plus'
 // multiple forks or workers, and everything will be dandy.
 
 const isWebWorker = typeof self === 'object'
-
 if (isWebWorker)
   self.onmessage = receiveMessage
 else
   process.on('message', receiveMessage)
 
-const sendBodies = isWebWorker
-  ? bodies => self.send(bodies)
-  : bodies => process.send(bodies)
+const send = isWebWorker
+  ? self.send.bind(self)
+  : process.send.bind(process)
 
 /******************************************************************************/
 // Data
 /******************************************************************************/
 
+const bodies = [] // { real: [], psuedo: [] }
+
 let g,
   delta,
-  bodies,
-  running = false
+  running = false,
 
-const MIN_TICK_DELTA = 5
+  applyForces
 
 /******************************************************************************/
-// Messages
+// Messaging
 /******************************************************************************/
 
 const MESSAGES = {
 
-  initialize(...args) {
+  initialize(init) {
 
-    if (is(bodies, Array))
+    if (is(applyForces))
       throw new Error('Can only initialize once.')
 
-    if (!is(sendBodies, Function))
-      throw new Error('Ensure that sendMessage is set.');
+    g = init.g
+    delta = init.delta
 
-    [g, delta] = args
-    bodies = []
+    const algorithm = init.algorithm || 'velocity-verlet'
+
+    if (!ALGORITHMS[algorithm])
+      throw new Error('Invalid algorithm: ' + algorithm)
+
+    applyForces = ALGORITHMS[algorithm]
+
   },
 
   start() {
@@ -60,7 +64,7 @@ const MESSAGES = {
 
     running = true
 
-    tick()
+    scheduleTick()
   },
 
   stop() {
@@ -70,14 +74,26 @@ const MESSAGES = {
     running = false
   },
 
-  'set-bodies'(arr) {
-    bodies = arr
-  },
+  'set-bodies'(data) {
 
-  'update-body'(id) {
+    bodies.length = 0
 
+    while (data.bodies.length) {
+
+      const [id, mass, x, y, vx, vy] = data.bodies.splice(0, 6)
+
+      bodies.push({
+        id,
+        mass,
+        force: Vector.zero,
+        pos: new Vector(x,y),
+        vel: new Vector(vx,vy)
+      })
+
+    }
+
+    sortBodies()
   }
-
 }
 
 function receiveMessage({name, ...data}) {
@@ -91,45 +107,126 @@ function receiveMessage({name, ...data}) {
 
 }
 
+function sendBodies() {
+
+  const data = []
+
+  for (const body of bodies)
+    data.push(body.id, body.mass,
+      body.pos.x, body.pos.y,
+      body.vel.x, body.vel.y)
+
+  send(data)
+}
+
 /******************************************************************************/
-// Integration Methods
+// Physics
 /******************************************************************************/
 
-function integrateForces(body) {
+//This loop inside this function is called a lot throughout
+//a single tick, so there are some manual inlining and optimizations
+//I've made. I dunno if they make a difference in the
+//grand scheme of things, but it helps my OCD
+function calculateForces(body) {
+
+  // Relative position vector between two bodies.
+  // Declared outside of the while loop to save
+  // garbage collections on Vector objects
+  const relative = Vector.zero
+
+  // Reset force
+  body.force.x = 0
+  body.force.y = 0
+
+  for (const other of bodies) {
+
+    if (body.id === other.id)
+      continue
+
+    //inlining otherBody.pos.sub(body.pos)
+    relative.x = other.pos.x - body.pos.x
+    relative.y = other.pos.y - body.pos.y
+
+    const distSqr = relative.sqrMagnitude
+
+    //inlining relative.magnitude
+    const dist = sqrt(distSqr)
+
+    if (/*hasCollided*/false) { //eslint-disable-line no-constant-condition
+      collide(body, other)
+      continue
+    }
+
+    const G = g * other.mass / distSqr
+
+    //inlining with squared distances
+    body.force.x += G * relative.x / dist
+    body.force.y += G * relative.y / dist
+
+  }
+}
+
+function collide(a,b) {
 
 }
 
-function applyForces(body) {
+const ALGORITHMS = {
+
+  rk4(body) {
+    throw new Error('4kr not yet supported')
+  },
+
+  euler(body) {
+
+    body.vel
+      .iadd(body.force.imult(delta * 0.001))
+
+    body.pos
+      .iadd(body.vel)
+  },
+
+  'velocity-verlet'(body) {
+
+    body.vel
+      .iadd(body.force.imult(delta * 0.001))
+      .imult(0.5)
+
+    body.pos
+      .iadd(body.vel)
+  }
+
+}
+
+/******************************************************************************/
+// Tick
+/******************************************************************************/
+
+function sortBodies() {
+
+
 
 }
 
 function tick() {
 
-  const tickStart = now()
+  if (!running)
+    return
 
-  const numBodies = bodies.length
+  for (const body of bodies)
+    calculateForces(body)
 
-  let i = numBodies
-  while (i)
-    integrateForces(bodies[--i])
+  for (const body of bodies)
+    applyForces(body)
 
-  i = numBodies
-  while (i)
-    applyForces(bodies[--i])
+  if (bodies.length)
+    sendBodies()
 
-  sendBodies(bodies)
-
-  if (running && numBodies)
-    scheduleNextTick(tickStart)
+  scheduleTick()
 
 }
 
-function scheduleNextTick(start) {
+function scheduleTick() {
 
-  const delta = now() - start
-
-  const delay = max(MIN_TICK_DELTA - delta, 0)
-
-  setTimeout(tick, delay)
+  setTimeout(tick, 0)
 
 }

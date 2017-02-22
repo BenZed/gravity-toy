@@ -4,7 +4,7 @@
   "description": "",
   "main": "lib",
   "scripts": {
-    "test": "./node_modules/.bin/mocha --compilers js:babel-core/register",
+    "test": "node_modules/.bin/mocha --compilers js:babel-core/register;",
     "build:web": "webpack",
     "start": "webpack-dev-server",
     "build:lib": "rm -rf lib; mkdir lib; ./node_modules/.bin/babel refactor-src/modules/simulation --out-dir lib",

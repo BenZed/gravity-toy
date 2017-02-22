@@ -24,6 +24,7 @@
         "no-var": "error",
         "prefer-const": "error",
         "no-extra-parens": "error",
+        "no-continue": "off",
         "jsx-quotes": [
           "error",
           "prefer-single"
