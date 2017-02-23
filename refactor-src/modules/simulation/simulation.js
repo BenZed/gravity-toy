@@ -3,7 +3,8 @@ import Integrator from './integrator'
 
 import is from 'is-explicit'
 
-import { floor, cbrt, Vector } from 'math-plus'
+import { floor, Vector } from 'math-plus'
+import { MASS_MIN, radiusFromMass } from './helper'
 
 /******************************************************************************/
 // Constants
@@ -13,10 +14,6 @@ const ONE_MB = 1048576 //bytes
 const NUMBER_SIZE = 8 // bytes
 const CACHABLE_PROPERTIES = 5
 
-const MASS_MIN = 50
-const RADIUS_MIN = 0.5 //pixels
-const RADIUS_FACTOR = 0.5
-
 const ALLOCATIONS_PER_MB = ONE_MB / (NUMBER_SIZE * CACHABLE_PROPERTIES)
 
 const DEFAULT_PROPERTIES = {
@@ -24,64 +21,6 @@ const DEFAULT_PROPERTIES = {
   g: 1,
 
   maxCacheMemory: 320 // megabytes
-
-}
-
-/******************************************************************************/
-// Main Simulation Class
-/******************************************************************************/
-
-//constants for symbolic properties
-const CACHE = Symbol('cache'),
-  INTEGRATOR = Symbol('integrator'),
-  INITIAL_TICK = Symbol('initial-tick'),
-  WRITE = Symbol('write')
-
-function Body ({mass, pos, vec}, tick, id) {
-
-  if (this == null)
-    //it actually doesn't, but I'm enforcing readable code. Sue me.
-    throw new Error('Body must be instanced.')
-
-  const body = function(tick, asArray) {
-
-    if (!isFinite(tick) || tick < 0)
-      return null
-
-    let i = (tick - this[INITIAL_TICK]) * CACHABLE_PROPERTIES
-    const cache = this[CACHE]
-
-    const mass = cache[i++]
-
-    //if we've gotten here, the requested tick has not been cached for this body
-    if (mass === undefined)
-      return null
-
-    const x = cache[i++]
-    const y = cache[i++]
-    const vx = cache[i++]
-    const vy = cache[i++]
-
-    return asArray
-      ? [mass, x, y, vx, vy]
-      : {
-        mass,
-        pos: new Vector(x,y),
-        vel: new Vector(x,y),
-        radius: radiusFromMass(mass)
-      }
-
-  }
-
-  Define(body)
-    .const('id', id)
-    .const(CACHE, [])
-    .const(INITIAL_TICK, tick)
-    .const(WRITE, (mass, x, y, vx, vy) =>
-      this[CACHE].push(mass, x, y, vx, vy)
-    )
-
-  return body
 
 }
 
@@ -106,7 +45,8 @@ function Cache(maxMemory) {
 
       const output = []
 
-      //the only enumerable properties of a cache object will be bodies
+      //the only enumerable properties of
+      //a cache object will be bodies
       for (const id in this) {
         const body = this[id]
         const data = body.read(tick, true)
@@ -114,37 +54,118 @@ function Cache(maxMemory) {
           continue
 
         output.push(body.id, ...data)
-
       }
 
       return output
 
     })
 
-    .const('write', input => {
+    .const('write', data => {
 
       this.tick++
 
-      while (input.length) {
-        const [id, mass, x, y, vx, vy] = input.splice(0,6)
-        this[id].write(mass, x, y, vx, vy)
+      let i = 0
+      while (i < data.length) {
+        const id = data[i++],
+          mass =   data[i++],
+          x =      data[i++],
+          y =      data[i++],
+          vx =     data[i++],
+          vy =     data[i++]
+
+        this[id][CACHE].push(mass, x, y, vx, vy)
       }
-
-      /* one liner for the kids:
-
-      this.tick++ && while(input.length) this[input.shift()].write(...input.splice(0,5))
-
-      */
 
     })
 
 }
 
-function radiusFromMass(mass) {
+/******************************************************************************/
+// Body Class
+/******************************************************************************/
 
-  return RADIUS_MIN + cbrt(mass - MASS_MIN) * RADIUS_FACTOR
+class Body {
+
+  constructor(props, tick, id) {
+
+    //Holy validations, batman!
+    if (!is(props, Object))
+      throw new Error('Body requires a props object as its first parameter')
+
+    if (!isFinite(tick))
+      throw new Error('Tick is expected to be a number.')
+
+    let { mass, vel, pos } = props
+
+    if (is(pos) && !is(pos, Vector))
+      throw new Error('props.pos, if defined, is expected to be a Vector.')
+    pos = pos || Vector.zero
+
+    if (is(vel) && !is(vel, Vector))
+      throw new Error('props.vel, if defined, is expected to be a Vector.')
+    vel = vel || Vector.zero
+
+    if (!is(mass) || mass < MASS_MIN)
+      throw new Error(`props.mass, if defined, must be a number above or equal to ${MASS_MIN}`)
+    mass = mass || MASS_MIN
+
+    Define(this)
+      .let('mass', mass)
+      .get('radius', radiusFromMass)
+      .const('pos', pos)
+      .const('vel', vel)
+      .const('id', id)
+      .const(CACHE, [mass, pos.x, pos.y, vel.x, vel.y])
+      .const(INITIAL_TICK, tick)
+  }
+
+  read(tick) {
+
+    const cache = this[CACHE]
+    let i = (tick - this[INITIAL_TICK]) * CACHABLE_PROPERTIES
+
+    const mass = cache[i++]
+
+    //if we've gotten here, the requested tick has not been cached for this body,
+    //the request tick is in an invalid range or it is not a number
+    if (mass === undefined)
+      return null
+
+    const x = cache[i++]
+    const y = cache[i++]
+    const vx = cache[i++]
+    const vy = cache[i++]
+
+    return [ mass, x, y, vx, vy ]
+
+  }
+
+  update(tick) {
+    const data = this.read(tick)
+    if (!data)
+      return false
+
+    const [mass, x, y, vx, vy] = data
+    this.mass = mass
+    this.pos.x = x
+    this.pos.y = y
+    this.vel.x = vx
+    this.vel.y = vy
+
+    return true
+
+  }
 
 }
+
+/******************************************************************************/
+// Main Simulation Class
+/******************************************************************************/
+
+//constants for symbolic properties
+const CACHE = Symbol('cache'),
+  INTEGRATOR = Symbol('integrator'),
+  INITIAL_TICK = Symbol('initial-tick')
 
 export default class Simulation {
 
@@ -172,37 +193,23 @@ export default class Simulation {
     this[INTEGRATOR]('stop')
   }
 
-  createBody(props, tick = this[CACHE].tick) {
+  createBody = (props = {}, tick = this[CACHE].tick) =>  {
 
     const cache = this[CACHE]
-
-    if (!is(props, Object))
-      throw new Error('createBody() requires a props object as its first parameter')
-
-    if (!is(tick, Number))
-      throw new Error('tick, if provided, is expected to be a number.')
-
-    if (is(props.pos) && !is(props.pos, Vector))
-      throw new Error('props.pos, if defined, is expected to be a Vector.')
-    props.pos = props.pos || Vector.zero
-
-    if (is(props.vel) && !is(props.vel, Vector))
-      throw new Error('props.vel, if defined, is expected to be a Vector.')
-    props.vel = props.vel || Vector.zero
-
-    if (!is(props.mass) || props.mass < MASS_MIN)
-      throw new Error(`props.mass, if defined, must be a number above or equal to ${MASS_MIN}`)
-    props.mass = props.mass || MASS_MIN
 
     if (tick < 0 || tick > cache.tick)
       throw new Error('tick out of range')
 
     const id = cache.id++
 
-    cache[id] = new Body(props, tick, id)
+    const body = new Body(props, tick, id)
+
+    cache[id] = body
     cache.invalidate(tick)
 
     this[INTEGRATOR]('set-bodies', cache.read(tick))
+
+    return body
 
   }
 

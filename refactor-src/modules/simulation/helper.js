@@ -1,6 +1,6 @@
 import colorInterpolate from 'color-interpolate'
 import is from 'is-explicit'
-import { lerp } from '../../../node_modules/math-plus'
+import { lerp, cbrt } from 'math-plus'
 
 export function isOrderedFiniteArray(values) {
 
@@ -17,6 +17,22 @@ export function isOrderedFiniteArray(values) {
   }
 
   return true
+}
+
+const RADIUS_MIN = 0.5 //pixels
+const RADIUS_FACTOR = 0.5
+
+export const MASS_MIN = 50
+
+export function radiusFromMass(...args) {
+
+  //why?
+  //So that this function can be attached to an object that has mass
+  //and used as a getter
+  const mass = isFinite(args[0]) ? args[0] : this ? this.mass : MASS_MIN
+
+  return RADIUS_MIN + cbrt(mass - MASS_MIN) * RADIUS_FACTOR
+
 }
 
 export function WeightedColorizer(colors, values) {
