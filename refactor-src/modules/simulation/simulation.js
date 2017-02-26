@@ -3,7 +3,7 @@ import Integrator from './integrator'
 
 import is from 'is-explicit'
 
-import { floor, Vector } from 'math-plus'
+import { floor, min, Vector } from 'math-plus'
 import { MASS_MIN, radiusFromMass } from './helper'
 
 /******************************************************************************/
@@ -12,9 +12,10 @@ import { MASS_MIN, radiusFromMass } from './helper'
 
 const ONE_MB = 1048576 //bytes
 const NUMBER_SIZE = 8 // bytes
-const CACHABLE_PROPERTIES = 5
+const NUM_CACHE_PROPS = 6
+const ALLOCATIONS_PER_MB = ONE_MB / (NUMBER_SIZE * NUM_CACHE_PROPS)
 
-const ALLOCATIONS_PER_MB = ONE_MB / (NUMBER_SIZE * CACHABLE_PROPERTIES)
+const NO_PARENT = -1 //cache index value if body has no parent
 
 const DEFAULT_PROPERTIES = {
 
@@ -23,6 +24,17 @@ const DEFAULT_PROPERTIES = {
   maxCacheMemory: 320 // megabytes
 
 }
+
+//constants for symbolic properties
+const CACHE    = Symbol('cache'),
+  INTEGRATOR   = Symbol('integrator'),
+  TICK_INITIAL = Symbol('tick-initial'),
+  TICK_END     = Symbol('tick-end'),
+  TICK_INDEX   = Symbol('tick-index')
+
+/******************************************************************************/
+// Cache Object
+/******************************************************************************/
 
 function Cache(maxMemory) {
 
@@ -40,7 +52,53 @@ function Cache(maxMemory) {
     })
 
     .const('maxMemory', maxMemory)
-    .const('invalidate', (tick, before = false) => {})
+
+    .const('invalidateBefore', tick => {
+
+      if (tick > this.tick || tick < 0)
+        throw new Error(`${tick} is out of range 0 - ${this.tick}`)
+
+      this.tick -= tick
+
+      for (const id in this) {
+        const body = this[id]
+
+        let newInitial = body[TICK_INITIAL] - tick
+        if (newInitial < 0) {
+
+          const count = -newInitial * NUM_CACHE_PROPS
+          body[CACHE].splice(0, count)
+          newInitial = 0
+
+        }
+
+        body[TICK_INITIAL] = newInitial
+      }
+    })
+
+    .const('invalidateAfter', tick => {
+
+      if (tick > this.tick || tick < 0)
+        throw new Error(`${tick} is out of range 0 - ${this.tick}`)
+
+      this.tick = tick
+
+      for (const id in this) {
+        const body = this[id]
+
+        const index = body[TICK_INDEX](tick + 1)
+        if (index <= 0) {
+          delete this[id]
+          continue
+        }
+
+        const cache = body[CACHE]
+
+        cache.length = min(index, cache.length)
+
+      }
+    })
+
     .const('read', tick => {
 
       const output = []
@@ -65,15 +123,21 @@ function Cache(maxMemory) {
       this.tick++
 
       let i = 0
-      while (i < data.length) {
-        const id = data[i++],
-          mass =   data[i++],
-          x =      data[i++],
-          y =      data[i++],
-          vx =     data[i++],
-          vy =     data[i++]
+      const destroyed = data[i++]
 
-        this[id][CACHE].push(mass, x, y, vx, vy)
+      for (const id of destroyed)
+        this[id][TICK_END] = this.tick
+
+      while (i < data.length) {
+        const id =   data[i++],
+          mass =     data[i++],
+          x =        data[i++],
+          y =        data[i++],
+          vx =       data[i++],
+          vy =       data[i++],
+          parentId = data[i++]
+
+        this[id][CACHE].push(mass, x, y, vx, vy, parentId)
       }
 
     })
@@ -110,19 +174,25 @@ class Body {
     mass = mass || MASS_MIN
 
     Define(this)
-      .let('mass', mass)
-      .get('radius', radiusFromMass)
-      .const('pos', pos)
-      .const('vel', vel)
+      .let.enum('mass', mass)
+      .get.enum('radius', radiusFromMass)
+      .const.enum('pos', pos)
+      .const.enum('vel', vel)
       .const('id', id)
-      .const(CACHE, [mass, pos.x, pos.y, vel.x, vel.y])
-      .const(INITIAL_TICK, tick)
+      .const('parentId', NO_PARENT)
+      .const(CACHE, [mass, pos.x, pos.y, vel.x, vel.y, NO_PARENT])
+      .let(TICK_INITIAL, tick)
+      .let(TICK_END,     null)
+  }
+
+  [TICK_INDEX](tick) {
+    return (floor(tick) - this[TICK_INITIAL]) * NUM_CACHE_PROPS
   }
 
   read(tick) {
 
     const cache = this[CACHE]
-    let i = (tick - this[INITIAL_TICK]) * CACHABLE_PROPERTIES
+    let i = this[TICK_INDEX](tick)
 
     const mass = cache[i++]
 
@@ -135,22 +205,29 @@ class Body {
     const y = cache[i++]
     const vx = cache[i++]
     const vy = cache[i++]
+    const parentId = cache[i++]
 
-    return [ mass, x, y, vx, vy ]
+    return [ mass, x, y, vx, vy, parentId ]
 
   }
 
   update(tick) {
+
     const data = this.read(tick)
     if (!data)
       return false
 
-    const [mass, x, y, vx, vy] = data
+    const [ mass, x, y, vx, vy, parentId ] = data
+
     this.mass = mass
+
     this.pos.x = x
     this.pos.y = y
+
     this.vel.x = vx
     this.vel.y = vy
+
+    this.parentId = parentId
 
     return true
 
@@ -161,11 +238,6 @@ class Body {
 /******************************************************************************/
 // Main Simulation Class
 /******************************************************************************/
-
-//constants for symbolic properties
-const CACHE = Symbol('cache'),
-  INTEGRATOR = Symbol('integrator'),
-  INITIAL_TICK = Symbol('initial-tick')
 
 export default class Simulation {
 
@@ -205,7 +277,7 @@ export default class Simulation {
     const body = new Body(props, tick, id)
 
     cache[id] = body
-    cache.invalidate(tick)
+    cache.invalidateAfter(tick)
 
     this[INTEGRATOR]('set-bodies', cache.read(tick))
 

@@ -1,5 +1,6 @@
 import is from 'is-explicit'
-import { sqrt, Vector } from 'math-plus'
+import { sqrt, min, random, Vector } from 'math-plus'
+import { radiusFromMass } from '../helper'
 
 /******************************************************************************/
 // Worker
@@ -13,6 +14,8 @@ import { sqrt, Vector } from 'math-plus'
 // if someone wishes to run multiple simulations at once, they'll be invoking
 // multiple forks or workers, and everything will be dandy.
 
+const isTesting = typeof process === 'object' && process.send === undefined
+
 const isWebWorker = typeof self === 'object'
 if (isWebWorker)
   self.onmessage = receiveMessage
@@ -21,19 +24,26 @@ else
 
 const send = isWebWorker
   ? self.send.bind(self)
-  : process.send.bind(process)
+  : isTesting
+    ? () => {}
+    : process.send.bind(process)
 
 /******************************************************************************/
 // Data
 /******************************************************************************/
 
-const bodies = [] // { real: [], psuedo: [] }
+const TIME_DELTA = 1 / 25 //50 ticks represents 1 second
 
-let g,
-  delta,
-  running = false,
+//state
+const bodies = { all: [], real: [], psuedo: [], destroyed: [] }
+let running = false, delta
 
-  applyForces
+//config
+let g = 1,
+  steps = 4
+
+const psuedoMassThreshold = 100,
+  realBodiesMin = 100
 
 /******************************************************************************/
 // Messaging
@@ -43,18 +53,13 @@ const MESSAGES = {
 
   initialize(init) {
 
-    if (is(applyForces))
-      throw new Error('Can only initialize once.')
+    if (isFinite(init.g) && init.g > 0)
+      g = init.g
 
-    g = init.g
-    delta = init.delta
+    if (isFinite(init.eulerSteps) && init.eulerSteps > 0)
+      steps = init.eulerSteps
 
-    const algorithm = init.algorithm || 'velocity-verlet'
-
-    if (!ALGORITHMS[algorithm])
-      throw new Error('Invalid algorithm: ' + algorithm)
-
-    applyForces = ALGORITHMS[algorithm]
+    delta = TIME_DELTA / steps
 
   },
 
@@ -76,19 +81,18 @@ const MESSAGES = {
 
   'set-bodies'(data) {
 
-    bodies.length = 0
+    bodies.all.length = 0
 
     while (data.bodies.length) {
 
-      const [id, mass, x, y, vx, vy] = data.bodies.splice(0, 6)
+      const vy = data.bodies.pop()
+      const vx = data.bodies.pop()
+      const y = data.bodies.pop()
+      const x = data.bodies.pop()
+      const mass = data.bodies.pop()
+      const id = data.bodies.pop()
 
-      bodies.push({
-        id,
-        mass,
-        force: Vector.zero,
-        pos: new Vector(x,y),
-        vel: new Vector(vx,vy)
-      })
+      bodies.all.push(new Body(id, mass, x, y, vx, vy))
 
     }
 
@@ -107,14 +111,21 @@ function receiveMessage({name, ...data}) {
 
 }
 
-function sendBodies() {
+function sendData() {
 
-  const data = []
+  const { all, destroyed } = bodies
 
-  for (const body of bodies)
-    data.push(body.id, body.mass,
+  const data = [ ...destroyed ]
+
+  destroyed.length = 0
+
+  for (const body of all)
+    data.push(
+      body.id, body.mass,
       body.pos.x, body.pos.y,
-      body.vel.x, body.vel.y)
+      body.vel.x, body.vel.y,
+      body.parent ? body.parent.id : -1
+    )
 
   send(data)
 }
@@ -123,24 +134,42 @@ function sendBodies() {
 // Physics
 /******************************************************************************/
 
+class Body {
+
+  real = null
+  psuedoMass = 0
+  parent = null
+
+  force = Vector.zero
+
+  constructor(id, mass, x, y, vx, vy) {
+
+    this.id = id
+    this.mass = mass
+    this.pos = new Vector(x,y)
+    this.vel = new Vector(vx,vy)
+    this.radius = radiusFromMass(mass)
+
+  }
+
+}
+
 //This loop inside this function is called a lot throughout
 //a single tick, so there are some manual inlining and optimizations
-//I've made. I dunno if they make a difference in the
+//I've made. I dunno if they make any real difference in the
 //grand scheme of things, but it helps my OCD
-function calculateForces(body) {
+function checkForCollisions(body) {
 
   // Relative position vector between two bodies.
   // Declared outside of the while loop to save
   // garbage collections on Vector objects
   const relative = Vector.zero
 
-  // Reset force
-  body.force.x = 0
-  body.force.y = 0
+  let collisions = 0
 
-  for (const other of bodies) {
+  if (body.mass > 0) for (const other of bodies.real) {
 
-    if (body.id === other.id)
+    if (body === other || other.mass <= 0)
       continue
 
     //inlining otherBody.pos.sub(body.pos)
@@ -152,47 +181,106 @@ function calculateForces(body) {
     //inlining relative.magnitude
     const dist = sqrt(distSqr)
 
-    if (/*hasCollided*/false) { //eslint-disable-line no-constant-condition
+    if (dist < body.radius + other.radius) {
+      collisions ++
       collide(body, other)
-      continue
     }
 
-    const G = g * other.mass / distSqr
-
-    //inlining with squared distances
-    body.force.x += G * relative.x / dist
-    body.force.y += G * relative.y / dist
+    if (body.mass <= 0)
+      break
 
   }
+
+  return collisions
 }
 
-function collide(a,b) {
+function collide(...args) {
+
+  const [big, small] = args.sort(byMass)
+
+  if (!big.real && !small.real)
+    psuedoCollisions++
+
+  const totalMass = big.mass + small.mass
+  big.pos
+    .imult(big.mass)
+    .iadd(small.pos.mult(small.mass))
+    .idiv(totalMass)
+
+  big.vel
+    .imult(big.mass)
+    .iadd(small.vel.mult(small.mass))
+    .idiv(totalMass)
+
+  small.mass = 0
+
+  big.mass = totalMass
+  big.radius = radiusFromMass(totalMass)
 
 }
 
-const ALGORITHMS = {
+//This loop inside this function is called a lot throughout
+//a single tick, so there are some manual inlining and optimizations
+//I've made. I dunno if they make any real difference in the
+//grand scheme of things, but it helps my OCD
+function calculateForces(body) {
 
-  rk4(body) {
-    throw new Error('4kr not yet supported')
-  },
+  // Relative position vector between two bodies.
+  // Declared outside of the while loop to save
+  // garbage collections on Vector objects
+  const relative = Vector.zero
 
-  euler(body) {
+  // Reset forces
+  body.force.x = 0
+  body.force.y = 0
+  body.parent = null
 
-    body.vel
-      .iadd(body.force.imult(delta * 0.001))
+  let parentPull = -Infinity
 
-    body.pos
-      .iadd(body.vel)
-  },
+  for (const other of bodies.real) {
 
-  'velocity-verlet'(body) {
+    if (body === other)
+      continue
 
-    body.vel
-      .iadd(body.force.imult(delta * 0.001))
-      .imult(0.5)
+    //inlining otherBody.pos.sub(body.pos)
+    relative.x = other.pos.x - body.pos.x
+    relative.y = other.pos.y - body.pos.y
 
-    body.pos
-      .iadd(body.vel)
+    const distSqr = relative.sqrMagnitude
+
+    //inlining relative.magnitude
+    const dist = sqrt(distSqr)
+
+    const mass = other.mass + other.psuedoMass
+
+    const pull = g * mass / distSqr
+
+    if (parentPull < pull) {
+      parentPull = pull
+      body.parent = other
+    }
+
+    //inlining body.force.iadd(relative.mult(pull).div(dist))
+    body.force.x += relative.x * pull / dist
+    body.force.y += relative.y * pull / dist
+
+  }
+
+  if (!body.real)
+    body.parent.psuedoMass += body.mass
+
+}
+
+function applyForces(body) {
+
+  body.force.imult(delta)
+
+  for (let i = 0; i < steps; ++i) {
+
+    body.vel.iadd(body.force)
+
+    body.pos.iadd(body.vel)
+
   }
 
 }
@@ -201,32 +289,122 @@ const ALGORITHMS = {
 // Tick
 /******************************************************************************/
 
+const byMass = (a,b) => a.mass > b.mass ? -1 : a.mass < b.mass ? 1 : 0
+
 function sortBodies() {
 
+  const { all, real, psuedo, destroyed } = bodies
 
+  real.length = psuedo.length = 0
+  all.sort(byMass)
+
+  const minReal = min(realBodiesMin, all.length)
+
+  for (let i = 0; i < all.length; i++) {
+    const body = all[i]
+
+    body.real = i < minReal || body.mass > psuedoMassThreshold
+
+    if (body.real)
+      real.push(body)
+    else
+      psuedo.push(body)
+
+  }
+
+  while (all[all.length - 1].mass <= 0)
+    destroyed.push(all.pop().id)
 
 }
+
+import now from 'performance-now'
+
+class Timer {
+
+  delta = 0
+
+  start = () => this.delta = now()
+
+  end(msg) { console.log(now() - this.delta, msg)}
+}
+
+
+let psuedoCollisions = 0, totalCollisions = 0
+const t = new Timer
 
 function tick() {
 
   if (!running)
     return
 
-  for (const body of bodies)
+  //collision handling
+  let collisions = 0
+
+  t.start()
+
+  for (const body of bodies.all)
+    collisions += checkForCollisions(body)
+
+  if (collisions > 0)
+    sortBodies()
+  if (collisions > 0)
+    totalCollisions += collisions
+
+  t.end(`collision detection ${psuedoCollisions}/${totalCollisions} = ${psuedoCollisions/totalCollisions}%`)
+
+  for (const body of bodies.all)
+    body.psuedoMass = 0
+
+  //force handling
+  for (const body of bodies.psuedo)
     calculateForces(body)
 
-  for (const body of bodies)
+  for (const body of bodies.real)
+    calculateForces(body)
+
+  for (const body of bodies.all)
     applyForces(body)
 
-  if (bodies.length)
-    sendBodies()
+  //finish
+  if (bodies.all.length > 0)
+    sendData()
 
   scheduleTick()
 
 }
 
 function scheduleTick() {
+  // setTimeout(tick, 0)
 
-  setTimeout(tick, 0)
+  setTimeout(() => {
+
+    if (bodies.all.length > 10)
+      tick()
+
+  }, 0)
+
+}
+
+/******************************************************************************/
+// Testing
+/******************************************************************************/
+if (isTesting) {
+
+  MESSAGES['initialize']({})
+
+  const data = { bodies: [] }
+
+  for (let i = 0; i < 2000; i++) {
+
+    const big = random() <= 0.05
+    const mass = random(20, big ? 5000 : 50, 0.125)
+    const x = random(-400,400,0.125)
+    const y = random(-400,400,0.125)
+
+    data.bodies.push(i, mass, x, y, 0, 0)
+  }
+
+  MESSAGES['set-bodies'](data)
+  MESSAGES['start']()
 
 }
