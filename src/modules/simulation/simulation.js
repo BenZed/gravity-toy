@@ -280,11 +280,9 @@ export default class Simulation extends EventEmitter {
         continue
       }
 
-      //Velocity Verlet
-      const oldVel = body.vel.copy()
-      const newVel = oldVel.add(body.force.mult(this.delta * 0.001))
-      body.vel = oldVel.add(newVel).imult(0.5)
+      const acc = body.force.mult(this.delta * 0.001)
 
+      body.vel.iadd(body.vel.add(acc)).imult(0.5)
       body.pos.iadd(body.vel)
 
       body[_writeCacheAtTick](interval.currentTick)

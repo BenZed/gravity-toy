@@ -55,40 +55,54 @@ onload = () => {
     radiusFactor: 0.5
   })
 
-  star
-  const star = sim.createBody({
-    mass: randomRange(400000, 800000) * (Math.random() > 0.9 ? 1 : 10),
-    pos: Vector.zero,
-    vel: Vector.zero
-  })
+  let bodies = 1500
 
-  const inner = randomRange(4000,9000), outer = inner + randomRange(1000,2000), end = 40000
+  while (bodies) {
 
-
-  //rocky
-  createPlanets(star, sim, [star.radius, inner], [250, 7000], [1,20])
-
-  //icy
-  createPlanets(star, sim, [star.radius, end], [200, 10000], [1,10])
-
-  //giant
-  createPlanets(star, sim, [outer, end], [10000, 100000],[1,5])
-
-  const { round } = Math
-  let asteroids = round(randomRange(10, 100))
-  while (asteroids) {
-    asteroids--
-
-    const pos = randomVec(outer - 250, inner + 250)
-    const vel = orbitalVelocity(pos, star, sim.g)
     const prop = {
-      mass: randomRange(5, 80),
-      pos,
-      vel: vel.iadd(randomVec(vel.magnitude * 0.05))
+      mass: Math.random() > 0.975 ? randomRange(500,5000) : randomRange(50,500),
+      pos: randomVec(2500),
+      vel: randomVec(4)
     }
 
     sim.createBody(prop)
+    bodies--
+
   }
+
+  // const star = sim.createBody({
+  //   mass: randomRange(400000, 800000) * (Math.random() > 0.9 ? 1 : 10),
+  //   pos: Vector.zero,
+  //   vel: Vector.zero
+  // })
+  //
+  // const inner = randomRange(400,500), outer = inner + randomRange(800, 1000), end = 1500
+  //
+  //
+  // //rocky
+  // createPlanets(star, sim, [star.radius, inner], [250, 7000], [1,20])
+  //
+  // //icy
+  // createPlanets(star, sim, [star.radius, end], [200, 10000], [1,10])
+  //
+  // //giant
+  // createPlanets(star, sim, [outer, end], [10000, 100000],[1,5])
+  //
+  // const { round } = Math
+  // let asteroids = round(randomRange(10, 100))
+  // while (asteroids) {
+  //   asteroids--
+  //
+  //   const pos = randomVec(outer - 250, inner + 250)
+  //   const vel = orbitalVelocity(pos, star, sim.g)
+  //   const prop = {
+  //     mass: randomRange(5, 80),
+  //     pos,
+  //     vel: vel.iadd(randomVec(vel.magnitude * 0.05))
+  //   }
+  //
+  //   sim.createBody(prop)
+  // }
 
   render(<SimulationUI simulation={sim} title={null}/>, main)
 }

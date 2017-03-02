@@ -1,1 +1,1 @@
-[1,2,3,4].reduce((v,a) => console.log(v,a), 'initial')
+console.log(1/25 * 1000)
