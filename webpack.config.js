@@ -25,7 +25,10 @@ module.exports = {
   },
 
   resolve: {
-    extensions: ['', '.webpack.js', '.web.js', '.js', '.jsx']
+    extensions: ['', '.webpack.js', '.web.js', '.js', '.jsx'],
+    alias: {
+      child_process: path.join(PATHS.src, 'modules/core')
+    }
   },
 
   module: {

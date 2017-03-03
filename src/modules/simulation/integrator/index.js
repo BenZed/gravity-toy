@@ -1,5 +1,4 @@
 import is from 'is-explicit'
-import { fork } from 'child_process'
 import path from 'path'
 
 /******************************************************************************/
@@ -7,12 +6,18 @@ import path from 'path'
 /******************************************************************************/
 
 const isBrowser = typeof window === 'object'
-if (isBrowser && typeof Worker !== 'function')
-  throw new Error('WebWorker not supported on this Browser.')
 
 const createWorker = isBrowser
-  ? () => new Worker('worker.js')
+
+  ? () => {
+    if (typeof Worker !== 'function')
+      throw new Error('WebWorker not supported on this Browser.')
+
+    return new Worker('worker.js')
+  }
+
   : do {
+    const { fork } = require('child_process')
     const FORK_PATH = path.resolve(__dirname, 'worker.js')
     const FORK_MEMORY = { execArgv: ['--max-old-space-size=128'] };
 

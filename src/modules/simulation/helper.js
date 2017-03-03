@@ -1,105 +1,79 @@
-import Vector from './vector'
+import colorInterpolate from 'color-interpolate'
 import is from 'is-explicit'
+import { lerp, cbrt } from 'math-plus'
 
-const { sin, cos, random, sqrt, PI } = Math
+export function isOrderedFiniteArray(values) {
 
-/******************************************************************************/
-// Simulation Helpers
-/******************************************************************************/
+  if (!is(values, Array))
+    return false
 
-export function baryCenter(a, b) {
+  let previous = -Infinity
 
-  const relative = a.pos.sub(b.pos)
-  const distance = relative.magnitude
-  const baryRadius = distance / (1 + a.mass / b.mass)
+  for (const value of values) {
+    if (!isFinite(value) || previous >= value)
+      return false
 
-  return relative
-    .normalized()
-    .mult(baryRadius)
-    .add(b.pos)
+    previous = value
+  }
+
+  return true
 }
 
-export function orbitalVelocity(bodyOrPos, parent, g) {
+const RADIUS_MIN = 0.5 //pixels
+const RADIUS_FACTOR = 0.5
 
-  const pos = is(bodyOrPos,Vector) ? bodyOrPos : bodyOrPos.pos
+export const MASS_MIN = 50
 
-  const relative = pos.sub(parent.pos)
-  const dist = relative.magnitude
+export function radiusFromMass(...args) {
 
-  //I'm not sure why I have to divide by 10. According to Google
-  //this equation should work without it
-  const speed = sqrt(g * parent.mass / dist) * 0.1
+  //why?
+  //So that this function can be attached to an object that has mass
+  //and used as a getter
+  const mass = isFinite(args[0]) ? args[0] : this ? this.mass : MASS_MIN
 
-  return relative
-    .perpendicular(speed)
+  return RADIUS_MIN + cbrt(mass - MASS_MIN) * RADIUS_FACTOR
 
 }
 
-export function escapeSpeed(child, parent, g) {
-  const relative = child.pos.sub(parent.pos)
-  return g * parent.mass * child.mass / relative.sqrMagnitude
-}
+export function WeightedColorizer(colors, values) {
 
-export function escaping(child, parent, g) {
+  if (this === undefined)
+    //it doesn't actually, but fuck it. I'm enforcing self documenting code. Sue me.
+    throw new Error('WeightedColorizer must be instanced.')
 
-  const escSpeed = escapeSpeed(child, parent, g)
+  if (!is(colors, Array) || !is(values, Array))
+    throw new Error('WeightedColorizer requires an array of colors and an array of values.')
 
-  const relSpeed = child.vel
-    .sub(parent.vel)
-    .magnitude
+  if (!isOrderedFiniteArray(values))
+    throw new Error('values must be an ordered array of numbers.')
 
-  return relSpeed > escSpeed
-}
+  const interpolator = colorInterpolate(colors)
+  const maxValueIndex = values.length - 1
 
-/******************************************************************************/
-// Math Helpers
-/******************************************************************************/
+  return value => {
 
-export function clamp(num, min, max) {
-  return num < min ? min : num > max ? max : num
-}
+    let i = 0, pointer = 0
+    while (i < maxValueIndex) {
 
-export function lerp(from, to, delta, clamped = true) {
-  delta = clamped ? clamp(delta, 0, 1) : delta
+      const valueFrom = values[i]
+      const valueTo = values[i + 1]
+      const pointFrom = i / maxValueIndex
+      const pointTo = (i + 1) / maxValueIndex
 
-  return from + delta * (to - from)
-}
+      if (value >= valueFrom && value <= valueTo) {
+        const valueFactor = (value - valueFrom) / (valueTo - valueFrom)
+        pointer = lerp(pointFrom, pointTo, valueFactor)
+        break
+      }
 
-/******************************************************************************/
-// Random Helpers
-/******************************************************************************/
+      if (value < valueFrom)
+        break
 
-export function randomVec(maxR = 1, minR = 0) {
-  const angle = random() * 2 * PI
-  let radius
-  do {
-    radius = minR + random() * maxR
-  } while (radius > maxR || radius < minR)
+      pointer = pointTo
+      i++
+    }
 
-  const x = radius * cos(angle)
-  const y = radius * sin(angle)
+    return interpolator(pointer)
 
-  return new Vector(x,y)
-}
-
-export function randomRange(lo, hi) {
-  return (hi - lo) * random() + lo
-}
-
-/******************************************************************************/
-// Class Helpers
-/******************************************************************************/
-
-export function getProtectedSymbol(obj, key) {
-  //get the symbols on the provided object that spefically point to the provided key
-  return Object.getOwnPropertySymbols(obj)
-    .filter(symbol => obj[symbol] === key)[0]
-}
-
-export function constProperty(obj, key, value) {
-  Object.defineProperty(obj, key, { value })
-}
-
-export function writableProperty(obj, key, value) {
-  Object.defineProperty(obj, key, { value, writable: true })
+  }
 }

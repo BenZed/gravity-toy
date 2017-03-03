@@ -1,442 +1,288 @@
+import Define from 'define-utility'
+import Integrator from './integrator'
+
 import is from 'is-explicit'
-import EventEmitter from 'events'
-import now from 'performance-now'
 
-import Body, { NUM_CACHE_PROPERTIES } from './body'
-import Vector from './vector'
-import { getProtectedSymbol, constProperty } from './helper'
-
-const { floor, sqrt, max, min } = Math
+import { floor, min, Vector } from 'math-plus'
+import { MASS_MIN, radiusFromMass } from './helper'
 
 /******************************************************************************/
-// Simulation Class
+// Constants
 /******************************************************************************/
 
-//Used to make the interval between updates as consistent as possible
-const UPDATE_SLACK = 0
+const ONE_MB = 1048576 //bytes
+const NUMBER_SIZE = 8 // bytes
+const NUM_CACHE_PROPS = 6
+const ALLOCATIONS_PER_MB = ONE_MB / (NUMBER_SIZE * NUM_CACHE_PROPS)
 
-const ONE_MEG = 1048576 //bytes
-const MAX_MEMORY = ONE_MEG * 320
-const MAX_NUMBER_ALLOCATIONS = MAX_MEMORY / 8 //bytes
-const MAX_CACHE_ALLOCATIONS = floor(MAX_NUMBER_ALLOCATIONS / NUM_CACHE_PROPERTIES)
+const NO_PARENT = -1 //cache index value if body has no parent
 
-const COLLISION_POINT_VECTOR_FACTOR = 0.75
-const MAX_COLLISION_POINTS = 5000 //if very small bodies are going very fast,
-//we're going to lose collision detection quality so that the program wont hang
+const DEFAULT_PROPERTIES = {
 
-//Symbols for "private" properties
-const _bodies = Symbol('bodies'),
-  _update     = Symbol('update'),
-  _paused     = Symbol('paused'),
-  _interval   = Symbol('interval'),
-  _calculate  = Symbol('calculate'),
-  _integrate  = Symbol('intergrate'),
-  _collide    = Symbol('collide'),
-  _cacheSize  = Symbol('cache-size'),
-  _applyCacheAtTick  = Symbol('apply-cache-at-tick')
+  g: 1,
 
-//Symbols for Body "protected" properties
+  maxCacheMemory: 320 // megabytes
 
-const _writeCacheAtTick = getProtectedSymbol(Body, 'write-cache-at-tick'),
-  _applyStatsAtTick = getProtectedSymbol(Body, 'apply-stats-at-tick'),
-  _cache = getProtectedSymbol(Body, 'cache')
+}
 
-export default class Simulation extends EventEmitter {
+//constants for symbolic properties
+const CACHE    = Symbol('cache'),
+  INTEGRATOR   = Symbol('integrator'),
+  TICK_INITIAL = Symbol('tick-initial'),
+  TICK_END     = Symbol('tick-end'),
+  TICK_INDEX   = Symbol('tick-index')
 
-  // API **********************************************************************/
+/******************************************************************************/
+// Cache Object
+/******************************************************************************/
+
+function Cache(maxMemory) {
+
+  Define(this)
+
+    .let('id', 0)
+    .let('tick', 0)
+    .let('allocations', 0)
+
+    .get('maxTicks', () => {
+      const maxAllocations = this.maxMemory * ALLOCATIONS_PER_MB
+      const percentUsed = this.allocations / maxAllocations
+
+      return floor(this.tick / percentUsed)
+    })
+
+    .const('maxMemory', maxMemory)
+
+    .const('invalidateBefore', tick => {
+
+      if (tick > this.tick || tick < 0)
+        throw new Error(`${tick} is out of range 0 - ${this.tick}`)
+
+      this.tick -= tick
+
+      for (const id in this) {
+        const body = this[id]
+
+        let newInitial = body[TICK_INITIAL] - tick
+        if (newInitial < 0) {
+
+          const count = -newInitial * NUM_CACHE_PROPS
+          body[CACHE].splice(0, count)
+          newInitial = 0
+
+        }
+
+        body[TICK_INITIAL] = newInitial
+      }
+    })
+
+    .const('invalidateAfter', tick => {
+
+      if (tick > this.tick || tick < 0)
+        throw new Error(`${tick} is out of range 0 - ${this.tick}`)
+
+      this.tick = tick
+
+      for (const id in this) {
+        const body = this[id]
+
+        const index = body[TICK_INDEX](tick + 1)
+        if (index <= 0) {
+          delete this[id]
+          continue
+        }
+
+        const cache = body[CACHE]
+
+        cache.length = min(index, cache.length)
+
+      }
+    })
+
+    .const('read', tick => {
+
+      const output = []
+
+      //the only enumerable properties of
+      //a cache object will be bodies
+      for (const id in this) {
+        const body = this[id]
+        const data = body.read(tick, true)
+        if (!data)
+          continue
+
+        output.push(body.id, ...data)
+      }
+
+      return output
+
+    })
+
+    .const('write', data => {
+
+      this.tick++
+
+      let i = 0
+      const destroyed = data[i++]
+
+      for (const id of destroyed)
+        this[id][TICK_END] = this.tick
+
+      while (i < data.length) {
+        const id =   data[i++],
+          mass =     data[i++],
+          x =        data[i++],
+          y =        data[i++],
+          vx =       data[i++],
+          vy =       data[i++],
+          parentId = data[i++]
+
+        this[id][CACHE].push(mass, x, y, vx, vy, parentId)
+      }
+
+    })
+
+}
+
+/******************************************************************************/
+// Body Class
+/******************************************************************************/
+
+class Body {
+
+  constructor(props, tick, id) {
+
+    //Holy validations, batman!
+    if (!is(props, Object))
+      throw new Error('Body requires a props object as its first parameter')
+
+    if (!isFinite(tick))
+      throw new Error('Tick is expected to be a number.')
+
+    let { mass, vel, pos } = props
+
+    if (is(pos) && !is(pos, Vector))
+      throw new Error('props.pos, if defined, is expected to be a Vector.')
+    pos = pos || Vector.zero
+
+    if (is(vel) && !is(vel, Vector))
+      throw new Error('props.vel, if defined, is expected to be a Vector.')
+    vel = vel || Vector.zero
+
+    if (!is(mass) || mass < MASS_MIN)
+      throw new Error(`props.mass, if defined, must be a number above or equal to ${MASS_MIN}`)
+    mass = mass || MASS_MIN
+
+    Define(this)
+      .let.enum('mass', mass)
+      .get.enum('radius', radiusFromMass)
+      .const.enum('pos', pos)
+      .const.enum('vel', vel)
+      .const('id', id)
+      .const('parentId', NO_PARENT)
+      .const(CACHE, [mass, pos.x, pos.y, vel.x, vel.y, NO_PARENT])
+      .let(TICK_INITIAL, tick)
+      .let(TICK_END,     null)
+  }
+
+  [TICK_INDEX](tick) {
+    return (floor(tick) - this[TICK_INITIAL]) * NUM_CACHE_PROPS
+  }
+
+  read(tick) {
+
+    const cache = this[CACHE]
+    let i = this[TICK_INDEX](tick)
+
+    const mass = cache[i++]
+
+    //if we've gotten here, the requested tick has not been cached for this body,
+    //the request tick is in an invalid range or it is not a number
+    if (mass === undefined)
+      return null
+
+    const x = cache[i++]
+    const y = cache[i++]
+    const vx = cache[i++]
+    const vy = cache[i++]
+    const parentId = cache[i++]
+
+    return [ mass, x, y, vx, vy, parentId ]
+
+  }
+
+  update(tick) {
+
+    const data = this.read(tick)
+    if (!data)
+      return false
+
+    const [ mass, x, y, vx, vy, parentId ] = data
+
+    this.mass = mass
+
+    this.pos.x = x
+    this.pos.y = y
+
+    this.vel.x = vx
+    this.vel.y = vy
+
+    this.parentId = parentId
+
+    return true
+
+  }
+
+}
+
+/******************************************************************************/
+// Main Simulation Class
+/******************************************************************************/
+
+export default class Simulation {
+
   constructor(props = {}) {
-    super()
 
     if (!is(props, Object))
-      throw new Error('First argument, if provided, must be an options object.')
+      throw new TypeError('first argument, if defined, should be an Object.')
 
-    const { g, delta, radiusBase, radiusFactor } = props
+    const { g, maxCacheMemory } = { ...DEFAULT_PROPERTIES, ...props }
 
-    constProperty(this, 'radiusFactor', radiusFactor || 0.25)
-    constProperty(this, 'radiusBase', radiusBase || 0.5)
-    constProperty(this, 'delta', delta || 20)
-    constProperty(this, 'g', g || 1)
+    Define(this)
+      .const.enum('g', g)
+      .const(CACHE, new Cache(maxCacheMemory))
+      .const(INTEGRATOR, new Integrator(this[CACHE].write))
 
-    this[_paused] = true
-    this[_bodies] = []
-    this[_cacheSize] = 0
+    this[INTEGRATOR]('initialize', { g })
 
-    const sim = this
-
-    this[_interval] = {
-      id: null,
-      start: 0,
-      delta: 0,
-      exceeded: false,
-      currentTick: 0,
-
-      bodyIndex: 0,
-      bodySubIndex: 0,
-
-      check() {
-        this.delta = now() - this.start
-        return this.exceeded = this.delta >= sim.delta
-      }
-    }
   }
 
   start() {
-    if (!this[_paused])
-      return
-
-    const interval = this[_interval]
-
-    //because the integrator will run for the number of milliseconds specified
-    //by update delta, it's still going to take a small amount of time to perform
-    //commands after the integration is complete. Things like caching/updating
-    //body positions and firing event subscribers. Adding UPDATE_SLACK will help
-    //to make the framerate more consistent
-    if (!interval.id)
-      interval.id = setInterval(this[_update], this.delta + UPDATE_SLACK)
-
-    this[_paused] = false
+    this[INTEGRATOR]('start')
   }
 
   stop() {
-    const interval = this[_interval]
-
-    if (interval.id !== null)
-      clearInterval(interval.id)
-
-    this[_paused] = true
+    this[INTEGRATOR]('stop')
   }
 
-  get running() {
-    return this[_interval].id !== null
-  }
+  createBody = (props = {}, tick = this[CACHE].tick) =>  {
 
-  get paused() {
-    return this[_paused]
-  }
+    const cache = this[CACHE]
 
-  set paused(value) {
-    this[_paused] = !!value
-  }
+    if (tick < 0 || tick > cache.tick)
+      throw new Error('tick out of range')
 
-  get cachedTicks() {
-    return this[_interval].currentTick
-  }
+    const id = cache.id++
 
-  get maxCacheTicks() {
-    const totalCacheUsed = this[_cacheSize] / MAX_CACHE_ALLOCATIONS
+    const body = new Body(props, tick, id)
 
-    const maxCacheTicks = floor(this[_interval].currentTick / totalCacheUsed)
+    cache[id] = body
+    cache.invalidateAfter(tick)
 
-    return is(maxCacheTicks, Number) ? maxCacheTicks : Infinity
-  }
-
-  get cachedSeconds() {
-    return this[_interval].currentTick / (this.delta + UPDATE_SLACK)
-  }
-
-  get maxCacheSeconds() {
-    return this.maxCacheTicks / (this.delta + UPDATE_SLACK)
-  }
-
-  createBody(props = {}) {
-
-    const mass = is(props, Number) ? props : props && props.mass ? props.mass : NaN
-    const tick = props && props.tick ? tick : this.cachedTicks
-    const pos = props && props.pos ? props.pos : Vector.zero
-    const vel = props && props.vel ? props.vel : Vector.zero
-
-    const body = new Body(mass,
-        new Vector(pos.x, pos.y),
-        new Vector(vel.x, vel.y),
-        tick, this.radiusBase, this.radiusFactor)
-
-
-    body[_writeCacheAtTick](tick)
-    this[_bodies].push(body)
-    this.emit('body-create', body)
-
-    this[_applyCacheAtTick](tick)
+    this[INTEGRATOR]('set-bodies', cache.read(tick))
 
     return body
-  }
 
-  forEachBody(func) {
-    this[_bodies].forEach(func)
-  }
-
-  getLargestBody() {
-    let largest = null
-
-    this.forEachBody(body => {
-      if (!body.exists)
-        return
-
-      if (largest === null || largest.mass < body.mass)
-        largest = body
-    })
-
-    return largest
-  }
-
-  getBodiesInRange(pos, dist = 1000) {
-    const bodies = []
-
-    this.forEachBody(b => {
-      if (!b.exists)
-        return
-
-      if (b.pos.sub(pos).magnitude > dist)
-        return
-
-      bodies.push(b)
-    })
-
-    return bodies
-  }
-
-  get numBodies() {
-    return this[_bodies].length
-  }
-
-  copy() {
-    throw new Error('.copy() not implemented.')
-    // const duplicate = new Simulation({delta: this.delta, g: this.g})
-    // for (const body of this[_bodies])
-    //   if (body.exists)
-    //     duplicate.createBody(body.mass, body.pos, body.vec)
-    //
-    // return duplicate
-  }
-
-  toJSON(stringify = true, onlyCurrentTick = false) {
-    const json = {}
-    json.cacheSize = this.cacheSize
-    json.interval = {
-      currentTick: this[_interval].currentTick,
-      bodyIndex: this[_interval].bodyIndex,
-      bodySubIndex: this[_interval].bodySubIndex
-    }
-    json.delta = this.delta
-    json.g = this.g
-    json.bodies = this[_bodies]
-      .filter(body => body.exists || !onlyCurrentTick)
-      .map(body => Object({
-        mass: body.mass,
-        pos: body.pos,
-        vel: body.vel,
-        force: body.force,
-        cache: onlyCurrentTick ? null : body[_cache].slice(),
-        startTick: body.startTick,
-        endTick: body.endTick
-      }))
-
-    return stringify ? JSON.stringify(json, null, 2) : json
-  }
-
-  [_applyCacheAtTick](tick) {
-
-    const interval = this[_interval]
-    const bodies = this[_bodies]
-
-    if (tick > interval.currentTick)
-      throw new Error('Can\'t apply tick that hasn\'t happened yet.')
-
-    interval.currentTick = tick
-
-    let i = 0
-    while(i < bodies.length) {
-      const body = bodies[i]
-
-      if (body[_applyStatsAtTick](tick))
-        i++
-      else bodies.splice(i, 1)
-    }
-  }
-
-  [_integrate]() {
-
-    const bodies = this[_bodies]
-    const interval = this[_interval]
-
-    // calculate loop
-    while (interval.bodyIndex < bodies.length) {
-      this[_calculate](bodies[interval.bodyIndex])
-
-      if (interval.exceeded)
-        return
-
-      interval.bodySubIndex = 0
-      interval.bodyIndex += 1
-    }
-
-    //count the cache and apply the physics integrator
-
-    this[_cacheSize] = 0
-    for (let i = 0; i < bodies.length; i++) {
-      const body = bodies[i]
-
-      if (!body.exists) {
-        this[_cacheSize] += body.cacheSize
-        continue
-      }
-
-      const acc = body.force.mult(this.delta * 0.001)
-
-      body.vel.iadd(body.vel.add(acc)).imult(0.5)
-      body.pos.iadd(body.vel)
-
-      body[_writeCacheAtTick](interval.currentTick)
-      this[_cacheSize] += body.cacheSize
-    }
-
-    interval.bodyIndex = 0
-    this.emit('tick-complete', interval.currentTick++)
-  }
-
-  //This function gets called a lot, so there are
-  //some manual inlining and optimizations
-  //I've made. I dunno if they make a difference in the
-  //grand scheme of things, but it helps my OCD
-  [_calculate](body) {
-
-    if (!body.exists)
-      return
-
-    const bodies = this[_bodies]
-    const interval = this[_interval]
-
-    // Relative position vector between two bodies.
-    // Declared outside of the while loop to save
-    // garbage collections on Vector objects
-    const relative = Vector.zero
-
-    //Series of points to test collisions from.
-    //If the body is moving slow enough, this should only include one point.
-    const collisionPoints = [body.pos]
-
-    //During the collision detection phase, we'll save time by using
-    //squard distances
-    const collisionRadiusSqr = body.collisionRadius ** 2
-    const velMagnitudeSqr = body.vel.sqrMagnitude
-
-    //Velocity Collision Factor. If this number
-    //is greater than one, we need to add collisionPoints,
-    //because the object is moving so fast that a regular
-    //circle-overlap test could miss.
-    const vcf = velMagnitudeSqr / collisionRadiusSqr
-
-    //Fill the positions if necessary
-    if (vcf > 1) {
-
-      //The COLLISION_POINT_VECTOR_FACTOR reduces the number of points
-      //we need to create by taking into account how much they'll overlap
-      //with the collisinRadius
-      const length = vcf * COLLISION_POINT_VECTOR_FACTOR
-      const inc = body.vel.div(length)
-      const pos = body.pos.copy()
-
-      while (collisionPoints.length < min(length, MAX_COLLISION_POINTS))
-        collisionPoints.push(pos.iadd(inc).copy())
-
-    }
-
-    //If the bodySubIndex is zero, that means we
-    //didn't leave in the middle of a force calculation
-    //and we can reset.
-    if (interval.bodySubIndex === 0)
-      body.force.x = 0, body.force.y = 0
-
-    while (interval.bodySubIndex < bodies.length) {
-
-      const otherBody = bodies[interval.bodySubIndex++]
-
-      if (interval.check())
-        break
-
-      if (body === otherBody || !otherBody.exists)
-        continue
-
-      //inlining otherBody.pos.sub(body.pos)
-      relative.x = otherBody.pos.x - body.pos.x
-      relative.y = otherBody.pos.y - body.pos.y
-
-      const distSqr = relative.sqrMagnitude
-
-      const otherCollisionRadiusSqr = otherBody.collisionRadius ** 2
-
-      //skip collisionPoint checking if the otherBody is too far away to warrant
-      if (!(collisionRadiusSqr + velMagnitudeSqr + otherCollisionRadiusSqr < distSqr)) {
-
-        //check all of the collisionPoints
-        for (let i = 0; i < collisionPoints.length; i++) {
-
-          //Rather than allocating another Vector object and calling it's sqrMagnitude
-          //function, I'm doing this fancy inline bit.
-          const distSqr = (otherBody.pos.x - collisionPoints[i].x) ** 2 +
-                          (otherBody.pos.y - collisionPoints[i].y) ** 2
-
-          //ta daaaa
-          if (collisionRadiusSqr + otherCollisionRadiusSqr > distSqr) {
-            this[_collide](body, otherBody)
-            break
-          }
-        }
-      }
-
-      //Don't calculate forces if we just collided
-      if (!body.exists || !otherBody.exists)
-        continue
-
-      //inlining relative.magnitude
-      const dist = sqrt(distSqr)
-
-      const G = this.g * otherBody.mass / distSqr
-
-      //inlining with squared distances
-      body.force.x += G * relative.x / dist
-      body.force.y += G * relative.y / dist
-    }
-  }
-
-  [_collide](b1, b2) {
-    const [big, small] = b1.mass > b2.mass ? [b1,b2] : [b2,b1]
-
-    const totalMass = big.mass + small.mass
-    big.pos
-      .imult(big.mass)
-      .iadd(small.pos.mult(small.mass))
-      .idiv(totalMass)
-
-    big.vel
-      .imult(big.mass)
-      .iadd(small.vel.mult(small.mass))
-      .idiv(totalMass)
-
-    small.mass = 0 //this sets the exists flag to false
-    big.mass = totalMass
-
-    small.emit('body-collision', big)
-    big.emit('body-collision', small)
-    this.emit('body-collision', small, big)
-  }
-
-  [_update] = () => {
-    const interval = this[_interval]
-    const bodies = this[_bodies]
-
-    //start the interval
-    interval.start = now()
-    interval.exceeded = false
-    this.emit('interval-start', deltaTime)
-
-    //integrate until the time budget has been used up or the cache is full
-    if (!this[_paused] && bodies.length > 0 && interval.currentTick < this.maxCacheTicks)
-      while(!interval.check())
-        this[_integrate]()
-
-    const deltaTime = max(this.delta + UPDATE_SLACK, interval.delta)
-
-    this.emit('interval-complete', deltaTime, interval.currentTick)
   }
 
 }
