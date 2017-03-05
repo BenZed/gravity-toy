@@ -3,7 +3,7 @@ import Integrator from './integrator'
 
 import is from 'is-explicit'
 
-import { floor, min, Vector } from 'math-plus'
+import { floor, min, clamp, Vector } from 'math-plus'
 import { MASS_MIN, radiusFromMass } from './helper'
 
 /******************************************************************************/
@@ -20,7 +20,9 @@ const NO_PARENT = -1 //cache index value if body has no parent
 const DEFAULT_PROPERTIES = {
 
   g: 1,
-
+  physicsSteps: 4,
+  realBodiesMin: 150,
+  realMassThreshold: 100,
   maxCacheMemory: 320 // megabytes
 
 }
@@ -105,6 +107,7 @@ function Cache(maxMemory) {
 
       //the only enumerable properties of
       //a cache object will be bodies
+
       for (const id in this) {
         const body = this[id]
         const data = body.read(tick, true)
@@ -179,7 +182,7 @@ class Body {
       .const.enum('pos', pos)
       .const.enum('vel', vel)
       .const('id', id)
-      .const('parentId', NO_PARENT)
+      .let('parentId', NO_PARENT)
       .const(CACHE, [mass, pos.x, pos.y, vel.x, vel.y, NO_PARENT])
       .let(TICK_INITIAL, tick)
       .let(TICK_END,     null)
@@ -187,6 +190,10 @@ class Body {
 
   [TICK_INDEX](tick) {
     return (floor(tick) - this[TICK_INITIAL]) * NUM_CACHE_PROPS
+  }
+
+  get exists() {
+    return isFinite(this.mass) && this.mass > 0
   }
 
   read(tick) {
@@ -211,28 +218,6 @@ class Body {
 
   }
 
-  update(tick) {
-
-    const data = this.read(tick)
-    if (!data)
-      return false
-
-    const [ mass, x, y, vx, vy, parentId ] = data
-
-    this.mass = mass
-
-    this.pos.x = x
-    this.pos.y = y
-
-    this.vel.x = vx
-    this.vel.y = vy
-
-    this.parentId = parentId
-
-    return true
-
-  }
-
 }
 
 /******************************************************************************/
@@ -246,43 +231,124 @@ export default class Simulation {
     if (!is(props, Object))
       throw new TypeError('first argument, if defined, should be an Object.')
 
-    const { g, maxCacheMemory } = { ...DEFAULT_PROPERTIES, ...props }
+    const { g, physicsSteps, realMassThreshold, realBodiesMin,  maxCacheMemory }
+        = { ...DEFAULT_PROPERTIES, ...props }
+
+    const cache = new Cache(maxCacheMemory)
+    const integrator = new Integrator(cache.write)
 
     Define(this)
       .const.enum('g', g)
-      .const(CACHE, new Cache(maxCacheMemory))
-      .const(INTEGRATOR, new Integrator(this[CACHE].write))
+      .const(CACHE, cache)
+      .const(INTEGRATOR, integrator)
+      .let(TICK_INDEX, 0)
 
-    this[INTEGRATOR]('initialize', { g })
+    this[INTEGRATOR]('initialize', [ g, physicsSteps, realMassThreshold, realBodiesMin ])
 
   }
 
-  start() {
-    this[INTEGRATOR]('start')
+  start = () => this[INTEGRATOR]('start')
+
+  stop = () => this[INTEGRATOR]('stop')
+
+  get tick() {
+    //why clamp it? in case the cache was invalidated without the tick being
+    //reset
+    return clamp(this[TICK_INDEX], 0, this.maxTick)
   }
 
-  stop() {
-    this[INTEGRATOR]('stop')
+  set tick(value) {
+
+    if (value < 0 || value > this.maxTick)
+      throw new Error('tick out of range')
+
+    const cache = this[CACHE]
+
+    for (const id in cache) {
+      const body = cache[id]
+      const data = body.read(value)
+
+      if (data) {
+        let i = 0
+        body.mass = data[i++]
+        body.pos.x = data[i++]
+        body.pos.y = data[i++]
+        body.vel.x = data[i++]
+        body.vel.y = data[i++]
+        body.parentId = data[i++]
+
+      } else {
+        body.mass = NaN
+        body.pos.x = NaN
+        body.pos.y = NaN
+        body.vel.x = NaN
+        body.vel.y = NaN
+        body.parentId = -1
+      }
+
+    }
+
+    this[TICK_INDEX] = value
   }
 
-  createBody = (props = {}, tick = this[CACHE].tick) =>  {
+  get maxTick() {
+    return this[CACHE].tick
+  }
+
+  applyBodies = (tick = this.tick) => {
+
+    if (tick < 0 || tick > this.maxTick)
+      throw new Error('tick out of range')
+
+    throw new Error('not yet implemented')
+
+  }
+
+  createBody = (props = {}, tick = this.tick) =>
+    this.createBodies([props], tick)[0]
+
+  createBodies = (props = [], tick = this.tick) =>  {
 
     const cache = this[CACHE]
 
     if (tick < 0 || tick > cache.tick)
       throw new Error('tick out of range')
 
-    const id = cache.id++
+    const created = []
+    for (const prop of props) {
 
-    const body = new Body(props, tick, id)
+      const id = cache.id++
+      const body = new Body(prop, tick, id)
 
-    cache[id] = body
+      cache[id] = body
+
+      created.push(body)
+    }
+
     cache.invalidateAfter(tick)
-
     this[INTEGRATOR]('set-bodies', cache.read(tick))
 
-    return body
+    return created
 
+  }
+
+  [Symbol.iterator] = function*() {
+
+    for (const id in this[CACHE]) {
+
+      const body = this[CACHE][id]
+      if (body.exists)
+        yield body
+
+    }
+  }
+
+  get numBodies() {
+    let count = 0
+    for (const body of this) //eslint-disable-line
+      count++
+
+    return count
   }
 
 }

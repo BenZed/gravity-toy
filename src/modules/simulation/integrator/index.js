@@ -9,11 +9,15 @@ const isBrowser = typeof window === 'object'
 
 const createWorker = isBrowser
 
-  ? () => {
-    if (typeof Worker !== 'function')
-      throw new Error('WebWorker not supported on this Browser.')
+  ? do {
+    const IntegrationWorker = require('worker-loader!./worker.js');
 
-    return new Worker('worker.js')
+    () => {
+      if (typeof Worker !== 'function')
+        throw new Error('WebWorker not supported on this Browser.')
+
+      return new IntegrationWorker()
+    }
   }
 
   : do {
@@ -24,31 +28,34 @@ const createWorker = isBrowser
     () => fork(FORK_PATH, FORK_MEMORY)
   }
 
-const SEND = isBrowser ? 'postMessage' : 'send'
-
 /******************************************************************************/
 // Exports
 /******************************************************************************/
 
-export default function Integrator(sendBodies) {
+export default function Integrator(writeFunc) {
 
-  if (!is(sendBodies, Function))
+  if (!is(writeFunc, Function))
     throw new Error('Integrator requires a function as an argument.')
 
   const worker = createWorker()
-  worker.on('message', sendBodies)
 
-  return (name, data = {}) => {
+  if (isBrowser)
+    worker.onmessage = msg => writeFunc(msg.data)
+  else
+    worker.on('message', writeFunc)
+
+  return (name, data = []) => {
 
     if (!is(name, String))
       throw new Error('event argument must be a string.')
 
-    if (!is(data, Object))
-      throw new Error('data argument must be an object.')
+    if (!is(data, Array))
+      throw new Error('data argument must be an array.')
 
-    data.name = name
-
-    worker[SEND](data)
+    if (isBrowser)
+      worker.postMessage([name, data])
+    else
+      worker.send({ name, data })
 
   }
 

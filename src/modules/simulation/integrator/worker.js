@@ -1,31 +1,6 @@
 import is from 'is-explicit'
-import { sqrt, min, floor, round, random, Vector } from 'math-plus'
-import { radiusFromMass } from '../helper'
-import now from 'performance-now'
-
-/******************************************************************************/
-// Temp testing timer class
-/******************************************************************************/
-//TODO remove test code
-
-class Timer {
-
-  delta = 0
-  fort = false //factor of real time
-
-  start = () => this.delta = now()
-
-  end(msg = 'ms') {
-    const total = now() - this.delta
-
-    const value = this.fort ? total / 40 : total
-
-    const rounded = round(value * 100) / 100
-
-    const log = `${rounded} ${this.fort ? 'x' : 'ms'} ${msg}`
-    console.log(log)
-  }
-}
+import { sqrt, min, floor, Vector } from 'math-plus'
+import { radiusFromMass, MASS_MIN } from '../helper'
 
 /******************************************************************************/
 // Worker
@@ -39,8 +14,6 @@ class Timer {
 // if someone wishes to run multiple simulations at once, they'll be invoking
 // multiple forks or workers, and everything will be dandy.
 
-const isTesting = typeof process === 'object' && process.send === undefined
-
 const isWebWorker = typeof self === 'object'
 if (isWebWorker)
   self.onmessage = receiveMessage
@@ -48,10 +21,8 @@ else
   process.on('message', receiveMessage)
 
 const send = isWebWorker
-  ? self.send.bind(self)
-  : isTesting
-    ? () => {}
-    : process.send.bind(process)
+  ? self.postMessage.bind(self)
+  : process.send.bind(process)
 
 /******************************************************************************/
 // Data
@@ -64,7 +35,7 @@ const bodies = { all: [], real: [], psuedo: [], destroyed: [] }
 let running = false, sendInc
 
 //config
-let g = 1, physicsSteps = 1, psuedoMassThreshold = 100, realBodiesMin = 100
+let g, physicsSteps, realMassThreshold, realBodiesMin
 
 /******************************************************************************/
 // Messaging
@@ -72,20 +43,27 @@ let g = 1, physicsSteps = 1, psuedoMassThreshold = 100, realBodiesMin = 100
 
 const MESSAGES = {
 
-  initialize(init) {
+  initialize(data) {
+    [g, physicsSteps, realMassThreshold, realBodiesMin] = data
 
-    if (isFinite(init.g) && init.g > 0)
-      g = init.g
+    if (!isFinite(g) || g <= 0)
+      throw new Error('g must be a number above zero.')
 
-    if (isFinite(init.physicsSteps) && init.physicsSteps >= 1)
-      physicsSteps = floor(init.physicsSteps)
+    if (!isWholeNumber(physicsSteps) || physicsSteps <= 0)
+      throw new Error('physicsSteps must be a whole number above zero.')
 
-    if (isFinite(init.realBodiesMin) && init.realBodiesMin > 0)
-      realBodiesMin = floor(init.realBodiesMin)
+    if (!isFinite(realMassThreshold) || realMassThreshold < MASS_MIN)
+      throw new Error(`realMassThreshold must be a number equal or above ${MASS_MIN}`)
+
+    if (!isWholeNumber(realBodiesMin) || realBodiesMin <= 0)
+      throw new Error('realMassThreshold must be a whole number above zero.')
 
   },
 
   start() {
+    if (!is(g, Number))
+      throw new Error('Must initialize before starting.')
+
     if (running)
       return
 
@@ -105,14 +83,15 @@ const MESSAGES = {
 
     bodies.all.length = 0
 
-    while (data.bodies.length) {
+    while (data.length) {
 
-      const vy = data.bodies.pop()
-      const vx = data.bodies.pop()
-      const y = data.bodies.pop()
-      const x = data.bodies.pop()
-      const mass = data.bodies.pop()
-      const id = data.bodies.pop()
+      data.pop() //this popped value would be the parent id, but we don't need it
+      const vy = data.pop()
+      const vx = data.pop()
+      const y = data.pop()
+      const x = data.pop()
+      const mass = data.pop()
+      const id = data.pop()
 
       bodies.all.push(new Body(id, mass, x, y, vx, vy))
 
@@ -122,7 +101,9 @@ const MESSAGES = {
   }
 }
 
-function receiveMessage({name, ...data}) {
+function receiveMessage(msg) {
+
+  const [name, data] = isWebWorker ? msg.data : [msg.name, msg.data]
 
   const message = MESSAGES[name]
 
@@ -133,11 +114,6 @@ function receiveMessage({name, ...data}) {
 
 }
 
-const t = new Timer
-t.fort = true
-t.start()
-let sent = 0
-
 function sendData() {
 
   const { all, destroyed } = bodies
@@ -145,11 +121,7 @@ function sendData() {
   if (++sendInc < physicsSteps)
     return
 
-  t.end(bodies.all.length)
-  t.start()
-
   sendInc = 0
-  sent++
 
   if (all.length + destroyed.length === 0)
     return
@@ -158,13 +130,14 @@ function sendData() {
 
   destroyed.length = 0
 
-  for (const body of all)
+  for (const body of all) {
     data.push(
       body.id, body.mass,
       body.pos.x, body.pos.y,
       body.vel.x, body.vel.y,
       body.parent ? body.parent.id : -1
     )
+  }
 
   send(data)
 
@@ -193,6 +166,8 @@ class Body {
   }
 
   buildCollider() {
+
+
 
   }
 
@@ -337,6 +312,8 @@ const byMass = (a,b) => a.mass > b.mass
 
 const last = arr => arr[arr.length - 1]
 
+const isWholeNumber = num => isFinite(num) && floor(num) === num
+
 function sortBodies() {
 
   const { all, real, psuedo, destroyed } = bodies
@@ -349,7 +326,7 @@ function sortBodies() {
   for (let i = 0; i < all.length; i++) {
     const body = all[i]
 
-    body.real = i < minReal || body.mass > psuedoMassThreshold
+    body.real = i < minReal || body.mass > realMassThreshold
 
     if (body.real)
       real.push(body)
@@ -417,31 +394,5 @@ function tick() {
 }
 
 function scheduleTick() {
-  if (sent <= 1000)
-    setTimeout(tick, 0)
-}
-
-/******************************************************************************/
-//TODO remove test code
-/******************************************************************************/
-
-if (isTesting) {
-
-  MESSAGES['initialize']({ physicsSteps: 8, realBodiesMin: 10 })
-
-  const data = { bodies: [] }
-
-  for (let i = 0; i < 100; i++) {
-
-    const big = random() <= 0.05
-    const mass = random(20, big ? 5000 : 50, 0.125)
-    const x = random(-1000,1000,0.125)
-    const y = random(-1000,1000,0.125)
-
-    data.bodies.push(i, mass, x, y, 0, 0)
-  }
-
-  MESSAGES['set-bodies'](data)
-  MESSAGES['start']()
-
+  setTimeout(tick, 0)
 }
