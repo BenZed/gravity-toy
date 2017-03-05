@@ -1,40 +1,47 @@
 import React from 'react'
-import { Simulation } from '../modules'
+import { Simulation, Renderer } from '../modules'
 import { Vector, clamp, min, random } from 'math-plus'
+
+
 
 export default class SimulationUI extends React.Component {
 
   componentDidMount() {
-    this.simulation = new Simulation()
 
+    this.simulation = new Simulation({ physicsSteps: 1, g: 0.5})
+    this.renderer = new Renderer(this.simulation, this.canvas)
+
+    onresize = this.onWindowResize
+    onresize()
+    /******************************************************************************/
+    // test bullshit
+    /******************************************************************************/
     const props = []
 
-    for (let i = 0; i < 100; i++)
+    for (let i = 0; i < 2000; i++)
       props.push({
-        mass: random(800,1000,0.125),
-        pos: new Vector(random(-500,500), random(-500,500))
+        mass: random(50,99) + random() > 0.975 ? random(100, 1500) : 0,
+        pos: new Vector(random(-1000,1000), random(-1000,1000))
       })
-    const bodies = this.simulation.createBodies(props)
-
+    this.simulation.createBodies(props)
     this.simulation.start()
-    const interval = setInterval(() => {
+    setInterval(() => {
       this.simulation.tick = clamp(this.simulation.tick + 1, 0, this.simulation.maxTick)
-
-      if (this.simulation.numBodies < 10) {
-        clearInterval(interval)
-        this.simulation.stop()
-        console.log(bodies.filter(body => body.exists))
-        console.log(this.simulation.tick / 25, this.simulation.maxTick / 25)
-      }
+      this.renderer.render()
     }, 40)
   }
 
   render() {
 
     return <div>
-      <canvas ref={ref => this.dom = ref} />
+      <canvas ref={ref => this.canvas = ref} />
     </div>
 
+  }
+
+  onWindowResize = () => {
+    this.canvas.width = innerWidth
+    this.canvas.height = innerHeight
   }
 
 }

@@ -1,41 +1,10 @@
 import colorInterpolate from 'color-interpolate'
+import isOrderedFiniteArray from './is-ordered-finite-array'
+
+import { lerp } from 'math-plus'
 import is from 'is-explicit'
-import { lerp, cbrt } from 'math-plus'
 
-const RADIUS_MIN = 0.5 //pixels
-const RADIUS_FACTOR = 0.5
-
-export const MASS_MIN = 50
-
-export function radiusFromMass(...args) {
-
-  //why?
-  //So that this function can be attached to an object that has mass
-  //and used as a getter
-  const mass = isFinite(args[0]) ? args[0] : this ? this.mass : MASS_MIN
-
-  return RADIUS_MIN + cbrt(mass - MASS_MIN) * RADIUS_FACTOR
-
-}
-
-export function isOrderedFiniteArray(values) {
-
-  if (!is(values, Array))
-    return false
-
-  let previous = -Infinity
-
-  for (const value of values) {
-    if (!isFinite(value) || previous >= value)
-      return false
-
-    previous = value
-  }
-
-  return true
-}
-
-export function WeightedColorizer(colors, values) {
+export default function WeightedColorizer(colors, values) {
 
   if (this === undefined)
     //it doesn't actually, but fuck it. I'm enforcing self documenting code. Sue me.

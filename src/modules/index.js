@@ -1,3 +1,3 @@
-import Simulation from './simulation'
+import { Simulation, Renderer } from './simulation'
 
-export { Simulation }
+export { Simulation, Renderer }

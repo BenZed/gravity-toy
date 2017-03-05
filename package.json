@@ -7,12 +7,13 @@
     "test": "node_modules/.bin/mocha --compilers js:babel-core/register;",
     "build:web": "webpack",
     "start": "webpack-dev-server",
-    "build:lib": "rm -rf lib; mkdir lib; ./node_modules/.bin/babel refactor-src/modules/simulation --out-dir lib",
-    "build:lib:watch": "rm -rf lib; mkdir lib; ./node_modules/.bin/babel --watch refactor-src/modules/simulation --out-dir lib"
+    "build:lib": "rm -rf lib; mkdir lib; ./node_modules/.bin/babel src/modules/simulation --out-dir lib",
+    "build:lib:watch": "rm -rf lib; mkdir lib; ./node_modules/.bin/babel --watch src/modules/simulation --out-dir lib"
   },
   "author": "Ben Gaumond",
   "license": "ISC",
   "devDependencies": {
+    "babel-cli": "^6.23.0",
     "babel-core": "^6.7.6",
     "babel-eslint": "^7.0.0",
     "babel-loader": "^6.2.4",

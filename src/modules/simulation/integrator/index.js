@@ -32,6 +32,8 @@ const createWorker = isBrowser
 // Exports
 /******************************************************************************/
 
+export const INTEGRATOR = Symbol('integrator')
+
 export default function Integrator(writeFunc) {
 
   if (!is(writeFunc, Function))

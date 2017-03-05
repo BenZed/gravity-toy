@@ -1,6 +1,6 @@
 import is from 'is-explicit'
 import { sqrt, min, floor, Vector } from 'math-plus'
-import { radiusFromMass, MASS_MIN } from '../helper'
+import { radiusFromMass, MASS_MIN } from '../util'
 
 /******************************************************************************/
 // Worker

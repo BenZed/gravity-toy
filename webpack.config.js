@@ -4,7 +4,7 @@ const
 
 const ExtractTextPlugin = require('extract-text-webpack-plugin')
 
-const PORT = 5000
+const PORT = 5620
 
 const PATHS = {
   build: path.join(__dirname, 'web'),
@@ -63,9 +63,9 @@ module.exports = {
   },
 
   externals: {
-    // 'react' : 'React',
-    // 'react-dom' : 'ReactDOM',
-    // 'mousetrap' : 'Mousetrap'
+    'react' : 'React',
+    'react-dom' : 'ReactDOM',
+    'mousetrap' : 'Mousetrap'
   },
 
   devServer: {
