@@ -15,8 +15,8 @@ const SIMULATION_DEFAULTS = {
 
   g: 1,
   physicsSteps: 4,
-  realBodiesMin: 150,
-  realMassThreshold: 100,
+  realBodiesMin: 100,
+  realMassThreshold: 250,
   maxCacheMemory: 320 // megabytes
 
 }
@@ -29,7 +29,7 @@ export default class Simulation {
       throw new TypeError('first argument, if defined, should be an Object.')
 
     const { g, physicsSteps, realMassThreshold, realBodiesMin,  maxCacheMemory }
-        = { ...SIMULATION_DEFAULTS, ...props }
+     = { ...SIMULATION_DEFAULTS, ...props }
 
     const cache = new Cache(maxCacheMemory)
     const integrator = new Integrator(cache.write)
@@ -49,8 +49,7 @@ export default class Simulation {
   stop = () => this[INTEGRATOR]('stop')
 
   get tick() {
-    //why clamp it? in case the cache was invalidated without the tick being
-    //reset
+    //why clamp it? in case the current tick value was invalidated
     return clamp(this[TICK_INDEX], 0, this.maxTick)
   }
 
@@ -75,12 +74,13 @@ export default class Simulation {
         body.parentId = data[i++]
 
       } else {
-        body.mass = NaN
+        body.mass =  NaN
         body.pos.x = NaN
         body.pos.y = NaN
         body.vel.x = NaN
         body.vel.y = NaN
         body.parentId = NO_PARENT
+
       }
 
     }

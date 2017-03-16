@@ -29,9 +29,48 @@ const send = isWebWorker
 /******************************************************************************/
 
 const DELTA = 1 / 25 //25 ticks represents 1 second
+const MATRIX_RESOLUTION = 5
 
 //state
 const bodies = { all: [], real: [], psuedo: [], destroyed: [] }
+
+const matrix =  {
+
+  place(body) {
+
+    const collidables = []
+
+    const inc = min(MATRIX_RESOLUTION, body.radius)
+    for (let x = body.pos.x - body.radius; x <= body.pos.x + body.radius; x += inc ) {
+      for (let y = body.pos.y - body.radius; y <= body.pos.y + body.radius; y += inc ) {
+
+        const key = `${floor(x / MATRIX_RESOLUTION)},${floor(y / MATRIX_RESOLUTION)}`
+        if (!this[key])
+          this[key] = []
+
+        if (!this[key].includes(body))
+          this[key].push(body)
+
+        if (!collidables.includes(this[key]))
+          collidables.push(this[key])
+      }
+    }
+
+    return collidables
+  },
+
+  clear() {
+    for (const i in this)
+      if (is(this[i], Array)) this[i].length = 0
+  },
+
+  prune() {
+    for (const i in this)
+      if (is(this[i], Array) && this[i].length === 0)
+        delete this[i]
+  }
+}
+
 let running = false, sendInc
 
 //config
@@ -167,7 +206,7 @@ class Body {
 
   buildCollider() {
 
-
+    this.collidables = matrix.place(this)
 
   }
 
@@ -184,7 +223,10 @@ class Body {
 
     let collisions = 0
 
-    if (this.mass > 0) for (const body of bodies.real) {
+    for (const cell of this.collidables) for (const body of cell) {
+
+      if (this.mass <= 0)
+        break
 
       if (this === body || body.mass <= 0)
         continue
@@ -204,19 +246,20 @@ class Body {
         collide(this, body)
       }
 
-      if (this.mass <= 0)
-        break
-
     }
 
     return collisions
+  }
+
+  calculatePsuedoMass() {
+    this.calculateForces(true)
   }
 
   //This loop inside this function is called a lot throughout
   //a single tick, so there are some manual inlining and optimizations
   //I've made. I dunno if they make any real difference in the
   //grand scheme of things, but it helps my OCD
-  calculateForces() {
+  calculateForces(psuedoMassOnly = false) {
 
     // Relative position vector between two bodies.
     // Declared outside of the while loop to save
@@ -224,8 +267,11 @@ class Body {
     const relative = Vector.zero
 
     // Reset forces
-    this.force.x = 0
-    this.force.y = 0
+    if (!psuedoMassOnly) {
+      this.force.x = 0
+      this.force.y = 0
+    }
+
     this.parent = null
 
     let parentPull = -Infinity
@@ -235,7 +281,7 @@ class Body {
       if (this === body)
         continue
 
-      //inlining bodythis.pos.sub(this.pos)
+      //inlining body.pos.sub(this.pos)
       relative.x = body.pos.x - this.pos.x
       relative.y = body.pos.y - this.pos.y
 
@@ -253,13 +299,12 @@ class Body {
         this.parent = body
       }
 
-      //inlining this.force.iadd(relative.mult(pull).div(dist))
-      this.force.x += relative.x * pull / dist
-      this.force.y += relative.y * pull / dist
+      if (!psuedoMassOnly)
+        this.force.iadd(relative.imult(pull).idiv(dist))
 
     }
 
-    if (!this.real)
+    if (!this.real && psuedoMassOnly)
       this.parent.psuedoMass += this.mass
 
   }
@@ -268,7 +313,7 @@ class Body {
 
     const { force, vel, pos } = this
 
-    force.imult(DELTA / physicsSteps)
+    force.imult(DELTA).idiv(physicsSteps)
 
     vel.iadd(vel.add(force)).imult(0.5)
     pos.iadd(vel)
@@ -346,6 +391,8 @@ function detectCollisions() {
   //collision handling
   let collisions = 0
 
+  matrix.clear()
+
   for (const body of bodies.all)
     body.buildCollider()
 
@@ -354,6 +401,8 @@ function detectCollisions() {
 
   if (collisions > 0)
     sortBodies()
+
+  matrix.prune()
 }
 
 function calculateForces() {
@@ -362,6 +411,9 @@ function calculateForces() {
     body.psuedoMass = 0
 
   //force handling
+  for (const body of bodies.psuedo)
+    body.calculatePsuedoMass()
+
   for (const body of bodies.psuedo)
     body.calculateForces()
 
@@ -391,6 +443,7 @@ function tick() {
   sendData()
 
   scheduleTick()
+
 }
 
 function scheduleTick() {

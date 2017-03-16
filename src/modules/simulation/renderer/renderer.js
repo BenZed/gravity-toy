@@ -72,6 +72,7 @@ export default class Renderer {
   }
 
   render() {
+
     this[CLEAR_CANVAS]()
     if (this.options.grid) this[RENDER_GRID]()
     this[RENDER_BODIES]()
