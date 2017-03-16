@@ -1,11 +1,13 @@
 .timeline {
   position: relative;
-  height: 0.7em;
+  height: 0.5em;
   width: 100%;
   background-color: #555;
   cursor: pointer;
   overflow: hidden;
   border-radius: 1em;
+
+  transition: opacity 500ms;
 }
 
 .timeline-cached {

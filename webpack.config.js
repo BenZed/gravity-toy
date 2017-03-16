@@ -63,9 +63,9 @@ module.exports = {
   },
 
   externals: {
-    'react' : 'React',
-    'react-dom' : 'ReactDOM',
-    'mousetrap' : 'Mousetrap'
+    // 'react' : 'React',
+    // 'react-dom' : 'ReactDOM',
+    // 'mousetrap' : 'Mousetrap'
   },
 
   devServer: {

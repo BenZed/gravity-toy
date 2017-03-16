@@ -29,22 +29,22 @@ const send = isWebWorker
 /******************************************************************************/
 
 const DELTA = 1 / 25 //25 ticks represents 1 second
-const MATRIX_RESOLUTION = 5
+const SPATIAL_HASHMAP_RESOLUTION = 5
 
 //state
 const bodies = { all: [], real: [], psuedo: [], destroyed: [] }
 
-const matrix =  {
+const spatial =  {
 
   place(body) {
 
     const collidables = []
 
-    const inc = min(MATRIX_RESOLUTION, body.radius)
+    const inc = min(SPATIAL_HASHMAP_RESOLUTION, body.radius)
     for (let x = body.pos.x - body.radius; x <= body.pos.x + body.radius; x += inc ) {
       for (let y = body.pos.y - body.radius; y <= body.pos.y + body.radius; y += inc ) {
 
-        const key = `${floor(x / MATRIX_RESOLUTION)},${floor(y / MATRIX_RESOLUTION)}`
+        const key = `${floor(x / SPATIAL_HASHMAP_RESOLUTION)},${floor(y / SPATIAL_HASHMAP_RESOLUTION)}`
         if (!this[key])
           this[key] = []
 
@@ -206,7 +206,7 @@ class Body {
 
   buildCollider() {
 
-    this.collidables = matrix.place(this)
+    this.collidables = spatial.place(this)
 
   }
 
@@ -391,7 +391,7 @@ function detectCollisions() {
   //collision handling
   let collisions = 0
 
-  matrix.clear()
+  spatial.clear()
 
   for (const body of bodies.all)
     body.buildCollider()
@@ -402,7 +402,7 @@ function detectCollisions() {
   if (collisions > 0)
     sortBodies()
 
-  matrix.prune()
+  spatial.prune()
 }
 
 function calculateForces() {

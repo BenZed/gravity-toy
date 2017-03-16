@@ -6,18 +6,14 @@ html {
 
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Arial Black', sans-serif;
-  -webkit-margin-before: 0em;
-  -webkit-margin-after: 0em;
+  margin: 0;
 }
 
 .padded {
   padding: $padding;
 }
 
-.left {
-  float: left;
-}
-
-.right {
-  float: right;
+.disabled {
+  pointer-events: none;
+  opacity: 0.5;
 }
