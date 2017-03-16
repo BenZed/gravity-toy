@@ -2,10 +2,6 @@ import is from 'is-explicit'
 import { sqrt, min, floor, Vector } from 'math-plus'
 import { radiusFromMass, MASS_MIN } from '../util'
 
-/******************************************************************************/
-// Worker
-/******************************************************************************/
-
 // This module doesn't need to export a class.
 // It will only ever be required by a newly instanced child process.
 // a web worker or a node fork. A child process will only ever require it
@@ -13,6 +9,10 @@ import { radiusFromMass, MASS_MIN } from '../util'
 
 // if someone wishes to run multiple simulations at once, they'll be invoking
 // multiple forks or workers, and everything will be dandy.
+
+/******************************************************************************/
+// Const & Config
+/******************************************************************************/
 
 const isWebWorker = typeof self === 'object'
 if (isWebWorker)
@@ -24,57 +24,113 @@ const send = isWebWorker
   ? self.postMessage.bind(self)
   : process.send.bind(process)
 
-/******************************************************************************/
-// Data
-/******************************************************************************/
-
 const DELTA = 1 / 25 //25 ticks represents 1 second
-const SPATIAL_HASHMAP_RESOLUTION = 5
 
-//state
-const bodies = { all: [], real: [], psuedo: [], destroyed: [] }
+let g,
+  physicsSteps,
+  realMassThreshold,
+  realBodiesMin
 
-const spatial =  {
+/******************************************************************************/
+// Helper
+/******************************************************************************/
+
+const byMass = (a,b) => a.mass > b.mass
+  ? -1 : a.mass < b.mass
+  ?  1 : 0
+
+const last = arr => arr[arr.length - 1]
+
+const isWholeNumber = num => isFinite(num) && floor(num) === num
+
+/******************************************************************************/
+// Runtime & State
+/******************************************************************************/
+
+const bodies = {
+
+  all: [],
+  real: [],
+  psuedo: [],
+  destroyed: [],
+
+  sort() {
+
+    const { all, real, psuedo, destroyed } = this
+
+    real.length = psuedo.length = 0
+    all.sort(byMass)
+
+    const minReal = min(realBodiesMin, all.length)
+
+    for (let i = 0; i < all.length; i++) {
+      const body = all[i]
+
+      body.real = i < minReal || body.mass > realMassThreshold
+
+      if (body.real)
+        real.push(body)
+      else
+        psuedo.push(body)
+
+    }
+
+    while (last(all).mass <= 0) {
+      const { id } = all.pop()
+      destroyed.push(id)
+    }
+
+  }
+
+}
+
+const spatial = {
+
+  RESOLUTION: 5,
+
+  hash: {},
 
   place(body) {
 
-    const collidables = []
+    body.cells.length = 0
 
-    const inc = min(SPATIAL_HASHMAP_RESOLUTION, body.radius)
+    const { hash } = this
+
+    const inc = min(this.RESOLUTION, body.radius)
     for (let x = body.pos.x - body.radius; x <= body.pos.x + body.radius; x += inc ) {
       for (let y = body.pos.y - body.radius; y <= body.pos.y + body.radius; y += inc ) {
 
-        const key = `${floor(x / SPATIAL_HASHMAP_RESOLUTION)},${floor(y / SPATIAL_HASHMAP_RESOLUTION)}`
-        if (!this[key])
-          this[key] = []
+        const key = `${floor(x / this.RESOLUTION)},${floor(y / this.RESOLUTION)}`
+        if (!hash[key])
+          hash[key] = []
 
-        if (!this[key].includes(body))
-          this[key].push(body)
+        if (!hash[key].includes(body))
+          hash[key].push(body)
 
-        if (!collidables.includes(this[key]))
-          collidables.push(this[key])
+        if (!body.cells.includes(hash[key]))
+          body.cells.push(hash[key])
       }
     }
 
-    return collidables
   },
 
   clear() {
-    for (const i in this)
-      if (is(this[i], Array)) this[i].length = 0
+    const { hash } = this
+
+    for (const i in hash)
+      hash[i].length = 0
   },
 
   prune() {
-    for (const i in this)
-      if (is(this[i], Array) && this[i].length === 0)
-        delete this[i]
+    const { hash } = this
+
+    for (const i in hash)
+      if (hash[i].length === 0)
+        delete hash[i]
   }
 }
 
 let running = false, sendInc
-
-//config
-let g, physicsSteps, realMassThreshold, realBodiesMin
 
 /******************************************************************************/
 // Messaging
@@ -136,7 +192,7 @@ const MESSAGES = {
 
     }
 
-    sortBodies()
+    bodies.sort()
   }
 }
 
@@ -194,6 +250,8 @@ class Body {
 
   force = Vector.zero
 
+  cells = []
+
   constructor(id, mass, x, y, vx, vy) {
 
     this.id = id
@@ -201,12 +259,6 @@ class Body {
     this.pos = new Vector(x,y)
     this.vel = new Vector(vx,vy)
     this.radius = radiusFromMass(mass)
-
-  }
-
-  buildCollider() {
-
-    this.collidables = spatial.place(this)
 
   }
 
@@ -223,7 +275,7 @@ class Body {
 
     let collisions = 0
 
-    for (const cell of this.collidables) for (const body of cell) {
+    for (const cell of this.cells) for (const body of cell) {
 
       if (this.mass <= 0)
         break
@@ -251,7 +303,7 @@ class Body {
     return collisions
   }
 
-  calculatePsuedoMass() {
+  calculateParentPsuedoMass() {
     this.calculateForces(true)
   }
 
@@ -322,7 +374,7 @@ class Body {
 }
 
 /******************************************************************************/
-// collide
+// Tick
 /******************************************************************************/
 
 function collide(...args) {
@@ -347,60 +399,20 @@ function collide(...args) {
 
 }
 
-/******************************************************************************/
-// Tick
-/******************************************************************************/
-
-const byMass = (a,b) => a.mass > b.mass
-  ? -1 : a.mass < b.mass
-  ?  1 : 0
-
-const last = arr => arr[arr.length - 1]
-
-const isWholeNumber = num => isFinite(num) && floor(num) === num
-
-function sortBodies() {
-
-  const { all, real, psuedo, destroyed } = bodies
-
-  real.length = psuedo.length = 0
-  all.sort(byMass)
-
-  const minReal = min(realBodiesMin, all.length)
-
-  for (let i = 0; i < all.length; i++) {
-    const body = all[i]
-
-    body.real = i < minReal || body.mass > realMassThreshold
-
-    if (body.real)
-      real.push(body)
-    else
-      psuedo.push(body)
-
-  }
-
-  while (last(all).mass <= 0) {
-    const { id } = all.pop()
-    destroyed.push(id)
-  }
-
-}
-
 function detectCollisions() {
-  //collision handling
   let collisions = 0
 
   spatial.clear()
 
+  //broad phase
   for (const body of bodies.all)
-    body.buildCollider()
+    spatial.place(body)
 
   for (const body of bodies.all)
     collisions += body.detectCollisions()
 
   if (collisions > 0)
-    sortBodies()
+    bodies.sort()
 
   spatial.prune()
 }
@@ -410,9 +422,8 @@ function calculateForces() {
   for (const body of bodies.all)
     body.psuedoMass = 0
 
-  //force handling
   for (const body of bodies.psuedo)
-    body.calculatePsuedoMass()
+    body.calculateParentPsuedoMass()
 
   for (const body of bodies.psuedo)
     body.calculateForces()
