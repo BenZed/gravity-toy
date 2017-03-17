@@ -5,20 +5,24 @@ import Define from 'define-utility'
 
 const FOCUS_BODY = Symbol('focus-body')
 export const CURRENT = Symbol('current')
-const TARGET = Symbol('current')
 const VELOCITY = Symbol('velocity')
+const MIN_ZOOM = Symbol('min-zoom')
+const MAX_ZOOM = Symbol('max-zoom')
 
 const CAMERA_LERP_FACTOR = 5
 
+
 export default class Camera {
 
-  constructor(canvas) {
+  constructor(canvas, min, max) {
 
     Define(this)
       .const('canvas', canvas)
-      .const(TARGET, new CameraCoords)
+      .const('target', new CameraCoords)
       .const(CURRENT, new CameraCoords)
       .const(VELOCITY, new Vector)
+      .const(MIN_ZOOM, min)
+      .const(MAX_ZOOM, max)
       .let(FOCUS_BODY, null)
 
   }
@@ -29,10 +33,10 @@ export default class Camera {
 
   set focusBody(body) {
     if (this[FOCUS_BODY])
-      this[TARGET].pos.iadd(this[FOCUS_BODY].pos)
+      this.target.pos.iadd(this[FOCUS_BODY].pos)
 
     if (body)
-      this[TARGET].pos.isub(body.pos)
+      this.target.pos.isub(body.pos)
 
     this[FOCUS_BODY] = body
   }
@@ -56,7 +60,16 @@ export default class Camera {
       .iadd(this[CURRENT].pos)
   }
 
-  update = (deltaTime, draw) => {
+  update = () => {
+
+    const delta = 1 / 25 * CAMERA_LERP_FACTOR
+
+    const current = this[CURRENT], target = this.target
+
+    target.scale = clamp(target.scale, this[MIN_ZOOM], this[MAX_ZOOM])
+
+    current.scale = lerp(current.scale, target.scale, delta)
+    current.pos.ilerp(target.pos, delta)
 
     // const focusBodyStats = this.focusBody ? this.focusBody.statsAtTick(draw.tick) : null
     // const oldPos = this[_current].pos.copy()

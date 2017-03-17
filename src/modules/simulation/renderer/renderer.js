@@ -60,7 +60,7 @@ export default class Renderer {
 
     this.options = { ...options, ...RENDERER_DEFAULTS}
 
-    const camera = new Camera(canvas)
+    const camera = new Camera(canvas, this.options.minZoom, this.options.maxZoom)
 
     Define(this)
       .const.enum('canvas', canvas)
@@ -91,7 +91,7 @@ export default class Renderer {
 
     //draw a grid
     const current = this.camera[CURRENT]
-    const opacity = lerp(0.0, 0.125, current.scale ** 0.5 / this.options.maxZoom ** 0.5)
+    const opacity = lerp(0, 0.25, current.scale ** 0.25 / this.options.maxZoom ** 0.25 )
 
     this.context.lineWidth = this.options.gridWidth
     this.context.strokeStyle = `rgba(${color[0]},${color[1]},${color[2]},${opacity})`

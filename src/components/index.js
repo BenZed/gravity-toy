@@ -1,10 +1,11 @@
 import React from 'react'
 import { Simulation, Renderer } from '../modules'
-import { Vector, clamp, random } from 'math-plus'
-import Mousetrap from 'mousetrap'
+import { Vector, clamp, min, sign,  random } from 'math-plus'
+// import Mousetrap from 'mousetrap'
 import Timeline from './Timeline'
 import Buttons from './Buttons'
 
+import { CreateBody } from '../modules/mouse-actions'
 
 export default class SimulationUI extends React.Component {
 
@@ -13,9 +14,15 @@ export default class SimulationUI extends React.Component {
     alt: false,
     shift: false,
 
-    down: false,
+    mouse: {
+      down: false,
+      origin: Vector.zero,
+      end: Vector.zero
+    },
 
-    action: 'body'
+    action: null,
+
+    speed: 1
 
   }
 
@@ -24,44 +31,136 @@ export default class SimulationUI extends React.Component {
     this.simulation = new Simulation({ physicsSteps: 1, g: 0.1})
     this.renderer = new Renderer(this.simulation, this.canvas)
 
-    onresize = this.onWindowResize
+    this.actions = {
+      body: new CreateBody(this)
+    }
+
+    onresize = this.resize
     onresize()
 
-    Mousetrap.bind('alt', () => this.setState({ alt: true }), 'keydown')
-    Mousetrap.bind('alt', () => this.setState({ alt: false }), 'keyup')
+    onkeydown = this.keyDown //eslint-disable-line
+    onkeyup = this.keyUp //eslint-disable-line
 
-    Mousetrap.bind('shift', () => this.setState({ shift: true }), 'keydown')
-    Mousetrap.bind('shift', () => this.setState({ shift: false }), 'keyup')
-
-    Mousetrap.bind('tab', e => e.preventDefault() || console.log('tab'), 'keydown')
+    this.interval = setInterval(this.update, 1000 / 40)
+    this.simulation.start()
+    this.setAction('body')
 
   }
 
-  onWindowResize = () => {
+  toWorld = vec => this.renderer.camera.toWorld(vec)
+
+  update = () => {
+
+    const { mouse, speed } = this.state
+
+    this.simulation.tick = clamp(this.simulation.tick + speed, 0, this.simulation.maxTick)
+    this.renderer.camera.update()
+    this.renderer.render()
+
+    if (this.action && mouse.down)
+      this.action.hold()
+  }
+
+  setAction = action => {
+
+    if (!this.actions[action])
+      throw new Error(`${action} is not a valid action.`)
+
+    this.action = this.actions[action]
+
+    this.setState({ action })
+
+  }
+  //Events
+
+  resize = () => {
     this.canvas.width = innerWidth
     this.canvas.height = innerHeight
   }
 
-  setAction = action => this.setState({ action })
-
   down = e => {
-    this.setState({ down: true })
-    console.log('down for action ' + this.state.action)
+    const { mouse } = this.state
+    mouse.origin.x = mouse.end.x = e.clientX
+    mouse.origin.y = mouse.end.y = e.clientY
+    mouse.down = true
+
+    if (this.action)
+      this.action.down()
+
+    this.setState({ mouse })
   }
 
   move = e => {
-    if (!this.state.down)
+    const { mouse } = this.state
+    if (!mouse.down)
       return
 
-    console.log('move for action ' + this.state.action)
+    mouse.end.x = e.clientX
+    mouse.end.y = e.clientY
+
+    this.setState({ mouse })
   }
 
   up = e => {
-    if (!this.state.down)
-      return
+    const { mouse } = this.state
 
-    this.setState({ down: false })
-    console.log('up for action ' + this.state.action)
+    mouse.end.x = e.clientX
+    mouse.end.y = e.clientY
+    mouse.down = false
+
+    if (this.action)
+      this.action.up()
+
+    this.setState({ mouse })
+  }
+
+  touchLook = e => {
+
+    e.stopPropagation()
+    e.preventDefault()
+
+    const delta = new Vector(e.deltaX, e.deltaY)
+
+    const { shift } = this.state
+    const { target } = this.renderer.camera
+
+    if (shift) {
+
+      const scale = min(target.scale, 50)
+      const speed = scale * 0.001
+
+      target.scale += delta.magnitude * speed * sign(delta.y)
+
+    } else {
+
+      const speed = target.scale * 0.2
+      delta.imult(speed)
+
+      target.pos.iadd(delta)
+
+    }
+
+  }
+
+  keyDown = e => {
+
+    if (e.code === 'ShiftLeft')
+      this.setState({ shift: true })
+    else if (e.code === 'AltLeft')
+      this.setState({ alt: true })
+
+  }
+
+  keyUp = e =>  {
+
+    if (e.code === 'ShiftLeft')
+      this.setState({ shift: false })
+    else if (e.code === 'AltLeft')
+      this.setState({ alt: false })
+    else if (e.code === 'Tab') {
+      e.preventDefault()
+      console.log('tab')
+    }
   }
 
   render() {
@@ -78,6 +177,7 @@ export default class SimulationUI extends React.Component {
         onMouseUp={this.up}
         onMouseMove={this.move}
         onMouseLeave={this.up}
+        onWheel={this.touchLook}
       />
     </div>
 
