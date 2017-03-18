@@ -102,8 +102,6 @@ export default class Create extends MouseAction {
     else
       console.log('create a system')
 
-    this.radius = min(this.radius, radiusFromMass(MAX_SINGLE_BODY_MASS - 1))
-
     this.ui.setState({ speed: this.speed })
 
   }
