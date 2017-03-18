@@ -4,19 +4,21 @@ export default class MouseAction {
     this.ui = ui
   }
 
-  get local() {
-    const { origin, end } = this.ui.state.mouse
+  cancelled = false
 
-    return { origin, end }
+  get local() {
+    const { start, end } = this.ui.state.mouse
+
+    return { start, end }
   }
 
   get global() {
     const { renderer, state } = this.ui
 
-    const { origin, end } = state.mouse
+    const { start, end } = state.mouse
 
     return {
-      origin: renderer.camera.canvasToWorld(origin),
+      start: renderer.camera.canvasToWorld(start),
       end: renderer.camera.canvasToWorld(end)
     }
   }
@@ -38,5 +40,9 @@ export default class MouseAction {
   up() { }
 
   hold() { }
+
+  hover() { }
+
+  cancel() { }
 
 }

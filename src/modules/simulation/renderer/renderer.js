@@ -73,6 +73,7 @@ export default class Renderer {
 
   render() {
 
+    this.camera.update()
     this[CLEAR_CANVAS]()
     if (this.options.grid) this[RENDER_GRID]()
     this[RENDER_BODIES]()
@@ -94,6 +95,7 @@ export default class Renderer {
     const opacity = lerp(0, 0.25, current.scale ** 0.25 / this.options.maxZoom ** 0.25 )
 
     this.context.lineWidth = this.options.gridWidth
+    this.context.setLineDash([])
     this.context.strokeStyle = `rgba(${color[0]},${color[1]},${color[2]},${opacity})`
 
     const xLineDelta = this.canvas.width / current.scale

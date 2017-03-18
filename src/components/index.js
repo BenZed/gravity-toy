@@ -5,7 +5,7 @@ import { Vector, clamp, min, sign,  random } from 'math-plus'
 import Timeline from './Timeline'
 import Buttons from './Buttons'
 
-import { CreateBody } from '../modules/mouse-actions'
+import { Create } from '../modules/mouse-actions'
 
 export default class SimulationUI extends React.Component {
 
@@ -16,7 +16,7 @@ export default class SimulationUI extends React.Component {
 
     mouse: {
       down: false,
-      origin: Vector.zero,
+      start: Vector.zero,
       end: Vector.zero
     },
 
@@ -32,7 +32,7 @@ export default class SimulationUI extends React.Component {
     this.renderer = new Renderer(this.simulation, this.canvas)
 
     this.actions = {
-      body: new CreateBody(this)
+      create: new Create(this)
     }
 
     onresize = this.resize
@@ -43,7 +43,7 @@ export default class SimulationUI extends React.Component {
 
     this.interval = setInterval(this.update, 1000 / 40)
     this.simulation.start()
-    this.setAction('body')
+    this.setAction('create')
 
   }
 
@@ -54,11 +54,15 @@ export default class SimulationUI extends React.Component {
     const { mouse, speed } = this.state
 
     this.simulation.tick = clamp(this.simulation.tick + speed, 0, this.simulation.maxTick)
-    this.renderer.camera.update()
     this.renderer.render()
 
-    if (this.action && mouse.down)
+    if (!this.action)
+      return
+
+    if (mouse.down && !this.action.cancelled)
       this.action.hold()
+    else
+      this.action.hover()
   }
 
   setAction = action => {
@@ -71,6 +75,14 @@ export default class SimulationUI extends React.Component {
     this.setState({ action })
 
   }
+
+  cancelAction = () => {
+    if (!this.action)
+      return
+
+    this.action.cancelled = true
+    this.action.cancel()
+  }
   //Events
 
   resize = () => {
@@ -78,19 +90,21 @@ export default class SimulationUI extends React.Component {
     this.canvas.height = innerHeight
   }
 
-  down = e => {
+  mouseDown = e => {
     const { mouse } = this.state
-    mouse.origin.x = mouse.end.x = e.clientX
-    mouse.origin.y = mouse.end.y = e.clientY
+    mouse.start.x = mouse.end.x = e.clientX
+    mouse.start.y = mouse.end.y = e.clientY
     mouse.down = true
 
-    if (this.action)
+    if (this.action) {
+      this.action.cancelled = false
       this.action.down()
+    }
 
     this.setState({ mouse })
   }
 
-  move = e => {
+  mouseMove = e => {
     const { mouse } = this.state
     if (!mouse.down)
       return
@@ -101,17 +115,40 @@ export default class SimulationUI extends React.Component {
     this.setState({ mouse })
   }
 
-  up = e => {
+  mouseUp = e => {
     const { mouse } = this.state
 
     mouse.end.x = e.clientX
     mouse.end.y = e.clientY
     mouse.down = false
 
-    if (this.action)
+    if (this.action && !this.action.cancelled)
       this.action.up()
 
     this.setState({ mouse })
+  }
+
+  keyDown = e => {
+
+    if (e.code === 'ShiftLeft')
+      this.setState({ shift: true })
+    else if (e.code === 'AltLeft')
+      this.setState({ alt: true })
+
+  }
+
+  keyUp = e =>  {
+
+    if (e.code === 'ShiftLeft')
+      this.setState({ shift: false })
+    else if (e.code === 'AltLeft')
+      this.setState({ alt: false })
+    else if (e.code === 'Tab') {
+      e.preventDefault()
+      console.log('tab')
+    }
+    else if (e.code === 'Escape')
+      this.cancelAction()
   }
 
   touchLook = e => {
@@ -142,27 +179,6 @@ export default class SimulationUI extends React.Component {
 
   }
 
-  keyDown = e => {
-
-    if (e.code === 'ShiftLeft')
-      this.setState({ shift: true })
-    else if (e.code === 'AltLeft')
-      this.setState({ alt: true })
-
-  }
-
-  keyUp = e =>  {
-
-    if (e.code === 'ShiftLeft')
-      this.setState({ shift: false })
-    else if (e.code === 'AltLeft')
-      this.setState({ alt: false })
-    else if (e.code === 'Tab') {
-      e.preventDefault()
-      console.log('tab')
-    }
-  }
-
   render() {
 
     const { alt, shift, action, down } = this.state
@@ -173,10 +189,10 @@ export default class SimulationUI extends React.Component {
       <Timeline disabled={down} {...keys} />
       <Buttons disabled={down} action={action} setAction={this.setAction} {...keys} />
       <canvas ref={ref => this.canvas = ref}
-        onMouseDown={this.down}
-        onMouseUp={this.up}
-        onMouseMove={this.move}
-        onMouseLeave={this.up}
+        onMouseDown={this.mouseDown}
+        onMouseUp={this.mouseUp}
+        onMouseMove={this.mouseMove}
+        onMouseLeave={this.cancelAction}
         onWheel={this.touchLook}
       />
     </div>

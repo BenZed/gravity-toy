@@ -1,3 +1,3 @@
-import CreateBody from './create-body'
+import Create from './create'
 
-export { CreateBody }
+export { Create }
