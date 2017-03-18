@@ -15,7 +15,7 @@ function textFromRadius(radius) {
     ? 'asteroid'
     : mass < 10000
     ? 'planetoid'
-    : mass < 40000
+    : mass < 70000
     ? 'planet'
     : mass < MAX_SINGLE_BODY_MASS
     ? 'star'
@@ -58,7 +58,6 @@ function createNebulae(sim, pos, radius, mass) {
   sim.createBodies(props)
 
 }
-
 
 export default class Create extends MouseAction {
 

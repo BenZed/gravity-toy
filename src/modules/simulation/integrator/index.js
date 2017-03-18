@@ -48,6 +48,11 @@ export default function Integrator(writeFunc) {
 
   return (name, data = []) => {
 
+    if (name === 'close') if (isBrowser)
+      worker.terminate()
+    else
+      worker.kill()
+
     if (!is(name, String))
       throw new Error('event argument must be a string.')
 
