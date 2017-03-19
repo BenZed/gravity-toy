@@ -34,7 +34,7 @@ const createWorker = isBrowser
 
 export const INTEGRATOR = Symbol('integrator')
 
-export default function Integrator(writeFunc) {
+export default function Integrator(writeFunc, ...init) {
 
   if (!is(writeFunc, Function))
     throw new Error('Integrator requires a function as an argument.')
@@ -46,7 +46,7 @@ export default function Integrator(writeFunc) {
   else
     worker.on('message', writeFunc)
 
-  return (name, data = []) => {
+  const integrator = (name, data = []) => {
 
     if (name === 'close') if (isBrowser)
       worker.terminate()
@@ -65,5 +65,9 @@ export default function Integrator(writeFunc) {
       worker.send({ name, data })
 
   }
+
+  integrator('initialize', [...init])
+
+  return integrator
 
 }

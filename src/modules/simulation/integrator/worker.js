@@ -59,6 +59,10 @@ const bodies = {
     const { all, real, psuedo, destroyed } = this
 
     real.length = psuedo.length = 0
+
+    if (all.length === 0)
+      return
+
     all.sort(byMass)
 
     const minReal = min(realBodiesMin, all.length)

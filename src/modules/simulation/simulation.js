@@ -32,15 +32,23 @@ export default class Simulation {
      = { ...SIMULATION_DEFAULTS, ...props }
 
     const cache = new Cache(maxCacheMemory)
-    const integrator = new Integrator(cache.write)
 
     Define(this)
       .const.enum('g', g)
       .const(CACHE, cache)
-      .const(INTEGRATOR, integrator)
       .let(TICK_INDEX, 0)
+      .let(INTEGRATOR, null)
 
-    this[INTEGRATOR]('initialize', [ g, physicsSteps, realMassThreshold, realBodiesMin ])
+    this.testSetBodies = bodies => {
+
+      if (this[INTEGRATOR])
+        this[INTEGRATOR]('close')
+
+      this[INTEGRATOR] = new Integrator(cache.write, g, physicsSteps, realMassThreshold, realBodiesMin)
+      this[INTEGRATOR]('set-bodies', bodies)
+    }
+
+    this.testSetBodies([])
 
   }
 
@@ -123,7 +131,9 @@ export default class Simulation {
     }
 
     cache.invalidateAfter(tick)
-    this[INTEGRATOR]('set-bodies', cache.read(tick))
+    this.testSetBodies(cache.read(tick))
+    this.start()
+    // this[INTEGRATOR]('set-bodies', cache.read(tick))
 
     return created
 
