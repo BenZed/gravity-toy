@@ -43,7 +43,7 @@ function createNebulae(sim, pos, radius, mass) {
 
   while (mass > 0) {
 
-    const rMass = random(MASS_MIN, 150, 0.125)
+    const rMass = random(MASS_MIN, 100, 0.125)
     mass -= rMass
     props.push({
       mass: rMass,
@@ -97,7 +97,7 @@ export default class Create extends MouseAction {
     else if (radius < MAX_DISC_RADIUS)
       console.log('create a protodisc')
     else if (radius < MAX_NEBULAE_RADIUS)
-      createNebulae(this.ui.simulation, pos, radius, cbrt(mass) * 10)
+      createNebulae(this.ui.simulation, pos, radius, cbrt(mass) * 15)
     else
       console.log('create a system')
 
