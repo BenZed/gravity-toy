@@ -92,7 +92,7 @@ export default class Renderer {
 
     //draw a grid
     const current = this.camera[CURRENT]
-    const opacity = lerp(0, 0.25, current.scale ** 0.25 / this.options.maxZoom ** 0.25 )
+    const opacity = lerp(0.25, 0.125, current.scale ** 0.25 / this.options.maxZoom ** 0.25 )
 
     this.context.lineWidth = this.options.gridWidth
     this.context.setLineDash([])

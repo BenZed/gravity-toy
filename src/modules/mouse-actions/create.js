@@ -48,12 +48,10 @@ function createNebulae(sim, pos, radius, mass) {
     props.push({
       mass: rMass,
       pos: pos.add(randomVector(radius)),
-      vel: randomVector(0.5)
+      vel: Vector.zero
     })
 
   }
-
-  console.log(props.length)
 
   sim.createBodies(props)
 

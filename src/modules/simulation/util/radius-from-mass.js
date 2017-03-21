@@ -4,7 +4,7 @@ import { MASS_MIN } from '../body'
 
 const RADIUS_MIN = 0.5 //pixels
 
-const RADIUS_FACTOR = 0.2
+const RADIUS_FACTOR = 0.5
 
 export default function radiusFromMass(...args) {
 

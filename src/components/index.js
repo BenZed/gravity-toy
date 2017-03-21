@@ -28,7 +28,7 @@ export default class SimulationUI extends React.Component {
 
   componentDidMount() {
 
-    this.simulation = new Simulation({ physicsSteps: 1, g: 0.1})
+    this.simulation = new Simulation({ physicsSteps: 1 })
     this.renderer = new Renderer(this.simulation, this.canvas)
 
     this.actions = {
@@ -164,7 +164,7 @@ export default class SimulationUI extends React.Component {
     if (shift) {
 
       const scale = min(target.scale, 50)
-      const speed = scale * 0.001
+      const speed = scale * 0.0001
 
       target.scale += delta.magnitude * speed * sign(delta.y)
 
