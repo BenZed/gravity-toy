@@ -5,7 +5,7 @@ import is from 'is-explicit'
 import { clamp } from 'math-plus'
 
 import Body, { NO_PARENT } from './body'
-import Cache, { CACHE, TICK_INDEX } from './cache'
+import Cache, { CACHE, TICK_INDEX, TICK_END } from './cache'
 
 /******************************************************************************/
 // Main Simulation Class
@@ -96,6 +96,13 @@ export default class Simulation {
 
       let i = body[TICK_INDEX](tick)
       const bodyCache = body[CACHE]
+
+      if (body.mass <= 0) {
+        body[TICK_END] = tick
+        bodyCache[i] = NaN
+        continue
+      }
+
       bodyCache[i++] = body.mass
       bodyCache[i++] = body.pos.x
       bodyCache[i++] = body.pos.y
