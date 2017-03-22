@@ -4,8 +4,9 @@ import { Vector, abs, max, min, sqrt, round, cbrt, random } from 'math-plus'
 import { MASS_MIN } from '../simulation/body'
 
 const MAX_SINGLE_BODY_MASS =    2000000
-const MAX_DISC_RADIUS =            500
-const MAX_NEBULAE_RADIUS =         5000
+const MAX_SINGLE_BODY_RADIUS = radiusFromMass(MAX_SINGLE_BODY_MASS)
+const MAX_DISC_RADIUS =            1500
+const MAX_NEBULAE_RADIUS =         8000
 
 function textFromRadius(radius) {
   const mass = massFromRadius(radius)
@@ -43,12 +44,21 @@ function createNebulae(sim, pos, vel, radius, mass) {
 
   while (mass > 0) {
 
-    const rMass = random(MASS_MIN, 100, 0.125)
+    let rMass = random(MASS_MIN, 100, 0.125)
+
+    if (random() > 0.80)
+      rMass += random(MASS_MIN, 10000, 0.125)
+
+    if (random() > 0.99)
+      rMass += random(MASS_MIN, 70000, 0.125)
+
+    rMass = min(mass, rMass)
+
     mass -= rMass
     props.push({
       mass: rMass,
       pos: pos.add(randomVector(radius)),
-      vel: vel
+      vel: vel.add(randomVector(3))
     })
 
   }
@@ -99,18 +109,29 @@ export default class Create extends MouseAction {
 
     const pos = this.global.start
     const radius = this.validatedRadius
-    const mass = max(MASS_MIN, massFromRadius(radius))
 
     const vel = this.validatedVel
 
-    if (mass < MAX_SINGLE_BODY_MASS)
+
+
+    if (radius <= MAX_SINGLE_BODY_RADIUS) {
+
+      const mass = max(MASS_MIN, massFromRadius(radius))
       this.ui.simulation.createBody({ mass, pos, vel })
-    // else if (radius < MAX_DISC_RADIUS)
-    //   console.log('create a protodisc')
-    // else if (radius < MAX_NEBULAE_RADIUS)
-    //   createNebulae(this.ui.simulation, pos, radius, cbrt(mass) * 15)
-    else
-      createNebulae(this.ui.simulation, pos, vel, radius, cbrt(mass) * 15)
+
+    } else {
+
+      const leftOverRadius = radius - MAX_SINGLE_BODY_RADIUS
+      const adjustedMass = cbrt(massFromRadius(leftOverRadius)) + MAX_SINGLE_BODY_MASS
+
+      if (radius < MAX_DISC_RADIUS)
+        console.log('create a protodisc')
+      else if (radius < MAX_NEBULAE_RADIUS)
+        createNebulae(this.ui.simulation, pos, vel, radius, adjustedMass)
+      else
+        console.log('create a system')
+
+    }
 
     this.ui.setState({ speed: this.speed })
 
