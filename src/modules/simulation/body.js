@@ -51,7 +51,7 @@ export default class Body {
   }
 
   get exists() {
-    return isFinite(this.mass) && this.mass > 0
+    return is(this.mass, Number)
   }
 
   read(tick) {
@@ -63,7 +63,7 @@ export default class Body {
 
     //if we've gotten here, the requested tick has not been cached for this body,
     //the request tick is in an invalid range or it is not a number
-    if (mass === undefined)
+    if (!is(mass, Number))
       return null
 
     const x = cache[i++]

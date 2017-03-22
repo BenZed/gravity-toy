@@ -85,13 +85,15 @@ export default function Cache(maxMemory) {
     .const('read', tick => {
 
       const output = []
+      //TODO need to find an elegant way of getting the body to apply its current values
+      //to the cache if they've changed
+      const current = tick === this.tick
 
       //the only enumerable properties of
       //a cache object will be bodies
-
       for (const id in this) {
         const body = this[id]
-        const data = body.read(tick, true)
+        const data = body.read(tick)
         if (!data)
           continue
 

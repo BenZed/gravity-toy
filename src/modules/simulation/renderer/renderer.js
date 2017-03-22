@@ -131,8 +131,8 @@ export default class Renderer {
 
       const { radius, pos, mass } = body
 
-      const visualRadius = radius / current.scale
-      const visualPos = camera.worldToCanvas(pos)
+      const vRadius = radius / current.scale
+      const vPos = camera.worldToCanvas(pos)
 
       this.context.fillStyle = colorOfMass(mass)
 
@@ -140,9 +140,9 @@ export default class Renderer {
 
       //ellipse is draw with minum radii so we can still see bodies if they're too
       //small or if we're zoomed too far out
-      this.context.ellipse(visualPos.x, visualPos.y,
-        max(visualRadius, MIN_DRAW_RADIUS),
-        max(visualRadius, MIN_DRAW_RADIUS),
+      this.context.ellipse(vPos.x, vPos.y,
+        max(vRadius, MIN_DRAW_RADIUS),
+        max(vRadius, MIN_DRAW_RADIUS),
         0, 0, 2 * PI)
 
       this.context.closePath()

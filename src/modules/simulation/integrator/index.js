@@ -7,65 +7,68 @@ import path from 'path'
 
 const isBrowser = typeof window === 'object'
 
-const createWorker = isBrowser
+const Worker = isBrowser
 
   ? do {
-    const IntegrationWorker = require('worker-loader!./worker.js');
+    const IntegrationWorker = require('worker-loader!./worker.js')
 
-    () => {
+    write => {
+
       if (typeof Worker !== 'function')
         throw new Error('WebWorker not supported on this Browser.')
 
-      return new IntegrationWorker()
+      const worker = new IntegrationWorker()
+      worker.onmessage = msg => write(msg.data)
+      worker.end = worker.terminate.bind(worker)
+      worker.start = worker.postMessage.bind(worker)
+
+      return worker
     }
   }
 
   : do {
+
     const { fork } = require('child_process')
     const FORK_PATH = path.resolve(__dirname, 'worker.js')
-    const FORK_MEMORY = { execArgv: ['--max-old-space-size=128'] };
+    const FORK_MEMORY = { execArgv: ['--max-old-space-size=128'] }
 
-    () => fork(FORK_PATH, FORK_MEMORY)
+    write => {
+      const child = fork(FORK_PATH, FORK_MEMORY)
+
+      child.on('message', write)
+      child.close = child.kill.bind(child)
+      child.open = child.send.bind(child)
+
+      return child
+    }
   }
 
 /******************************************************************************/
 // Exports
 /******************************************************************************/
 
-export default function Integrator(writeFunc, ...init) {
+export default function Integrator(write, init) {
 
-  if (!is(writeFunc, Function))
+  if (!is(write, Function))
     throw new Error('Integrator requires a function as an argument.')
 
-  const worker = createWorker()
+  let worker = null
 
-  if (isBrowser)
-    worker.onmessage = msg => writeFunc(msg.data)
-  else
-    worker.on('message', writeFunc)
+  return bodies => {
 
-  const integrator = (name, data = []) => {
+    if (!is(bodies, Array))
+      throw new Error('bodies argument must be an array.')
 
-    if (name === 'close') if (isBrowser)
-      worker.terminate()
-    else
-      worker.kill()
+    if (worker)
+      worker.end()
 
-    if (!is(name, String))
-      throw new Error('event argument must be a string.')
+    if (bodies.length === 0)
+      return
 
-    if (!is(data, Array))
-      throw new Error('data argument must be an array.')
+    worker = new Worker(write)
 
-    if (isBrowser)
-      worker.postMessage([name, data])
-    else
-      worker.send({ name, data })
+    worker.start({ init, bodies })
 
   }
-
-  integrator('initialize', [...init])
-
-  return integrator
 
 }

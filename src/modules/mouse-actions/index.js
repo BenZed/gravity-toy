@@ -1,3 +1,4 @@
 import Create from './create'
+import Destroy from './destroy'
 
-export { Create }
+export { Create, Destroy }

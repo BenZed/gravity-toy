@@ -1,5 +1,5 @@
 import Define from 'define-utility'
-import Integrator, { INTEGRATOR } from './integrator'
+import Integrator from './integrator'
 
 import is from 'is-explicit'
 import { clamp } from 'math-plus'
@@ -21,6 +21,8 @@ const SIMULATION_DEFAULTS = {
 
 }
 
+const INTEGRATOR = Symbol('integrator')
+
 export default class Simulation {
 
   constructor(props = {}) {
@@ -32,29 +34,15 @@ export default class Simulation {
      = { ...SIMULATION_DEFAULTS, ...props }
 
     const cache = new Cache(maxCacheMemory)
+    const integrator = new Integrator(cache.write, { g, physicsSteps, realMassThreshold, realBodiesMin })
 
     Define(this)
       .const.enum('g', g)
       .const(CACHE, cache)
       .let(TICK_INDEX, 0)
-      .let(INTEGRATOR, null)
-
-    this.testSetBodies = bodies => {
-
-      if (this[INTEGRATOR])
-        this[INTEGRATOR]('close')
-
-      this[INTEGRATOR] = new Integrator(cache.write, g, physicsSteps, realMassThreshold, realBodiesMin)
-      this[INTEGRATOR]('set-bodies', bodies)
-    }
-
-    this.testSetBodies([])
+      .const(INTEGRATOR, integrator)
 
   }
-
-  start = () => this[INTEGRATOR]('start')
-
-  stop = () => this[INTEGRATOR]('stop')
 
   get tick() {
     //why clamp it? in case the current tick value was invalidated
@@ -81,15 +69,8 @@ export default class Simulation {
         body.vel.y = data[i++]
         body.parentId = data[i++]
 
-      } else {
-        body.mass =  NaN
-        body.pos.x = NaN
-        body.pos.y = NaN
-        body.vel.x = NaN
-        body.vel.y = NaN
-        body.parentId = NO_PARENT
-
-      }
+      } else
+        body.mass = NaN
 
     }
 
@@ -105,7 +86,28 @@ export default class Simulation {
     if (tick < 0 || tick > this.maxTick)
       throw new Error('tick out of range')
 
-    throw new Error('not yet implemented')
+    const cache = this[CACHE]
+
+    //apply any altered values on any existing to their latest cache
+    if (tick === this.tick) for (const id in cache) {
+      const body = cache[id]
+      if (!body.exists)
+        continue
+
+      let i = body[TICK_INDEX](tick)
+      const bodyCache = body[CACHE]
+      bodyCache[i++] = body.mass
+      bodyCache[i++] = body.pos.x
+      bodyCache[i++] = body.pos.y
+      bodyCache[i++] = body.vel.x
+      bodyCache[i++] = body.vel.y
+
+    }
+
+    const data = cache.read(tick)
+    cache.invalidateAfter(tick)
+
+    this[INTEGRATOR](data)
 
   }
 
@@ -130,10 +132,7 @@ export default class Simulation {
       created.push(body)
     }
 
-    cache.invalidateAfter(tick)
-    this.testSetBodies(cache.read(tick))
-    this.start()
-    // this[INTEGRATOR]('set-bodies', cache.read(tick))
+    this.applyBodies(tick)
 
     return created
 

@@ -4,7 +4,8 @@ const
 
 const ExtractTextPlugin = require('extract-text-webpack-plugin')
 
-const PORT = 5620
+const PORT = 6500
+const host = '0.0.0.0'
 
 const PATHS = {
   build: path.join(__dirname, 'web'),
@@ -14,7 +15,7 @@ const PATHS = {
 module.exports = {
 
   entry: [
-    'webpack-dev-server/client?http://0.0.0.0:' + PORT,
+    `webpack-dev-server/client?http://${host}:${PORT}`,
     PATHS.src,
   ],
 
@@ -37,10 +38,6 @@ module.exports = {
         test: /\.s?css$/,
         loaders: ['style', 'css', 'sass']
       },
-      // { test: /\.(woff|woff2)(\?v=\d+\.\d+\.\d+)?$/,  loader: 'url?limit=10000&mimetype=application/font-woff'},
-      // { test: /\.ttf(\?v=\d+\.\d+\.\d+)?$/,           loader: 'url?limit=10000&mimetype=application/octet-stream'},
-      // { test: /\.eot(\?v=\d+\.\d+\.\d+)?$/,           loader: 'file'},
-      // { test: /\.svg(\?v=\d+\.\d+\.\d+)?$/,           loader: 'url?limit=10000&mimetype=image/svg+xml'},
 
       {
         test: /\.jsx?$/,
@@ -54,7 +51,6 @@ module.exports = {
         include: PATHS.src
       },
 
-
       {
         test: /\.html$/,
         loader: 'html'
@@ -64,13 +60,13 @@ module.exports = {
 
   externals: {
     'react' : 'React',
-    'react-dom' : 'ReactDOM',
-    // 'mousetrap' : 'Mousetrap'
+    'react-dom' : 'ReactDOM'
   },
 
   devServer: {
     contentBase: PATHS.src,
-    port: PORT
+    port: PORT,
+    host
   },
 
   plugins: [

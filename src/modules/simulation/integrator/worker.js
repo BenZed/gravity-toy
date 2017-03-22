@@ -1,4 +1,3 @@
-import is from 'is-explicit'
 import { sqrt, min, floor, Vector } from 'math-plus'
 import { radiusFromMass, MASS_MIN } from '../util'
 
@@ -14,17 +13,17 @@ import { radiusFromMass, MASS_MIN } from '../util'
 // Const & Config
 /******************************************************************************/
 
+const DELTA = 1 / 60 //60 ticks represents 1 second
+
 const isWebWorker = typeof self === 'object'
 if (isWebWorker)
-  self.onmessage = receiveMessage
+  self.onmessage = msg => receiveData(msg.data)
 else
-  process.on('message', receiveMessage)
+  process.on('message', receiveData)
 
 const send = isWebWorker
   ? self.postMessage.bind(self)
   : process.send.bind(process)
-
-const DELTA = 1 / 25 //25 ticks represents 1 second
 
 let g,
   physicsSteps,
@@ -79,7 +78,7 @@ const bodies = {
 
     }
 
-    while (last(all).mass <= 0) {
+    while (last(all) && last(all).mass <= 0) {
       const { id } = all.pop()
       destroyed.push(id)
     }
@@ -90,7 +89,7 @@ const bodies = {
 
 const spatial = {
 
-  RESOLUTION: 5,
+  resolution: 5,
 
   hash: {},
 
@@ -100,11 +99,11 @@ const spatial = {
 
     const { hash } = this
 
-    const inc = min(this.RESOLUTION, body.radius)
+    const inc = min(this.resolution, body.radius)
     for (let x = body.pos.x - body.radius; x <= body.pos.x + body.radius; x += inc ) {
       for (let y = body.pos.y - body.radius; y <= body.pos.y + body.radius; y += inc ) {
 
-        const key = `${floor(x / this.RESOLUTION)},${floor(y / this.RESOLUTION)}`
+        const key = `${floor(x / this.resolution)},${floor(y / this.resolution)}`
         if (!hash[key])
           hash[key] = []
 
@@ -118,98 +117,61 @@ const spatial = {
 
   },
 
-  clear() {
+  reset() {
     const { hash } = this
 
     for (const i in hash)
-      hash[i].length = 0
+      delete hash[i]
   },
 
-  prune() {
-    const { hash } = this
-
-    for (const i in hash)
-      if (hash[i].length === 0)
-        delete hash[i]
-  }
 }
 
-let running = false, sendInc
+let sendInc
 
 /******************************************************************************/
 // Messaging
 /******************************************************************************/
 
-const MESSAGES = {
+function receiveData({ init, bodies: bodystream }) {
 
-  initialize(data) {
-    [g, physicsSteps, realMassThreshold, realBodiesMin] = data
+  g = init.g
+  if (!isFinite(g) || g <= 0)
+    throw new Error('g must be a number above zero.')
 
-    if (!isFinite(g) || g <= 0)
-      throw new Error('g must be a number above zero.')
+  physicsSteps = init.physicsSteps
+  if (!isWholeNumber(physicsSteps) || physicsSteps <= 0)
+    throw new Error('physicsSteps must be a whole number above zero.')
 
-    if (!isWholeNumber(physicsSteps) || physicsSteps <= 0)
-      throw new Error('physicsSteps must be a whole number above zero.')
+  realMassThreshold = init.realMassThreshold
+  if (!isFinite(realMassThreshold) || realMassThreshold < MASS_MIN)
+    throw new Error(`realMassThreshold must be a number equal or above ${MASS_MIN}`)
 
-    if (!isFinite(realMassThreshold) || realMassThreshold < MASS_MIN)
-      throw new Error(`realMassThreshold must be a number equal or above ${MASS_MIN}`)
+  realBodiesMin = init.realBodiesMin
+  if (!isWholeNumber(realBodiesMin) || realBodiesMin <= 0)
+    throw new Error('realMassThreshold must be a whole number above zero.')
 
-    if (!isWholeNumber(realBodiesMin) || realBodiesMin <= 0)
-      throw new Error('realMassThreshold must be a whole number above zero.')
+  bodies.all.length = 0
 
-  },
+  while (bodystream.length) {
 
-  start() {
-    if (!is(g, Number))
-      throw new Error('Must initialize before starting.')
+    bodystream.pop() //this popped value would be the parent id, but we don't need it
+    const vy = bodystream.pop()
+    const vx = bodystream.pop()
+    const y = bodystream.pop()
+    const x = bodystream.pop()
+    const mass = bodystream.pop()
+    const id = bodystream.pop()
 
-    if (running)
-      return
+    bodies.all.push(new Body(id, mass, x, y, vx, vy))
 
-    running = true
-
-    scheduleTick()
-  },
-
-  stop() {
-    if (!running)
-      return
-
-    running = false
-  },
-
-  'set-bodies'(data) {
-
-    bodies.all.length = 0
-
-    while (data.length) {
-
-      data.pop() //this popped value would be the parent id, but we don't need it
-      const vy = data.pop()
-      const vx = data.pop()
-      const y = data.pop()
-      const x = data.pop()
-      const mass = data.pop()
-      const id = data.pop()
-
-      bodies.all.push(new Body(id, mass, x, y, vx, vy))
-
-    }
-
-    bodies.sort()
   }
-}
 
-function receiveMessage(msg) {
+  //just in case no valid bodies
+  if (bodies.all.length === 0)
+    return
 
-  const [name, data] = isWebWorker ? msg.data : [msg.name, msg.data]
-
-  const message = MESSAGES[name]
-
-  if (is(message, Function))
-    message(data)
-
-  else throw new Error(`Unrecognized message: ${name}`)
+  bodies.sort()
+  tick()
 
 }
 
@@ -406,7 +368,7 @@ function collide(...args) {
 function detectCollisions() {
   let collisions = 0
 
-  spatial.clear()
+  spatial.reset()
 
   //broad phase
   for (const body of bodies.all)
@@ -418,7 +380,6 @@ function detectCollisions() {
   if (collisions > 0)
     bodies.sort()
 
-  spatial.prune()
 }
 
 function calculateForces() {
@@ -446,9 +407,6 @@ function applyForces() {
 
 function tick() {
 
-  if (!running)
-    return
-
   detectCollisions()
 
   calculateForces()
@@ -457,10 +415,6 @@ function tick() {
 
   sendData()
 
-  scheduleTick()
-
-}
-
-function scheduleTick() {
   setTimeout(tick, 0)
+
 }

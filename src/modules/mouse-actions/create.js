@@ -1,6 +1,6 @@
 import MouseAction from './base'
 import { massFromRadius, radiusFromMass } from '../simulation/util'
-import { Vector, abs, max, min, sqrt, cbrt, random } from 'math-plus'
+import { Vector, abs, max, min, sqrt, round, cbrt, random } from 'math-plus'
 import { MASS_MIN } from '../simulation/body'
 
 const MAX_SINGLE_BODY_MASS =    2000000
@@ -37,7 +37,7 @@ const randomVector = magnitude =>
     .inormalize()
     .imult(random(0, magnitude))
 
-function createNebulae(sim, pos, radius, mass) {
+function createNebulae(sim, pos, vel, radius, mass) {
 
   const props = []
 
@@ -48,7 +48,7 @@ function createNebulae(sim, pos, radius, mass) {
     props.push({
       mass: rMass,
       pos: pos.add(randomVector(radius)),
-      vel: Vector.zero
+      vel: vel
     })
 
   }
@@ -63,6 +63,7 @@ export default class Create extends MouseAction {
 
   radius = 0.25
   deltaRadius = 0
+  deltaVel = Vector.zero
 
   vel = Vector.zero
   point = Vector.zero
@@ -73,6 +74,16 @@ export default class Create extends MouseAction {
     const radius = abs(this.radius + this.deltaRadius)
     return max(0.25, radius)
   }
+
+  get validatedVel() {
+
+    const radius = this.validatedRadius
+    if (this.vel.magnitude < radius)
+      return Vector.zero
+    else
+      return this.vel.sub(this.vel.normalize().imult(this.validatedRadius)).idiv(100)
+  }
+
 
   cancel() {
     this.ui.setState({ speed: this.speed })
@@ -90,39 +101,61 @@ export default class Create extends MouseAction {
     const radius = this.validatedRadius
     const mass = max(MASS_MIN, massFromRadius(radius))
 
+    const vel = this.validatedVel
+
     if (mass < MAX_SINGLE_BODY_MASS)
-      this.ui.simulation.createBody({ mass, pos, vel: this.vel })
-    else if (radius < MAX_DISC_RADIUS)
-      console.log('create a protodisc')
-    else if (radius < MAX_NEBULAE_RADIUS)
-      createNebulae(this.ui.simulation, pos, radius, cbrt(mass) * 15)
+      this.ui.simulation.createBody({ mass, pos, vel })
+    // else if (radius < MAX_DISC_RADIUS)
+    //   console.log('create a protodisc')
+    // else if (radius < MAX_NEBULAE_RADIUS)
+    //   createNebulae(this.ui.simulation, pos, radius, cbrt(mass) * 15)
     else
-      console.log('create a system')
+      createNebulae(this.ui.simulation, pos, vel, radius, cbrt(mass) * 15)
 
     this.ui.setState({ speed: this.speed })
 
   }
 
   draw() {
-    const { local, ctx, scale } = this
+    const { local, ctx, scale, vel } = this
     const radius = this.validatedRadius
     const drawRadius = radius / scale
     const drawingSingleBody = massFromRadius(radius) <= MAX_SINGLE_BODY_MASS
     const opacity = drawingSingleBody ? 0.5 : 0.2
     ctx.fillStyle = ctx.strokeStyle = `rgba(255,255,255,${opacity})`
-    ctx.setLineDash(drawingSingleBody ? [] : [5,15])
+    ctx.setLineDash(drawingSingleBody ? [] : [5,5])
 
     ctx.beginPath()
     ctx.arc(local.start.x, local.start.y, drawRadius, 0, 2 * Math.PI)
     ctx.fill()
     ctx.stroke()
+    ctx.closePath()
 
     ctx.font='12px Arial'
-    const offset = -(drawRadius + 10)
+    ctx.strokeStyle = ctx.fillStyle = 'rgba(255,255,255,0.5)'
+    ctx.setLineDash([10,10])
 
+    const velMag = vel.magnitude
+    if (velMag > radius) {
+
+      const velPerSec = this.validatedVel.mult(60)
+      const speed = velPerSec.magnitude
+
+      const velDrawStart = local.start.lerp(local.end, radius / velMag)
+      const velDrawEnd = velDrawStart.add(velPerSec.div(scale))
+
+      ctx.beginPath()
+      ctx.moveTo(velDrawStart.x, velDrawStart.y)
+      ctx.lineTo(velDrawEnd.x, velDrawEnd.y)
+      ctx.stroke()
+      ctx.closePath()
+
+      ctx.fillText(round(speed) + ' px/s', velDrawEnd.x + 15, velDrawEnd.y + 2.5)
+
+    }
+
+    const offset = -(drawRadius + 10)
     ctx.fillText(textFromRadius(radius), local.start.x - offset, local.start.y + 2.5)
-    // if (this.drawEnd.sub(this.local.start).magnitude > radius + 10)
-    //   ctx.fillText(`SPEED: ${round(this.vel.magnitude)}px/s`, this.drawEnd.x + 15, this.drawEnd.y + 2.5)
 
   }
 
@@ -134,13 +167,13 @@ export default class Create extends MouseAction {
     if (shift && !this.shift)
       this.point = global.end.copy()
 
-    if (shift) {
-      const oDelta = global.end.sub(global.start).magnitude
-      const mDelta = this.point.sub(global.start).magnitude
+    const oDelta = global.end.sub(global.start)
+    const pDelta = this.point.sub(global.start)
 
-      this.deltaRadius = (oDelta - mDelta) * 0.3
-
-    }
+    if (shift)
+      this.deltaRadius = (oDelta.magnitude - pDelta.magnitude) * 0.3
+    else
+      this.vel = oDelta
 
     if (!shift && this.shift) {
       this.radius += this.deltaRadius

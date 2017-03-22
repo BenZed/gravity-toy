@@ -1,11 +1,11 @@
 import React from 'react'
 import { Simulation, Renderer } from '../modules'
-import { Vector, clamp, min, sign,  random } from 'math-plus'
+import { Vector, clamp, min, sign, random } from 'math-plus'
 // import Mousetrap from 'mousetrap'
 import Timeline from './Timeline'
 import Buttons from './Buttons'
 
-import { Create } from '../modules/mouse-actions'
+import { Create, Destroy } from '../modules/mouse-actions'
 
 export default class SimulationUI extends React.Component {
 
@@ -32,7 +32,8 @@ export default class SimulationUI extends React.Component {
     this.renderer = new Renderer(this.simulation, this.canvas)
 
     this.actions = {
-      create: new Create(this)
+      create: new Create(this),
+      destroy: new Destroy(this)
     }
 
     onresize = this.resize
@@ -41,8 +42,7 @@ export default class SimulationUI extends React.Component {
     onkeydown = this.keyDown //eslint-disable-line
     onkeyup = this.keyUp //eslint-disable-line
 
-    this.interval = setInterval(this.update, 1000 / 40)
-    this.simulation.start()
+    this.interval = requestAnimationFrame(this.update)
     this.setAction('create')
 
   }
@@ -63,6 +63,8 @@ export default class SimulationUI extends React.Component {
       this.action.hold()
     else
       this.action.hover()
+
+    requestAnimationFrame(this.update)
   }
 
   setAction = action => {
@@ -106,8 +108,6 @@ export default class SimulationUI extends React.Component {
 
   mouseMove = e => {
     const { mouse } = this.state
-    if (!mouse.down)
-      return
 
     mouse.end.x = e.clientX
     mouse.end.y = e.clientY
@@ -164,7 +164,7 @@ export default class SimulationUI extends React.Component {
     if (shift) {
 
       const scale = min(target.scale, 50)
-      const speed = scale * 0.0001
+      const speed = scale * 0.0002
 
       target.scale += delta.magnitude * speed * sign(delta.y)
 
