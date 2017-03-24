@@ -165,3 +165,36 @@ export default class Simulation {
   }
 
 }
+
+//TODO add these to the simulation
+// export function orbitalVelocity(bodyOrPos, parent, g) {
+//
+//   const pos = is(bodyOrPos,Vector) ? bodyOrPos : bodyOrPos.pos
+//
+//   const relative = pos.sub(parent.pos)
+//   const dist = relative.magnitude
+//
+//   //I'm not sure why I have to divide by 10. According to Google
+//   //this equation should work without it
+//   const speed = sqrt(g * parent.mass / dist) * 0.1
+//
+//   return relative
+//     .perpendicular(speed)
+//
+// }
+//
+// export function escapeSpeed(child, parent, g) {
+//   const relative = child.pos.sub(parent.pos)
+//   return g * parent.mass * child.mass / relative.sqrMagnitude
+// }
+//
+// export function isEscaping(child, parent, g) {
+//
+//   const escSpeed = escapeSpeed(child, parent, g)
+//
+//   const relSpeed = child.vel
+//     .sub(parent.vel)
+//     .magnitude
+//
+//   return relSpeed > escSpeed
+// }
