@@ -1,6 +1,6 @@
 import React from 'react'
 import { Simulation, Renderer } from '../modules'
-import { Vector, clamp, min, sign, random } from 'math-plus'
+import { Vector, clamp, min, sign } from 'math-plus'
 // import Mousetrap from 'mousetrap'
 import Timeline from './Timeline'
 import Buttons from './Buttons'
