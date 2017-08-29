@@ -4,8 +4,21 @@ import { Vector, clamp, min, sign } from 'math-plus'
 // import Mousetrap from 'mousetrap'
 import Timeline from './Timeline'
 import Buttons from './Buttons'
+import styled from 'styled-components'
 
 import { Create, Destroy } from '../modules/mouse-actions'
+
+/******************************************************************************/
+// Sub Component
+/******************************************************************************/
+
+const Background = styled.div`
+  background-color: black;
+`
+
+/******************************************************************************/
+// Exports
+/******************************************************************************/
 
 export default class SimulationUI extends React.Component {
 
@@ -26,7 +39,7 @@ export default class SimulationUI extends React.Component {
 
   }
 
-  componentDidMount() {
+  componentDidMount () {
 
     this.simulation = new Simulation({ physicsSteps: 1 })
     this.renderer = new Renderer(this.simulation, this.canvas)
@@ -85,7 +98,7 @@ export default class SimulationUI extends React.Component {
     this.action.cancelled = true
     this.action.cancel()
   }
-  //Events
+  // Events
 
   resize = () => {
     this.canvas.width = innerWidth
@@ -137,7 +150,7 @@ export default class SimulationUI extends React.Component {
 
   }
 
-  keyUp = e =>  {
+  keyUp = e => {
 
     if (e.code === 'ShiftLeft')
       this.setState({ shift: false })
@@ -146,8 +159,8 @@ export default class SimulationUI extends React.Component {
     else if (e.code === 'Tab') {
       e.preventDefault()
       console.log('tab')
-    }
-    else if (e.code === 'Escape')
+
+    } else if (e.code === 'Escape')
       this.cancelAction()
   }
 
@@ -179,23 +192,23 @@ export default class SimulationUI extends React.Component {
 
   }
 
-  render() {
+  render () {
 
     const { alt, shift, action, down } = this.state
 
     const keys = { alt, shift }
 
-    return <div id='simulation-ui'>
+    return <Background>
       <Timeline disabled={down} {...keys} />
       <Buttons disabled={down} action={action} setAction={this.setAction} {...keys} />
-      <canvas ref={ref => this.canvas = ref}
+      <canvas ref={ref => { this.canvas = ref }}
         onMouseDown={this.mouseDown}
         onMouseUp={this.mouseUp}
         onMouseMove={this.mouseMove}
         onMouseLeave={this.cancelAction}
         onWheel={this.touchLook}
       />
-    </div>
+    </Background>
 
   }
 

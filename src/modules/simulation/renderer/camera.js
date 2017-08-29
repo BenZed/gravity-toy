@@ -1,7 +1,7 @@
 import CameraCoords from './camera-coords'
 
 import { Vector, min, clamp, lerp } from 'math-plus'
-import Define from 'define-utility'
+import define from 'define-utility'
 
 const FOCUS_BODY = Symbol('focus-body')
 export const CURRENT = Symbol('current')
@@ -11,27 +11,26 @@ const MAX_ZOOM = Symbol('max-zoom')
 
 const CAMERA_LERP_FACTOR = 5
 
-
 export default class Camera {
 
   constructor(canvas, min, max) {
 
-    Define(this)
+    define(this)
       .const('canvas', canvas)
-      .const('target', new CameraCoords)
-      .const(CURRENT, new CameraCoords)
-      .const(VELOCITY, new Vector)
+      .const('target', new CameraCoords())
+      .const(CURRENT, new CameraCoords())
+      .const(VELOCITY, new Vector())
       .const(MIN_ZOOM, min)
       .const(MAX_ZOOM, max)
       .let(FOCUS_BODY, null)
 
   }
 
-  get focusBody() {
+  get focusBody () {
     return this[FOCUS_BODY]
   }
 
-  set focusBody(body) {
+  set focusBody (body) {
     if (this[FOCUS_BODY])
       this.target.pos.iadd(this[FOCUS_BODY].pos)
 
@@ -41,19 +40,19 @@ export default class Camera {
     this[FOCUS_BODY] = body
   }
 
-  get canvasCenter() {
+  get canvasCenter () {
     const { width, height } = this.canvas
     return new Vector(width * 0.5, height * 0.5)
   }
 
-  worldToCanvas(point) {
+  worldToCanvas (point) {
     return point
       .sub(this[CURRENT].pos)
       .idiv(this[CURRENT].scale)
       .iadd(this.canvasCenter)
   }
 
-  canvasToWorld(point) {
+  canvasToWorld (point) {
     return point
       .sub(this.canvasCenter)
       .imult(this[CURRENT].scale)
@@ -64,7 +63,8 @@ export default class Camera {
 
     const delta = 1 / 25 * CAMERA_LERP_FACTOR
 
-    const current = this[CURRENT], target = this.target
+    const current = this[CURRENT]
+    const target = this.target
 
     target.scale = clamp(target.scale, this[MIN_ZOOM], this[MAX_ZOOM])
 

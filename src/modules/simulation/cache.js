@@ -1,11 +1,11 @@
-import Define from 'define-utility'
+import define from 'define-utility'
 import { floor, min } from 'math-plus'
 
 /******************************************************************************/
 // Constants
 /******************************************************************************/
 
-const ONE_MB = 1048576 //bytes
+const ONE_MB = 1048576 // bytes
 const NUMBER_SIZE = 8 // bytes
 const ALLOCATIONS_PER_MB = ONE_MB / (NUMBER_SIZE * NUM_CACHE_PROPS)
 
@@ -19,9 +19,9 @@ export const TICK_END = Symbol('tick-end')
 
 export const CACHE = Symbol('cache')
 
-export default function Cache(maxMemory) {
+export default function Cache (maxMemory) {
 
-  Define(this)
+  define(this)
 
     .let('id', 0)
     .let('tick', 0)
@@ -85,12 +85,12 @@ export default function Cache(maxMemory) {
     .const('read', tick => {
 
       const output = []
-      //TODO need to find an elegant way of getting the body to apply its current values
-      //to the cache if they've changed
+      // TODO need to find an elegant way of getting the body to apply its current values
+      // to the cache if they've changed
       const current = tick === this.tick
 
-      //the only enumerable properties of
-      //a cache object will be bodies
+      // the only enumerable properties of
+      // a cache object will be bodies
       for (const id in this) {
         const body = this[id]
         const data = body.read(tick)

@@ -1,19 +1,19 @@
 import is from 'is-explicit'
-import Define from 'define-utility'
+import define from 'define-utility'
 import { Vector, floor } from 'math-plus'
 import { radiusFromMass } from './util'
 
 import { TICK_INDEX, TICK_INITIAL, TICK_END, CACHE, NUM_CACHE_PROPS } from './cache'
 
-export const NO_PARENT = -1 //parentid if body has no parent
+export const NO_PARENT = -1 // parentid if body has no parent
 
 export const MASS_MIN = 50
 
 export default class Body {
 
-  constructor(props, tick, id) {
+  constructor (props, tick, id) {
 
-    //Holy validations, batman!
+    // Holy validations, batman!
     if (!is(props, Object))
       throw new Error('Body requires a props object as its first parameter')
 
@@ -34,35 +34,35 @@ export default class Body {
       throw new Error(`props.mass, if defined, must be a number above or equal to ${MASS_MIN}`)
     mass = mass || MASS_MIN
 
-    Define(this)
-      .let.enum('mass', mass)
-      .get.enum('radius', radiusFromMass)
-      .const.enum('pos', pos)
-      .const.enum('vel', vel)
+    define(this)
+      .enum.let('mass', mass)
+      .enum.get('radius', radiusFromMass)
+      .enum.const('pos', pos)
+      .enum.const('vel', vel)
       .const('id', id)
       .let('parentId', NO_PARENT)
       .const(CACHE, [mass, pos.x, pos.y, vel.x, vel.y, NO_PARENT])
       .let(TICK_INITIAL, tick)
-      .let(TICK_END,     null)
+      .let(TICK_END, null)
   }
 
-  [TICK_INDEX](tick) {
+  [TICK_INDEX] (tick) {
     return (floor(tick) - this[TICK_INITIAL]) * NUM_CACHE_PROPS
   }
 
-  get exists() {
+  get exists () {
     return is(this.mass, Number)
   }
 
-  read(tick) {
+  read (tick) {
 
     const cache = this[CACHE]
     let i = this[TICK_INDEX](tick)
 
     const mass = cache[i++]
 
-    //if we've gotten here, the requested tick has not been cached for this body,
-    //the request tick is in an invalid range or it is not a number
+    // if we've gotten here, the requested tick has not been cached for this body,
+    // the request tick is in an invalid range or it is not a number
     if (!is(mass, Number))
       return null
 

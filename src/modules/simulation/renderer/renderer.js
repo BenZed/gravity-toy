@@ -1,6 +1,6 @@
 import { Vector, lerp, max, PI } from 'math-plus'
 import { WeightedColorizer } from '../util'
-import Define from 'define-utility'
+import define from 'define-utility'
 import Camera, { CURRENT } from './camera'
 
 const CLEAR_CANVAS = Symbol('clear-canvas')
@@ -26,12 +26,12 @@ const RENDERER_DEFAULTS = {
   nameColor: 'white',
   nameRadiusThreshold: 10,
 
-  gridColor: [140,180,180],
+  gridColor: [140, 180, 180],
   gridWidth: 1,
 
   selectionColor: 'rgba(255,255,85,0.5)',
-  trailColor: [0,0,255],
-  predictionColor: [0,255,0],
+  trailColor: [0, 0, 255],
+  predictionColor: [0, 255, 0],
   trailLength: 200,
   predictionLength: 50,
 
@@ -48,26 +48,24 @@ const MIN_DRAW_RADIUS = 0.5,
   BLUR_FACTOR = 0.5,
   TRAIL_FADE_START = 30
 
-
 const colorOfMass = new WeightedColorizer(
   ['#444', 'white', 'magenta', 'yellow', 'orange', 'red', '#420300'],
   [0, 10000, 30000, 100000, 1000000, 10000000, 100000000])
 
-
 export default class Renderer {
 
-  constructor(simulation, canvas, options = {}) {
+  constructor (simulation, canvas, options = {}) {
 
     this.options = { ...options, ...RENDERER_DEFAULTS}
 
     const camera = new Camera(canvas, this.options.minZoom, this.options.maxZoom)
 
-    Define(this)
-      .const.enum('canvas', canvas)
-      .const.enum('context', canvas.getContext('2d'))
-      .const.enum('camera', camera)
-      .const.enum('simulation', simulation)
-      .let.enum('speed', 1)
+    define(this)
+      .enum.const('canvas', canvas)
+      .enum.const('context', canvas.getContext('2d'))
+      .enum.const('camera', camera)
+      .enum.const('simulation', simulation)
+      .enum.let('speed', 1)
 
   }
 

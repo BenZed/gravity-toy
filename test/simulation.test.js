@@ -8,11 +8,11 @@ let sim
 
 describe('Simulation', () => {
 
-  before(() => sim = new Simulation)
+  before(() => { sim = new Simulation() })
 
   it('Must be instanced.', () => {
 
-    expect(() => new Simulation).to.not.throw(Error)
+    expect(() => new Simulation()).to.not.throw(Error)
     expect(() => Simulation()).to.throw(Error)
 
   })

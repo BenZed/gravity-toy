@@ -1,13 +1,34 @@
 import React from 'react'
+import styled from 'styled-components'
 
-const ACTIONS = ['create', 'destroy', 'force', 'select']//, 'protodisc', 'system']
+/******************************************************************************/
+// Data
+/******************************************************************************/
 
-const Button = ({active, children, ...rest}) =>
-  <button className={active ? 'active' : null} {...rest}>{children}</button>
+const ACTIONS = [ 'create', 'destroy', 'force', 'select' ]
 
-export default ({ action, disabled, setAction }) =>
-  <div className={`buttons ${disabled ? 'disabled' : ''}`}>
-    {ACTIONS.map(a =>
-      <Button key={a} active={action === a} onClick={() => setAction(a)} >{a}</Button>
-    )}
+const Button = styled.button`
+  border: none;
+  background: transparent;
+  color: gray;
+  cursor: pointer;
+
+  &:hover {
+    color: white;
+  }
+
+  outline: none;
+  transition: color 250ms;
+`
+/******************************************************************************/
+// Exports
+/******************************************************************************/
+
+const Buttons = ({ action, setAction }) =>
+  <div>
+      {ACTIONS.map(a =>
+        <Button key={a} active={action === a} onClick={() => setAction(a)} >{a}</Button>
+      )}
   </div>
+
+export default Buttons

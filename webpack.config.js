@@ -1,8 +1,6 @@
 const
-  //webpack = require('webpack'),
+  // webpack = require('webpack'),
   path = require('path')
-
-const ExtractTextPlugin = require('extract-text-webpack-plugin')
 
 const PORT = 6500
 const host = '0.0.0.0'
@@ -16,7 +14,7 @@ module.exports = {
 
   entry: [
     `webpack-dev-server/client?http://${host}:${PORT}`,
-    PATHS.src,
+    PATHS.src
   ],
 
   output: {
@@ -26,51 +24,41 @@ module.exports = {
   },
 
   resolve: {
-    extensions: ['', '.webpack.js', '.web.js', '.js', '.jsx'],
+    extensions: ['.js', '.jsx'],
     alias: {
       child_process: path.join(PATHS.src, 'modules/core')
     }
   },
 
   module: {
-    loaders: [
-      {
-        test: /\.s?css$/,
-        loaders: ['style', 'css', 'sass']
-      },
-
+    rules: [
       {
         test: /\.jsx?$/,
-        loader: 'babel',
+        loader: 'babel-loader',
         include: PATHS.src
       },
 
       {
         test: /\.json$/,
-        loader: 'json',
+        loader: 'json-loader',
         include: PATHS.src
       },
 
       {
         test: /\.html$/,
-        loader: 'html'
+        loader: 'html-loader'
       }
     ]
   },
 
   externals: {
-    'react' : 'React',
-    'react-dom' : 'ReactDOM'
+    'react': 'React',
+    'react-dom': 'ReactDOM'
   },
 
   devServer: {
     contentBase: PATHS.src,
     port: PORT,
     host
-  },
-
-  plugins: [
-    new ExtractTextPlugin('styles.css')
-  ]
-
+  }
 }

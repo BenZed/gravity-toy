@@ -1,1 +1,1 @@
-export default new Object()
+export default { }

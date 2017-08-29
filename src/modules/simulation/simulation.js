@@ -1,4 +1,4 @@
-import Define from 'define-utility'
+import define from 'define-utility'
 import Integrator from './integrator'
 
 import is from 'is-explicit'
@@ -25,19 +25,19 @@ const INTEGRATOR = Symbol('integrator')
 
 export default class Simulation {
 
-  constructor(props = {}) {
+  constructor (props = {}) {
 
     if (!is(props, Object))
       throw new TypeError('first argument, if defined, should be an Object.')
 
-    const { g, physicsSteps, realMassThreshold, realBodiesMin,  maxCacheMemory }
+    const { g, physicsSteps, realMassThreshold, realBodiesMin, maxCacheMemory }
      = { ...SIMULATION_DEFAULTS, ...props }
 
     const cache = new Cache(maxCacheMemory)
     const integrator = new Integrator(cache.write, { g, physicsSteps, realMassThreshold, realBodiesMin })
 
-    Define(this)
-      .const.enum('g', g)
+    define(this)
+      .enum.const('g', g)
       .const(CACHE, cache)
       .let(TICK_INDEX, 0)
       .const(INTEGRATOR, integrator)
