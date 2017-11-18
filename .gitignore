@@ -1,7 +1,4 @@
 node_modules
-original-src
-*.log
-lib-maps
+.DS_Store
 lib
-v1-src
-v2-src
+example

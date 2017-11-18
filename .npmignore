@@ -1,9 +1,8 @@
 src
-web
-lib-maps
+test
+example
+config
 .babelrc
-.eslinignore
-.eslintrc.json
-.gitignore
-.languagebabel
-webpack.config.js
+.eslintrc.yml
+.eslintignore
+*temp.js

@@ -1,6 +1,3 @@
-import Simulation from './simulation'
-import Renderer from './renderer'
+export default class Simulation {
 
-export default Simulation
-
-export { Simulation, Renderer }
+}
