@@ -47,7 +47,7 @@ const Worker = isBrowser
 // Exports
 /******************************************************************************/
 
-export default function Integrator(write, init) {
+export default function Integrator (write, init) {
 
   if (!is(write, Function))
     throw new Error('Integrator requires a function as an argument.')

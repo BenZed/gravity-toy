@@ -13,7 +13,7 @@ export default class Create extends MouseAction {
   shift = false
   speed = 1
 
-  down() {
+  down () {
 
     this.speed = this.ui.state.speed
     this.ui.setState({ speed: 0 })
@@ -21,7 +21,7 @@ export default class Create extends MouseAction {
 
   }
 
-  up() {
+  up () {
 
     for (const body of this.ui.simulation)
       if (body.markedForDeletion && body.exists)
@@ -56,16 +56,15 @@ export default class Create extends MouseAction {
       this.center = local.end
 
     if (active) for (const body of this.ui.simulation)
-      if (!body.markedForDeletion && body.pos.sub(shift ? this.point : global.end).magnitude < this.radius) {
+      if (!body.markedForDeletion && body.pos.sub(shift ? this.point : global.end).magnitude < this.radius)
         body.markedForDeletion = true
-      }
 
     this.shift = shift
 
     const drawRadius = radius / scale
     const opacity = active ? 0.5 : 0.25
     ctx.fillStyle = ctx.strokeStyle = `rgba(255,125,125,${opacity})`
-    ctx.setLineDash([20,10])
+    ctx.setLineDash([20, 10])
 
     ctx.beginPath()
     ctx.arc(this.center.x, this.center.y, drawRadius, 0, 2 * Math.PI)
@@ -80,6 +79,5 @@ export default class Create extends MouseAction {
   hold = this.tick
 
   cancel = this.done
-
 
 }

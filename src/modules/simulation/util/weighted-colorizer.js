@@ -4,10 +4,10 @@ import isOrderedFiniteArray from './is-ordered-finite-array'
 import { lerp } from 'math-plus'
 import is from 'is-explicit'
 
-export default function WeightedColorizer(colors, values) {
+export default function WeightedColorizer (colors, values) {
 
   if (this === undefined)
-    //it doesn't actually, but fuck it. I'm enforcing self documenting code. Sue me.
+    // it doesn't actually, but fuck it. I'm enforcing self documenting code. Sue me.
     throw new Error('WeightedColorizer must be instanced.')
 
   if (!is(colors, Array) || !is(values, Array))

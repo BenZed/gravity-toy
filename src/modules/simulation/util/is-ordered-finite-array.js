@@ -1,6 +1,6 @@
 import is from 'is-explicit'
 
-export default function isOrderedFiniteArray(values) {
+export default function isOrderedFiniteArray (values) {
 
   if (!is(values, Array))
     return false

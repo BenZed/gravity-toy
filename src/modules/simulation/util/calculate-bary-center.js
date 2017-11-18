@@ -1,4 +1,4 @@
-export default function calcBaryCenter(a, b) {
+export default function calcBaryCenter (a, b) {
 
   const relative = a.pos.sub(b.pos)
   const distance = relative.magnitude

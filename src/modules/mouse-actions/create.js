@@ -1,14 +1,14 @@
 import MouseAction from './base'
 import { massFromRadius, radiusFromMass } from '../simulation/util'
-import { Vector, abs, max, min, sqrt, round, cbrt, random } from 'math-plus'
+import { Vector, abs, max, min, round, cbrt, random } from 'math-plus'
 import { MASS_MIN } from '../simulation/body'
 
-const MAX_SINGLE_BODY_MASS =    2000000
+const MAX_SINGLE_BODY_MASS = 2000000
 const MAX_SINGLE_BODY_RADIUS = radiusFromMass(MAX_SINGLE_BODY_MASS)
-const MAX_DISC_RADIUS =            1500
-const MAX_NEBULAE_RADIUS =         8000
+const MAX_DISC_RADIUS = 1500
+const MAX_NEBULAE_RADIUS = 8000
 
-function textFromRadius(radius) {
+function textFromRadius (radius) {
   const mass = massFromRadius(radius)
 
   // return round(mass)
@@ -34,27 +34,30 @@ function textFromRadius(radius) {
 }
 
 const randomVector = magnitude =>
-  (new Vector(random(-1,1), random(-1,1)))
+  (new Vector(random(-1, 1), random(-1, 1)))
     .inormalize()
     .imult(random(0, magnitude))
 
-function createNebulae(sim, pos, vel, radius, mass) {
+function createNebulae (sim, pos, vel, radius, mass) {
 
   const props = []
+
+  mass /= 10
 
   while (mass > 0) {
 
     let rMass = random(MASS_MIN, 100, 0.125)
 
-    if (random() > 0.80)
-      rMass += random(MASS_MIN, 10000, 0.125)
-
     if (random() > 0.99)
-      rMass += random(MASS_MIN, 70000, 0.125)
+      rMass += random(MASS_MIN, 900, 0.125)
 
     rMass = min(mass, rMass)
 
     mass -= rMass
+
+    if (rMass < MASS_MIN)
+      break
+
     props.push({
       mass: rMass,
       pos: pos.add(randomVector(radius)),
@@ -80,12 +83,12 @@ export default class Create extends MouseAction {
 
   shift = false
 
-  get validatedRadius() {
+  get validatedRadius () {
     const radius = abs(this.radius + this.deltaRadius)
     return max(0.25, radius)
   }
 
-  get validatedVel() {
+  get validatedVel () {
 
     const radius = this.validatedRadius
     if (this.vel.magnitude < radius)
@@ -94,25 +97,22 @@ export default class Create extends MouseAction {
       return this.vel.sub(this.vel.normalize().imult(this.validatedRadius)).idiv(100)
   }
 
-
-  cancel() {
+  cancel () {
     this.ui.setState({ speed: this.speed })
   }
 
-  down() {
+  down () {
     this.speed = this.ui.state.speed
     this.ui.setState({ speed: 0 })
     this.point = this.global.end.copy()
   }
 
-  up() {
+  up () {
 
     const pos = this.global.start
     const radius = this.validatedRadius
 
     const vel = this.validatedVel
-
-
 
     if (radius <= MAX_SINGLE_BODY_RADIUS) {
 
@@ -137,14 +137,14 @@ export default class Create extends MouseAction {
 
   }
 
-  draw() {
+  draw () {
     const { local, ctx, scale, vel } = this
     const radius = this.validatedRadius
     const drawRadius = radius / scale
     const drawingSingleBody = massFromRadius(radius) <= MAX_SINGLE_BODY_MASS
     const opacity = drawingSingleBody ? 0.5 : 0.2
     ctx.fillStyle = ctx.strokeStyle = `rgba(255,255,255,${opacity})`
-    ctx.setLineDash(drawingSingleBody ? [] : [5,5])
+    ctx.setLineDash(drawingSingleBody ? [] : [5, 5])
 
     ctx.beginPath()
     ctx.arc(local.start.x, local.start.y, drawRadius, 0, 2 * Math.PI)
@@ -152,9 +152,9 @@ export default class Create extends MouseAction {
     ctx.stroke()
     ctx.closePath()
 
-    ctx.font='12px Arial'
+    ctx.font = '12px Arial'
     ctx.strokeStyle = ctx.fillStyle = 'rgba(255,255,255,0.5)'
-    ctx.setLineDash([10,10])
+    ctx.setLineDash([10, 10])
 
     const velMag = vel.magnitude
     if (velMag > radius) {
@@ -180,7 +180,7 @@ export default class Create extends MouseAction {
 
   }
 
-  hold() {
+  hold () {
 
     const { global } = this
     const { shift } = this.ui.state

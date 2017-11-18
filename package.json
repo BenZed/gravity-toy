@@ -5,10 +5,10 @@
   "main": "lib",
   "scripts": {
     "test": "node_modules/.bin/mocha --compilers js:babel-core/register;",
-    "build:web": "webpack",
-    "start": "webpack-dev-server",
-    "build:lib": "rm -rf lib; mkdir lib; ./node_modules/.bin/babel src/modules/simulation --out-dir lib",
-    "build:lib:watch": "rm -rf lib; mkdir lib; ./node_modules/.bin/babel --watch src/modules/simulation --out-dir lib"
+    "webpack": "webpack",
+    "webpack:dev": "webpack-dev-server",
+    "build": "rm -rf lib; mkdir lib; ./node_modules/.bin/babel src/modules/simulation --out-dir lib",
+    "build:dev": "rm -rf lib; mkdir lib; ./node_modules/.bin/babel --watch src/modules/simulation --out-dir lib"
   },
   "author": "Ben Gaumond",
   "license": "ISC",

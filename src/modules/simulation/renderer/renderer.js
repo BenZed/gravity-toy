@@ -39,7 +39,7 @@ const RENDERER_DEFAULTS = {
   trailWidth: 0.5,
 
   minZoom: 0.1,
-  maxZoom: 250
+  maxZoom: 1000
 
 }
 
@@ -56,7 +56,7 @@ export default class Renderer {
 
   constructor (simulation, canvas, options = {}) {
 
-    this.options = { ...options, ...RENDERER_DEFAULTS}
+    this.options = { ...options, ...RENDERER_DEFAULTS }
 
     const camera = new Camera(canvas, this.options.minZoom, this.options.maxZoom)
 
@@ -69,7 +69,7 @@ export default class Renderer {
 
   }
 
-  render() {
+  render () {
 
     this.camera.update()
     this[CLEAR_CANVAS]()
@@ -78,19 +78,19 @@ export default class Renderer {
 
   }
 
-  [CLEAR_CANVAS]() {
+  [CLEAR_CANVAS] () {
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height)
   }
 
-  [RENDER_GRID]() {
+  [RENDER_GRID] () {
     if (!this.options.grid)
       return
 
     const color = this.options.gridColor
 
-    //draw a grid
+    // draw a grid
     const current = this.camera[CURRENT]
-    const opacity = lerp(0.25, 0.125, current.scale ** 0.25 / this.options.maxZoom ** 0.25 )
+    const opacity = lerp(0.25, 0.125, current.scale ** 0.25 / this.options.maxZoom ** 0.25)
 
     this.context.lineWidth = this.options.gridWidth
     this.context.setLineDash([])
@@ -100,12 +100,14 @@ export default class Renderer {
     const xOff = (-current.pos.x / current.scale + this.canvas.width * 0.5) % xLineDelta
 
     let x = 0
-    while (x < this.canvas.width) {
+    let xactual = 0
+    while (x < this.canvas.width && xactual < 9999999999.9999999) {
       this.context.beginPath()
       this.context.moveTo(x + xOff, 0)
       this.context.lineTo(x + xOff, this.canvas.height)
       this.context.stroke()
       x += xLineDelta
+      xactual += this.canvas.width
     }
 
     const yLineDelta = this.canvas.height / current.scale
@@ -121,7 +123,7 @@ export default class Renderer {
     }
   }
 
-  [RENDER_BODIES]() {
+  [RENDER_BODIES] () {
 
     const camera = this.camera, current = camera[CURRENT]
 
@@ -136,8 +138,8 @@ export default class Renderer {
 
       this.context.beginPath()
 
-      //ellipse is draw with minum radii so we can still see bodies if they're too
-      //small or if we're zoomed too far out
+      // ellipse is draw with minum radii so we can still see bodies if they're too
+      // small or if we're zoomed too far out
       this.context.ellipse(vPos.x, vPos.y,
         max(vRadius, MIN_DRAW_RADIUS),
         max(vRadius, MIN_DRAW_RADIUS),

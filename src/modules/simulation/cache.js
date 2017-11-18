@@ -115,12 +115,12 @@ export default function Cache (maxMemory) {
         this[id][TICK_END] = this.tick
 
       while (i < data.length) {
-        const id =   data[i++],
-          mass =     data[i++],
-          x =        data[i++],
-          y =        data[i++],
-          vx =       data[i++],
-          vy =       data[i++],
+        const id = data[i++],
+          mass = data[i++],
+          x = data[i++],
+          y = data[i++],
+          vx = data[i++],
+          vy = data[i++],
           parentId = data[i++]
 
         this[id][CACHE].push(mass, x, y, vx, vy, parentId)

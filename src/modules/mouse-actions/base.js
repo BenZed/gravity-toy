@@ -1,18 +1,18 @@
 export default class MouseAction {
 
-  constructor(ui) {
+  constructor (ui) {
     this.ui = ui
   }
 
   cancelled = false
 
-  get local() {
+  get local () {
     const { start, end } = this.ui.state.mouse
 
     return { start, end }
   }
 
-  get global() {
+  get global () {
     const { renderer, state } = this.ui
 
     const { start, end } = state.mouse
@@ -23,26 +23,26 @@ export default class MouseAction {
     }
   }
 
-  get canvas() {
+  get canvas () {
     return this.ui.renderer.canvas
   }
 
-  get ctx() {
+  get ctx () {
     return this.ui.renderer.context
   }
 
-  get scale() {
+  get scale () {
     return this.ui.renderer.camera.target.scale
   }
 
-  down() { }
+  down () { }
 
-  up() { }
+  up () { }
 
-  hold() { }
+  hold () { }
 
-  hover() { }
+  hover () { }
 
-  cancel() { }
+  cancel () { }
 
 }

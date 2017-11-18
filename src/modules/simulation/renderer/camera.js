@@ -13,7 +13,7 @@ const CAMERA_LERP_FACTOR = 5
 
 export default class Camera {
 
-  constructor(canvas, min, max) {
+  constructor (canvas, min, max) {
 
     define(this)
       .const('canvas', canvas)

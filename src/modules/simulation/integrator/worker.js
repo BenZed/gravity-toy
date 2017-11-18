@@ -13,7 +13,7 @@ import { radiusFromMass, MASS_MIN } from '../util'
 // Const & Config
 /******************************************************************************/
 
-const DELTA = 1 / 60 //60 ticks represents 1 second
+const DELTA = 1 / 60 // 60 ticks represents 1 second
 
 const isWebWorker = typeof self === 'object'
 if (isWebWorker)
@@ -34,9 +34,9 @@ let g,
 // Helper
 /******************************************************************************/
 
-const byMass = (a,b) => a.mass > b.mass
+const byMass = (a, b) => a.mass > b.mass
   ? -1 : a.mass < b.mass
-  ?  1 : 0
+  ? 1 : 0
 
 const last = arr => arr[arr.length - 1]
 
@@ -53,7 +53,7 @@ const bodies = {
   psuedo: [],
   destroyed: [],
 
-  sort() {
+  sort () {
 
     const { all, real, psuedo, destroyed } = this
 
@@ -93,15 +93,15 @@ const spatial = {
 
   hash: {},
 
-  place(body) {
+  place (body) {
 
     body.cells.length = 0
 
     const { hash } = this
 
     const inc = min(this.resolution, body.radius)
-    for (let x = body.pos.x - body.radius; x <= body.pos.x + body.radius; x += inc ) {
-      for (let y = body.pos.y - body.radius; y <= body.pos.y + body.radius; y += inc ) {
+    for (let x = body.pos.x - body.radius; x <= body.pos.x + body.radius; x += inc)
+      for (let y = body.pos.y - body.radius; y <= body.pos.y + body.radius; y += inc) {
 
         const key = `${floor(x / this.resolution)},${floor(y / this.resolution)}`
         if (!hash[key])
@@ -113,16 +113,15 @@ const spatial = {
         if (!body.cells.includes(hash[key]))
           body.cells.push(hash[key])
       }
-    }
 
   },
 
-  reset() {
+  reset () {
     const { hash } = this
 
     for (const i in hash)
       delete hash[i]
-  },
+  }
 
 }
 
@@ -132,7 +131,7 @@ let sendInc
 // Messaging
 /******************************************************************************/
 
-function receiveData({ init, bodies: bodystream }) {
+function receiveData ({ init, bodies: bodystream }) {
 
   g = init.g
   if (!isFinite(g) || g <= 0)
@@ -154,7 +153,7 @@ function receiveData({ init, bodies: bodystream }) {
 
   while (bodystream.length) {
 
-    bodystream.pop() //this popped value would be the parent id, but we don't need it
+    bodystream.pop() // this popped value would be the parent id, but we don't need it
     const vy = bodystream.pop()
     const vx = bodystream.pop()
     const y = bodystream.pop()
@@ -166,7 +165,7 @@ function receiveData({ init, bodies: bodystream }) {
 
   }
 
-  //just in case no valid bodies
+  // just in case no valid bodies
   if (bodies.all.length === 0)
     return
 
@@ -175,7 +174,7 @@ function receiveData({ init, bodies: bodystream }) {
 
 }
 
-function sendData() {
+function sendData () {
 
   const { all, destroyed } = bodies
 
@@ -191,14 +190,13 @@ function sendData() {
 
   destroyed.length = 0
 
-  for (const body of all) {
+  for (const body of all)
     data.push(
       body.id, body.mass,
       body.pos.x, body.pos.y,
       body.vel.x, body.vel.y,
       body.parent ? body.parent.id : -1
     )
-  }
 
   send(data)
 
@@ -218,21 +216,21 @@ class Body {
 
   cells = []
 
-  constructor(id, mass, x, y, vx, vy) {
+  constructor (id, mass, x, y, vx, vy) {
 
     this.id = id
     this.mass = mass
-    this.pos = new Vector(x,y)
-    this.vel = new Vector(vx,vy)
+    this.pos = new Vector(x, y)
+    this.vel = new Vector(vx, vy)
     this.radius = radiusFromMass(mass)
 
   }
 
-  //This loop inside this function is called a lot throughout
-  //a single tick, so there are some manual inlining and optimizations
-  //I've made. I dunno if they make any real difference in the
-  //grand scheme of things, but it helps my OCD
-  detectCollisions() {
+  // This loop inside this function is called a lot throughout
+  // a single tick, so there are some manual inlining and optimizations
+  // I've made. I dunno if they make any real difference in the
+  // grand scheme of things, but it helps my OCD
+  detectCollisions () {
 
     // Relative position vector between two bodies.
     // Declared outside of the while loop to save
@@ -249,13 +247,13 @@ class Body {
       if (this === body || body.mass <= 0)
         continue
 
-      //inlining otherBody.pos.sub(body.pos)
+      // inlining otherBody.pos.sub(body.pos)
       relative.x = body.pos.x - this.pos.x
       relative.y = body.pos.y - this.pos.y
 
       const distSqr = relative.sqrMagnitude
 
-      //inlining relative.magnitude
+      // inlining relative.magnitude
       const dist = sqrt(distSqr)
 
       if (dist < this.radius + body.radius) {
@@ -269,15 +267,15 @@ class Body {
     return collisions
   }
 
-  calculateParentPsuedoMass() {
+  calculateParentPsuedoMass () {
     this.calculateForces(true)
   }
 
-  //This loop inside this function is called a lot throughout
-  //a single tick, so there are some manual inlining and optimizations
-  //I've made. I dunno if they make any real difference in the
-  //grand scheme of things, but it helps my OCD
-  calculateForces(psuedoMassOnly = false) {
+  // This loop inside this function is called a lot throughout
+  // a single tick, so there are some manual inlining and optimizations
+  // I've made. I dunno if they make any real difference in the
+  // grand scheme of things, but it helps my OCD
+  calculateForces (psuedoMassOnly = false) {
 
     // Relative position vector between two bodies.
     // Declared outside of the while loop to save
@@ -299,13 +297,13 @@ class Body {
       if (this === body)
         continue
 
-      //inlining body.pos.sub(this.pos)
+      // inlining body.pos.sub(this.pos)
       relative.x = body.pos.x - this.pos.x
       relative.y = body.pos.y - this.pos.y
 
       const distSqr = relative.sqrMagnitude
 
-      //inlining relative.magnitude
+      // inlining relative.magnitude
       const dist = sqrt(distSqr)
 
       const mass = body.mass + body.psuedoMass
@@ -327,7 +325,7 @@ class Body {
 
   }
 
-  applyForces() {
+  applyForces () {
 
     const { force, vel, pos } = this
 
@@ -343,7 +341,7 @@ class Body {
 // Tick
 /******************************************************************************/
 
-function collide(...args) {
+function collide (...args) {
 
   const [big, small] = args.sort(byMass)
 
@@ -365,12 +363,12 @@ function collide(...args) {
 
 }
 
-function detectCollisions() {
+function detectCollisions () {
   let collisions = 0
 
   spatial.reset()
 
-  //broad phase
+  // broad phase
   for (const body of bodies.all)
     spatial.place(body)
 
@@ -382,7 +380,7 @@ function detectCollisions() {
 
 }
 
-function calculateForces() {
+function calculateForces () {
 
   for (const body of bodies.all)
     body.psuedoMass = 0
@@ -398,14 +396,14 @@ function calculateForces() {
 
 }
 
-function applyForces() {
+function applyForces () {
 
   for (const body of bodies.all)
     body.applyForces()
 
 }
 
-function tick() {
+function tick () {
 
   detectCollisions()
 

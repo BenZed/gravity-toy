@@ -30,8 +30,8 @@ export default class Simulation {
     if (!is(props, Object))
       throw new TypeError('first argument, if defined, should be an Object.')
 
-    const { g, physicsSteps, realMassThreshold, realBodiesMin, maxCacheMemory }
-     = { ...SIMULATION_DEFAULTS, ...props }
+    const { g, physicsSteps, realMassThreshold, realBodiesMin, maxCacheMemory } =
+      { ...SIMULATION_DEFAULTS, ...props }
 
     const cache = new Cache(maxCacheMemory)
     const integrator = new Integrator(cache.write, { g, physicsSteps, realMassThreshold, realBodiesMin })
@@ -44,12 +44,12 @@ export default class Simulation {
 
   }
 
-  get tick() {
-    //why clamp it? in case the current tick value was invalidated
+  get tick () {
+    // why clamp it? in case the current tick value was invalidated
     return clamp(this[TICK_INDEX], 0, this.maxTick)
   }
 
-  set tick(value) {
+  set tick (value) {
 
     if (value < 0 || value > this.maxTick)
       throw new Error('tick out of range')
@@ -77,7 +77,7 @@ export default class Simulation {
     this[TICK_INDEX] = value
   }
 
-  get maxTick() {
+  get maxTick () {
     return this[CACHE].tick
   }
 
@@ -88,7 +88,7 @@ export default class Simulation {
 
     const cache = this[CACHE]
 
-    //apply any altered values on any existing to their latest cache
+    // apply any altered values on any existing to their latest cache
     if (tick === this.tick) for (const id in cache) {
       const body = cache[id]
       if (!body.exists)
@@ -121,7 +121,7 @@ export default class Simulation {
   createBody = (props = {}, tick = this.tick) =>
     this.createBodies([props], tick)[0]
 
-  createBodies = (props = [], tick = this.tick) =>  {
+  createBodies = (props = [], tick = this.tick) => {
 
     const cache = this[CACHE]
 
@@ -145,7 +145,7 @@ export default class Simulation {
 
   }
 
-  [Symbol.iterator] = function*() {
+  [Symbol.iterator] = function * () {
 
     for (const id in this[CACHE]) {
 
@@ -156,17 +156,13 @@ export default class Simulation {
     }
   }
 
-  get numBodies() {
-    let count = 0
-    for (const body of this) //eslint-disable-line
-      count++
-
-    return count
+  get numBodies () {
+    return [ ...this ].length
   }
 
 }
 
-//TODO add these to the simulation
+// TODO add these to the simulation
 // export function orbitalVelocity(bodyOrPos, parent, g) {
 //
 //   const pos = is(bodyOrPos,Vector) ? bodyOrPos : bodyOrPos.pos
