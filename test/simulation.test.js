@@ -132,6 +132,23 @@ describe('Simulation', function () {
         expect(body.pos.x).to.be.below(1000)
       })
 
+      it('throws if cache memory is full', async () => {
+        const sim = new Simulation({
+          maxCacheMemory: 0.1
+        })
+        sim.createBodies(bodies(100))
+        sim.start()
+        await new Promise(resolve => {
+          sim.on('cache-full', resolve)
+        })
+        expect(() => sim.start()).to.throw('Cannot start simulation. Cache memory')
+
+        // Once cache is cleared, start should work again
+        sim.clearAfterTick(0)
+        expect(() => sim.start()).to.not.throw()
+        sim.stop()
+      })
+
     })
 
     describe('stop()', () => {
@@ -286,6 +303,18 @@ describe('Simulation', function () {
         return expect(cache.deathTick).to.be.null
       })
 
+      it('updates usedCacheMemory', async () => {
+        const sim = new Simulation({ maxCacheMemory: 0.1 })
+        sim.createBodies(bodies(100))
+
+        await sim.runForNumTicks(10)
+        const used = sim.usedCacheMemory
+        expect(used).to.be.above(0)
+
+        sim.clearAfterTick(5)
+        expect(used).to.be.above(sim.usedCacheMemory)
+      })
+
     })
 
     describe('clearBeforeTick()', () => {
@@ -344,7 +373,19 @@ describe('Simulation', function () {
       })
 
       it('throws if provided tick is out of range', () => {
-        expect(() => sim.clearAfterTick(1)).to.throw(RangeError)
+        expect(() => sim.clearBeforeTick(1)).to.throw(RangeError)
+      })
+
+      it('updates usedCacheMemory', async () => {
+        const sim = new Simulation({ maxCacheMemory: 0.1 })
+        sim.createBodies(bodies(100))
+
+        await sim.runForNumTicks(10)
+        const used = sim.usedCacheMemory
+        expect(used).to.be.above(0)
+
+        sim.clearBeforeTick(5)
+        expect(used).to.be.above(sim.usedCacheMemory)
       })
     })
 
@@ -361,6 +402,21 @@ describe('Simulation', function () {
       it('returns a promise', () => {
         sim.createBodies(bodies(1))
         return expect(sim.runForNumTicks(1) instanceof Promise).to.be.true
+      })
+
+      it('rejects if cache fills up before all ticks executed', async () => {
+        const sim = new Simulation({ maxCacheMemory: 0.1 })
+        sim.createBodies(bodies(100))
+
+        let err
+        try {
+          await sim.runForNumTicks(1000)
+        } catch (e) {
+          err = e
+        }
+
+        expect(err).to.have.property('message')
+        return expect(err.message.includes('Could not run for')).to.be.true
       })
 
       it('throws if totalTicks is not provided or invalid', () => {
@@ -402,6 +458,11 @@ describe('Simulation', function () {
         .to.have.property('maxCacheMemory', SMALL_SIM)
     })
 
+    it('usedCacheMemory', () => {
+      expect(new Simulation())
+        .to.have.property('usedCacheMemory', 0)
+    })
+
     it('currentTick', () => {
       expect(new Simulation())
         .to.have.property('currentTick', 0)
@@ -426,6 +487,55 @@ describe('Simulation', function () {
       expect(new Simulation())
         .to.have.property('running', false)
     })
+
+  })
+
+  describe('Events', () => {
+
+    describe('tick', () => {
+      it('emits when data received from integrator', async () => {
+        const sim = new Simulation()
+        sim.createBodies({ mass: 100 })
+
+        let ticks = 0
+        sim.on('tick', () => ticks++)
+        await sim.runForNumTicks(10)
+
+        expect(ticks).to.be.equal(10)
+      })
+      it('emits with tick number', async () => {
+        const sim = new Simulation()
+        sim.createBodies({ mass: 100 })
+
+        let lastTick
+        sim.on('tick', lt => { lastTick = lt })
+        await sim.runForNumTicks(10)
+        await sim.runForNumTicks(5)
+
+        expect(lastTick).to.equal(sim.lastTick)
+      })
+    })
+
+    describe('cache-full', () => {
+
+      it('emits when cache memory is used up', async () => {
+
+        const sim = new Simulation({
+          maxCacheMemory: 0.1
+        })
+
+        sim.createBodies(bodies(100))
+
+        await new Promise(resolve => {
+          sim.once('cache-full', resolve)
+          sim.start()
+        })
+
+        expect(sim.usedCacheMemory).to.equal(0.1)
+      })
+
+    })
+
   })
 
   describe('Iterators', () => {
@@ -477,6 +587,7 @@ describe('Simulation', function () {
         expect([...sim.livingBodies()]).to.have.length(2)
 
       })
+
       it('throws if tick is out of range', () => {
         expect(() => {
           const sim = new Simulation()

@@ -39,11 +39,6 @@ const ONE_MB = 1024 * 1024 // bytes
 
 const NUMBER_SIZE = 8 // size of a javascript number value, in bytes
 
-// One body allocation is equal to the amount of memory a single body stores
-// during a single tick. This number is useful to determine when a simulation
-// should stop integrating so it doesn't take up too much memory.
-const BODY_ALLOCS_PER_MB = (ONE_MB / (NUMBER_SIZE * CACHED_VALUES_PER_TICK))::ceil()
-
 const TICK = Symbol('tick')
 
 const BODIES = Symbol('bodies')
@@ -82,6 +77,9 @@ class Simulation extends EventEmitter {
       .enum.const('maxCacheMemory', maxCacheMemory)
       .const(INTEGRATOR, integrator)
       .const(BODIES, {
+        usedBytes: 0,
+        maxBytes: maxCacheMemory * ONE_MB,
+        updateUsedBytes,
         nextAssignId: 0,
         map: new Map()
       })
@@ -93,7 +91,7 @@ class Simulation extends EventEmitter {
 
   }
 
-  start (tick = this.currentTick) {
+  start (tick = this.lastTick) {
 
     this::assertTick(tick)
 
@@ -145,6 +143,9 @@ class Simulation extends EventEmitter {
     if (stream.length <= 1)
       throw new Error(`Cannot start simulation. No bodies exist at tick ${tick}.`)
 
+    if (bodies.usedBytes === bodies.maxBytes)
+      throw new Error(`Cannot start simulation. Cache memory (${this.maxCacheMemory}mb) is full.`)
+
     this[INTEGRATOR].start(stream)
   }
 
@@ -162,6 +163,10 @@ class Simulation extends EventEmitter {
 
   get lastTick () {
     return this[TICK].last
+  }
+
+  get usedCacheMemory () {
+    return this[BODIES].usedBytes / ONE_MB
   }
 
   get currentTick () {
@@ -238,6 +243,7 @@ class Simulation extends EventEmitter {
 
       data.length = min(index, data.length)
     }
+    bodies.updateUsedBytes()
 
   }
 
@@ -266,6 +272,7 @@ class Simulation extends EventEmitter {
         cache.birthTick = tick
       }
     }
+    bodies.updateUsedBytes()
   }
 
   [Symbol.iterator] () {
@@ -296,7 +303,7 @@ class Simulation extends EventEmitter {
     return [ ...this.livingBodies(tick) ].length
   }
 
-  runForNumTicks (totalTicks, startTick = this.currentTick) {
+  runForNumTicks (totalTicks, startTick = this.lastTick) {
     this::assertTick(startTick)
 
     if (!is(totalTicks, Number) || totalTicks <= 0)
@@ -305,7 +312,7 @@ class Simulation extends EventEmitter {
     let ticks = 0
     let handler
 
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
 
       handler = lastTick => {
         if (++ticks >= totalTicks)
@@ -315,6 +322,10 @@ class Simulation extends EventEmitter {
       this.on('tick', handler)
       if (!this.running)
         this.start(startTick)
+
+      this.once('cache-full', lastTick => {
+        reject(new Error(`Could not run for ${totalTicks} ticks. Cache memory used up on tick ${lastTick}`))
+      })
 
     }).then(lastTick => {
       this.removeListener('tick', handler)
@@ -347,7 +358,8 @@ function writeTick (stream) {
   while (i < stream.length) {
     const id = stream[i++]
     const body = bodies.map.get(id)
-    body[CACHE].data.push(
+    const cache = body[CACHE]
+    cache.data.push(
       stream[i++], // mass
       stream[i++], // posX
       stream[i++], // posY
@@ -359,11 +371,18 @@ function writeTick (stream) {
 
   simulation.emit('tick', tick.last)
 
+  bodies.updateUsedBytes()
+  if (bodies.usedBytes === bodies.maxBytes) {
+    simulation.stop()
+    simulation.emit('cache-full', tick.last)
+  }
 }
 
 function assertTick (tick) {
 
-  const { firstTick, lastTick } = this
+  const simulation = this
+
+  const { firstTick, lastTick } = simulation
 
   if (!is(tick, Number))
     throw new TypeError('tick should be a number.')
@@ -371,6 +390,16 @@ function assertTick (tick) {
   if (tick < firstTick || tick > lastTick)
     throw new RangeError(`${tick} is out of range, ${firstTick} to ${lastTick}`)
 
+}
+
+function updateUsedBytes () {
+  const bodies = this
+
+  let allocations = 0
+  for (const body of bodies.map.values())
+    allocations += body[CACHE].data.length
+
+  bodies.usedBytes = min(bodies.maxBytes, allocations * NUMBER_SIZE)
 }
 
 /******************************************************************************/
