@@ -50,7 +50,9 @@
     "webpack-dev-server": "^2.9.3"
   },
   "dependencies": {
+    "define-utility": "^2.0.2",
     "is-explicit": "^1.4.1",
-    "math-plus": "^0.5.1"
+    "math-plus": "^0.5.1",
+    "uglifyjs-webpack-plugin": "^1.0.1"
   }
 }

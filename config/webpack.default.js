@@ -3,17 +3,44 @@ const path = require('path')
 
 const ExtractTextPlugin = require('extract-text-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin')
 
 const { ModuleConcatenationPlugin, CommonsChunkPlugin } = webpack.optimize
 
+const pkg = require('../package.json')
+
+/******************************************************************************/
+// Setup
+/******************************************************************************/
+
+const APP_NAME = 'gravity-toy'
+
+const MODULES = [ ...Object.keys(pkg.devDependencies), ...Object.keys(pkg.dependencies) ].filter(pkgName =>
+  !/eslint|loader|babel|normalize|webpack|nodemon|mocha|chai/.test(pkgName)
+)
+
+const VENDOR_PREFIXES = [ 'react', 'styled', 'mobx' ]
+
+const entry = {
+  [APP_NAME]: path.resolve(__dirname, '../src/webpack/index.js'),
+  'simulation': path.resolve(__dirname, '../src/modules/simulation'),
+  ...MODULES.reduce((e, mod) => {
+    if (VENDOR_PREFIXES.some(prfx => mod.includes(prfx)))
+      (e.vendor = e.vendor || []).push(mod)
+
+    return e
+  }, {})
+}
+
+const CHUNK_NAMES = Object.keys(entry).filter(key => key !== APP_NAME)
+
+/******************************************************************************/
+// Exports
+/******************************************************************************/
+
 module.exports = {
 
-  entry: {
-    'gravity-toy': path.resolve(__dirname, '../src/webpack/index.js'),
-    'simulation': path.resolve(__dirname, '../src/modules/simulation'),
-    'react': [ 'react', 'react-dom' ],
-    'styled-components': [ 'styled-components' ]
-  },
+  entry,
 
   module: {
     rules: [
@@ -51,7 +78,6 @@ module.exports = {
 
   plugins: [
     new HtmlWebpackPlugin({
-      title: 'Gravity Toy',
       inject: 'head',
       hash: true,
       template: 'src/public/index.html'
@@ -59,9 +85,9 @@ module.exports = {
     new ExtractTextPlugin('styles.css'),
     new ModuleConcatenationPlugin(),
     new CommonsChunkPlugin({
-      names: [ 'simulation', 'styled-components', 'react' ],
-      minChunks: Infinity
-    })
+      names: CHUNK_NAMES
+    }),
+    new UglifyJsPlugin()
   ],
 
   output: {
