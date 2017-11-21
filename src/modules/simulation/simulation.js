@@ -7,7 +7,7 @@ import Integrator from './integrator'
 
 import { Body, CACHE, CACHED_VALUES_PER_TICK } from './body'
 
-import { ceil, min } from 'math-plus'
+import { min } from 'math-plus'
 
 /******************************************************************************/
 // Data
@@ -19,7 +19,7 @@ const DEFAULT_PROPS = Object.freeze({
   g: 1,
 
   // Higher steps mean more calculation time, but more precision
-  physicsSteps: 8,
+  physicsSteps: 4,
 
   // More memory === more ticks
   maxCacheMemory: 256, // megabytes
@@ -279,9 +279,16 @@ class Simulation extends EventEmitter {
     return this[BODIES].map.values()
   }
 
-  * bodies () {
+  * bodies (ids = []) {
+
+    if (is(ids) && !is(ids, Array))
+      ids = [ ids ]
+
+    ids = [ ...ids ] // idArrayCheck mutates the array, so we'll prevent side effects
+
     for (const body of this)
-      yield body
+      if (idArrayCheck(ids, body.id))
+        yield body
   }
 
   get numBodies () {
@@ -335,6 +342,10 @@ class Simulation extends EventEmitter {
 
   }
 
+  toArray (id) {
+    return [ ...this.bodies(id) ]
+  }
+
 }
 
 /******************************************************************************/
@@ -354,6 +365,10 @@ function writeTick (stream) {
 
   let i = 0
   bodies.lastAssignedId = stream[i++]
+  const destroyedIds = stream[i++]
+  const createdIds = stream[i++]
+
+  // TODO do something with destroyed and created ids
 
   while (i < stream.length) {
     const id = stream[i++]
@@ -365,7 +380,7 @@ function writeTick (stream) {
       stream[i++], // posY
       stream[i++], // velX
       stream[i++], // velY
-      stream[i++] // parentId
+      stream[i++] // linkId
     )
   }
 
@@ -420,8 +435,19 @@ function setBodyValuesFromCache (body, tick) {
   body.pos.y = exists ? data[ index++ ] : NaN
   body.vel.x = exists ? data[ index++ ] : NaN
   body.vel.y = exists ? data[ index++ ] : NaN
-  body.parentId = exists ? data[ index++ ] : NaN
+  body.linkId = exists ? data[ index++ ] : NaN
 
+}
+
+function idArrayCheck (haystack, needle) {
+
+  for (let i = 0; i < haystack.length; i++)
+    if (haystack[i] === needle) {
+      haystack.splice(i, 1) // remove from array to speed it up
+      return true
+    }
+
+  return false
 }
 
 /******************************************************************************/
@@ -429,3 +455,5 @@ function setBodyValuesFromCache (body, tick) {
 /******************************************************************************/
 
 export default Simulation
+
+export { DEFAULT_PROPS }

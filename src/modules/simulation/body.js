@@ -14,7 +14,7 @@ import { radiusFromMass } from './util'
 // Data
 /******************************************************************************/
 
-const NO_PARENT = -1
+const NO_LINK = -1
 
 const MASS_MIN = 50
 
@@ -42,13 +42,13 @@ class Body {
       .enum.get('radius', radiusFromMass)
       .enum.const('pos', pos)
       .enum.const('vel', vel)
-      .let('parentId', NO_PARENT)
+      .let('linkId', NO_LINK)
       .const('id', id)
       .const(CACHE, {
         birthTick: tick,
         deathTick: null,
         getTickDataIndex,
-        data: [ mass, pos.x, pos.y, vel.x, vel.y, NO_PARENT ]
+        data: [ mass, pos.x, pos.y, vel.x, vel.y, NO_LINK ]
       })
   }
 
@@ -110,4 +110,4 @@ function validateTick (tick) {
 
 export default Body
 
-export { Body, NO_PARENT, MASS_MIN, CACHED_VALUES_PER_TICK, CACHE }
+export { Body, NO_LINK, MASS_MIN, CACHED_VALUES_PER_TICK, CACHE }

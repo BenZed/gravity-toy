@@ -1,5 +1,6 @@
-import { NO_PARENT } from '../body'
-import { sqrt, min, floor, Vector } from 'math-plus'
+import { NO_LINK } from '../body'
+import { DEFAULT_PROPS } from '../simulation'
+import { min, Vector } from 'math-plus'
 
 import Body from './body'
 
@@ -12,34 +13,80 @@ import Body from './body'
 // multiple forks or workers, and everything will be dandy.
 
 /******************************************************************************/
-// Const
-/******************************************************************************/
-
-const DELTA = 1 / 60 // 60 ticks represents 1 second
-
-/******************************************************************************/
-// Config
+// Setup
 /******************************************************************************/
 
 const isWebWorker = typeof self === 'object'
+const isNodeFork = !isWebWorker && 'send' in process
+
 if (isWebWorker)
   self.onmessage = msg => receiveStream(msg.data)
-else
+else if (isNodeFork)
   process.on('message', receiveStream)
 
 const sendToParent = isWebWorker
   ? ::self.postMessage
-  : ::process.send
+  : isNodeFork
+    ? ::process.send
+    : null
 
-let g
-let physicsSteps
-let realMassThreshold
-let realBodiesMin
-let nextAssignId
-let sendInterval = 0
+/******************************************************************************/
+// Data
+/******************************************************************************/
+
+const DELTA = 1 / 60 // 60 ticks represents 1 second
+
+const NEXT_TICK_DELAY = 0
+
+const world = {
+  ...DEFAULT_PROPS,
+
+  physicsStepCurrent: 0,
+  nextAssignId: 0
+}
 
 const bodies = {
-  all: []
+
+  all: [],
+  real: [],
+  psuedo: [],
+  destroyed: [],
+  created: [],
+
+  sort () {
+
+    const { all, real, psuedo, destroyed } = this
+
+    real.length = 0
+    psuedo.length = 0
+
+    // largest at 0, smallest at last
+    all.sort(byMass)
+
+    const minRealIndex = min(world.realBodiesMin, all.length) - 1
+
+    for (let i = 0; i < all.length; i++) {
+      const body = all[i]
+
+      // if we havent gotten to the minRealIndex yet, then this is considered
+      // a real body. If we have, then this body's mass must be under the
+      // realMassThreshold
+      body.real = i < minRealIndex || body.mass > world.realMassThreshold
+
+      if (body.real)
+        real.push(body)
+      else
+        psuedo.push(body)
+    }
+
+    // destroyed bodies have zero mass and since we're sorted by mass they'll
+    // all be at the end of the array. While there are still destroyed bodies at
+    // the end of the all array, pop them and place them in the destroyed array
+    while (last(all) && last(all).mass <= 0) {
+      const body = all.pop()
+      destroyed.push(body)
+    }
+  }
 }
 
 /******************************************************************************/
@@ -48,16 +95,14 @@ const bodies = {
 
 function receiveStream ({ init, stream }) {
 
-  g = init.g
-  physicsSteps = init.physicsSteps
-  realMassThreshold = init.realMassThreshold
-  realBodiesMin = init.realBodiesMin
+  for (const key in init)
+    world[key] = init[key]
 
   bodies.all.length = 0
 
   let i = 0
 
-  nextAssignId = stream[i++] // First item in stream is last assigned id
+  world.nextAssignId = stream[i++] // First item in stream is last assigned id
 
   while (i < stream.length) {
     const id = stream[i++]
@@ -73,25 +118,30 @@ function receiveStream ({ init, stream }) {
     bodies.all.push(new Body(id, mass, pos, vel))
   }
 
-  if (bodies.all.length === 0)
-    return
-
-  tick()
+  if (bodies.all.length > 0) {
+    bodies.sort()
+    tick()
+  }
 
 }
 
 function sendStream () {
 
-  if (++sendInterval < physicsSteps)
+  if (++world.physicsStepCurrent < world.physicsSteps)
     return
 
-  const { all } = bodies
+  world.physicsStepCurrent = 0
 
-  sendInterval = 0
+  const { all, destroyed, created } = bodies
 
   const data = [
-    nextAssignId
+    world.nextAssignId,
+    destroyed.map(idOfBody),
+    created.map(idOfBody)
   ]
+
+  destroyed.length = 0
+  created.length = 0
 
   for (const body of all)
     data.push(
@@ -99,7 +149,7 @@ function sendStream () {
       body.mass,
       body.pos.x, body.pos.y,
       body.vel.x, body.vel.y,
-      body.parent ? body.parent.id : NO_PARENT
+      body.link ? body.link.id : NO_LINK
     )
 
   sendToParent(data)
@@ -109,26 +159,44 @@ function sendStream () {
 // Tick
 /******************************************************************************/
 
-function tick () {
+function tick (queueNextTick = true) {
+
+  calculateForces()
 
   applyForces()
 
-  sendStream()
+  if (sendToParent)
+    sendStream()
 
-  setTimeout(tick, 0)
+  if (queueNextTick)
+    setTimeout(tick, NEXT_TICK_DELAY)
 
 }
 
 function applyForces () {
-
   for (const body of bodies.all) {
     const { force, vel, pos } = body
 
-    force.imult(DELTA).idiv(physicsSteps)
+    force.imult(DELTA).idiv(world.physicsSteps)
 
     vel.iadd(vel.add(force)).imult(0.5)
     pos.iadd(vel)
   }
+}
+
+function calculateForces () {
+
+  for (const body of bodies.all)
+    body.psuedoMass = 0
+
+  for (const body of bodies.psuedo)
+    body.calculatePsuedoMass(bodies, world)
+
+  for (const body of bodies.psuedo)
+    body.calculateForces(bodies, world)
+
+  for (const body of bodies.real)
+    body.calculateForces(bodies, world)
 
 }
 
@@ -138,6 +206,14 @@ function applyForces () {
 
 const byMass = (a, b) => a.mass > b.mass
   ? -1 : a.mass < b.mass
-  ? 1 : 0
+  ? 1 : 0 // eslint-disable-line indent
 
 const last = arr => arr[arr.length - 1]
+
+const idOfBody = body => body.id
+
+/******************************************************************************/
+// Exports for testing
+/******************************************************************************/
+
+export { world, bodies, tick }
