@@ -83,29 +83,29 @@ describe('Simulation', function () {
         sim.stop()
     })
 
-    describe('start()', () => {
+    describe('run()', () => {
 
       it('Starts the simulation', () => {
         sim.createBodies(bodies(1))
-        sim.start()
+        sim.run()
         expect(sim).to.have.property('running', true)
       })
 
       it('throws if there are no bodies to simulate', () => {
-        expect(() => sim.start()).to.throw('Cannot start simulation. No bodies exist')
+        expect(() => sim.run()).to.throw('Cannot start simulation. No bodies exist')
       })
 
       it('invalidates cache after provided tick', async () => {
         sim.createBodies(bodies(1))
         await sim.runForNumTicks(10)
-        sim.start(5)
+        sim.run(5)
         sim.stop()
         expect(sim).to.have.property('lastTick', 5)
       })
 
       it('throws if provided tick is out of range', () => {
         sim.createBodies(bodies(1))
-        expect(() => sim.start(1)).to.throw(RangeError)
+        expect(() => sim.run(1)).to.throw(RangeError)
       })
 
       it('uses body current values if starting from current tick', async () => {
@@ -137,15 +137,15 @@ describe('Simulation', function () {
           maxCacheMemory: 0.1
         })
         sim.createBodies(bodies(100))
-        sim.start()
+        sim.run()
         await new Promise(resolve => {
           sim.on('cache-full', resolve)
         })
-        expect(() => sim.start()).to.throw('Cannot start simulation. Cache memory')
+        expect(() => sim.run()).to.throw('Cannot start simulation. Cache memory')
 
         // Once cache is cleared, start should work again
         sim.clearAfterTick(0)
-        expect(() => sim.start()).to.not.throw()
+        expect(() => sim.run()).to.not.throw()
         sim.stop()
       })
 
@@ -236,7 +236,7 @@ describe('Simulation', function () {
 
       it('doesnt halt the simulation if it is running', () => {
         sim.createBodies(bodies(1), 0)
-        sim.start()
+        sim.run()
         sim.createBodies(bodies(2), 0)
         expect(sim).to.have.property('running', true)
       })
@@ -528,7 +528,7 @@ describe('Simulation', function () {
 
         await new Promise(resolve => {
           sim.once('cache-full', resolve)
-          sim.start()
+          sim.run()
         })
 
         expect(sim.usedCacheMemory).to.equal(0.1)
@@ -568,6 +568,11 @@ describe('Simulation', function () {
         for (const otherBody of sim.bodies())
           expect(body).to.equal(otherBody)
       })
+
+      it('can optionally take an id')
+
+      it('can optionally take an array of ids')
+
     })
 
     describe('* livingBodies()', () => {

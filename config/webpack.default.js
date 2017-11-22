@@ -23,7 +23,7 @@ const VENDOR_PREFIXES = [ 'react', 'styled', 'mobx' ]
 
 const entry = {
   [APP_NAME]: path.resolve(__dirname, '../src/webpack/index.js'),
-  'simulation': path.resolve(__dirname, '../src/modules/simulation'),
+  // 'simulation': path.resolve(__dirname, '../src/modules/simulation'),
   ...MODULES.reduce((e, mod) => {
     if (VENDOR_PREFIXES.some(prfx => mod.includes(prfx)))
       (e.vendor = e.vendor || []).push(mod)

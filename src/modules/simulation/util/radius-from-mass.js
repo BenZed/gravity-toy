@@ -1,14 +1,6 @@
 import { cbrt } from 'math-plus'
 
-import { MASS_MIN } from '../body'
-
-/******************************************************************************/
-// Data
-/******************************************************************************/
-
-const RADIUS_MIN = 1 // pixels
-
-const RADIUS_FACTOR = 0.125
+import { MASS_MIN, RADIUS_MIN, RADIUS_FACTOR } from '../constants'
 
 /******************************************************************************/
 // Main

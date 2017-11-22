@@ -1,43 +1,22 @@
 import is from 'is-explicit'
 import define from 'define-utility'
-
-import EventEmitter from 'events'
-
-import Integrator from './integrator'
-
-import { Body, CACHE, CACHED_VALUES_PER_TICK } from './body'
-
 import { min } from 'math-plus'
 
+import EventEmitter from 'events'
+import Integrator from './integrator'
+
+import { Body, CACHE } from './body'
+import {
+  CACHED_VALUES_PER_TICK,
+  DEFAULT_PHYSICS,
+  DEFAULT_MAX_MB,
+  NUMBER_SIZE,
+  ONE_MB
+} from './constants'
+
 /******************************************************************************/
-// Data
+// Symbols
 /******************************************************************************/
-
-const DEFAULT_PROPS = Object.freeze({
-
-  // Gravitational Constant
-  g: 1,
-
-  // Higher steps mean more calculation time, but more precision
-  physicsSteps: 4,
-
-  // More memory === more ticks
-  maxCacheMemory: 256, // megabytes
-
-  // As a lossy optimization, bodies below a certain mass threshold can be considered
-  // pseudo bodies and excluded from the primary integration loop. This speeds
-  // up the simulation at a cost of realism. 0 means disabled.
-  realMassThreshold: 0,
-
-  // There must be at least this many real bodies before bodies under the aforementioned
-  // mass threshold are considered psuedo
-  realBodiesMin: Infinity
-
-})
-
-const ONE_MB = 1024 * 1024 // bytes
-
-const NUMBER_SIZE = 8 // size of a javascript number value, in bytes
 
 const TICK = Symbol('tick')
 
@@ -58,8 +37,11 @@ class Simulation extends EventEmitter {
     if (!is.plainObject(props))
       throw new TypeError('props argument must be a plain object')
 
-    const { g, physicsSteps, realMassThreshold, realBodiesMin, maxCacheMemory } =
-      { ...DEFAULT_PROPS, ...props }
+    const { g,
+      physicsSteps,
+      realMassThreshold,
+      realBodiesMin,
+      maxCacheMemory = DEFAULT_MAX_MB} = { ...DEFAULT_PHYSICS, ...props }
 
     if (!is(maxCacheMemory, Number) || maxCacheMemory <= 0)
       throw new Error('maxCacheMemory must be above zero')
@@ -91,7 +73,7 @@ class Simulation extends EventEmitter {
 
   }
 
-  start (tick = this.lastTick) {
+  run (tick = this.lastTick) {
 
     this::assertTick(tick)
 
@@ -147,6 +129,53 @@ class Simulation extends EventEmitter {
       throw new Error(`Cannot start simulation. Cache memory (${this.maxCacheMemory}mb) is full.`)
 
     this[INTEGRATOR].start(stream)
+  }
+
+  runUntil (condition, startTick = this.lastTick, description = 'until condition met') {
+    this::assertTick(startTick)
+
+    if (!is(condition, Function))
+      throw new Error('condition must be a function.')
+
+    let resolver, rejecter
+
+    return new Promise((resolve, reject) => {
+
+      resolver = lastTick => {
+        if (condition(lastTick))
+          resolve(lastTick)
+      }
+
+      rejecter = lastTick => {
+        reject(new Error(`Could not run ${description}. Cache memory used up on tick ${lastTick}`))
+      }
+
+      this.on('tick', resolver)
+      this.once('cache-full', rejecter)
+
+      this.run(startTick)
+
+    }).then(lastTick => {
+      this.removeListener('tick', resolver)
+      this.removeListener('cache-full', rejecter)
+
+      this.stop()
+
+      return lastTick
+    })
+  }
+
+  runForNumTicks (totalTicks, startTick = this.lastTick) {
+    if (!is(totalTicks, Number) || totalTicks <= 0)
+      throw new Error('totalTicks must be a number above zero.')
+
+    let ticks = 0
+
+    const condition = () => ticks++ >= totalTicks
+
+    const description = `for ${totalTicks} ticks`
+
+    return this.runUntil(condition, startTick, description)
   }
 
   stop () {
@@ -210,7 +239,7 @@ class Simulation extends EventEmitter {
     }
 
     if (this.running)
-      this.start(tick)
+      this.run(tick)
 
     else if (tick < this.lastTick)
       this.clearAfterTick(tick)
@@ -310,38 +339,6 @@ class Simulation extends EventEmitter {
     return [ ...this.livingBodies(tick) ].length
   }
 
-  runForNumTicks (totalTicks, startTick = this.lastTick) {
-    this::assertTick(startTick)
-
-    if (!is(totalTicks, Number) || totalTicks <= 0)
-      throw new Error('totalTicks must be a number above zero.')
-
-    let ticks = 0
-    let handler
-
-    return new Promise((resolve, reject) => {
-
-      handler = lastTick => {
-        if (++ticks >= totalTicks)
-          resolve(lastTick)
-      }
-
-      this.on('tick', handler)
-      if (!this.running)
-        this.start(startTick)
-
-      this.once('cache-full', lastTick => {
-        reject(new Error(`Could not run for ${totalTicks} ticks. Cache memory used up on tick ${lastTick}`))
-      })
-
-    }).then(lastTick => {
-      this.removeListener('tick', handler)
-      this.stop()
-      return lastTick
-    })
-
-  }
-
   toArray (id) {
     return [ ...this.bodies(id) ]
   }
@@ -364,11 +361,11 @@ function writeTick (stream) {
   tick.last++
 
   let i = 0
-  bodies.lastAssignedId = stream[i++]
-  const destroyedIds = stream[i++]
-  const createdIds = stream[i++]
+  bodies.nextAssignId = stream[i++]
 
   // TODO do something with destroyed and created ids
+  const destroyedIds = stream[i++]
+  const createdIds = stream[i++]
 
   while (i < stream.length) {
     const id = stream[i++]
@@ -456,4 +453,4 @@ function idArrayCheck (haystack, needle) {
 
 export default Simulation
 
-export { DEFAULT_PROPS }
+export { DEFAULT_PHYSICS }

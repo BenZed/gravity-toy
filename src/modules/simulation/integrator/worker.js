@@ -1,8 +1,8 @@
-import { NO_LINK } from '../body'
-import { DEFAULT_PROPS } from '../simulation'
+import { DEFAULT_PHYSICS, NO_LINK } from '../constants'
 import { min, Vector } from 'math-plus'
 
 import Body from './body'
+import Partition from './partition'
 
 // This module doesn't need to export a class.
 // It will only ever be required by a newly instanced child process.
@@ -38,16 +38,38 @@ const DELTA = 1 / 60 // 60 ticks represents 1 second
 
 const NEXT_TICK_DELAY = 0
 
-const world = {
-  ...DEFAULT_PROPS,
+const physics = {
+  ...DEFAULT_PHYSICS
+}
 
-  physicsStepCurrent: 0,
-  nextAssignId: 0
+// for broad phase collision detection
+const partitions = {
+
+  all: [],
+
+  place (body) {
+    body.calculateBounds()
+    body.partition = null
+
+    for (const partition of this.all)
+      if (partition.fits(body))
+        break
+
+    if (!body.partition) {
+      body.partition = new Partition(body)
+      this.all.push(body.partition)
+    }
+
+  }
+
 }
 
 const bodies = {
 
-  all: [],
+  nextAssignId: 0,
+  sendInterval: 0,
+
+  living: [],
   real: [],
   psuedo: [],
   destroyed: [],
@@ -55,24 +77,31 @@ const bodies = {
 
   sort () {
 
-    const { all, real, psuedo, destroyed } = this
+    const { living, real, psuedo, destroyed } = this
 
     real.length = 0
     psuedo.length = 0
 
+    if (living.length === 0)
+      return
+
     // largest at 0, smallest at last
-    all.sort(byMass)
+    living.sort(byMass)
 
-    const minRealIndex = min(world.realBodiesMin, all.length) - 1
+    const minRealIndex = min(physics.realBodiesMin, living.length)
 
-    for (let i = 0; i < all.length; i++) {
-      const body = all[i]
+    for (let i = 0; i < living.length; i++) {
+      const body = living[i]
+
+      // If we encounter a destroyed body, then all future bodies will also be
+      // destroyed, and they shouldn't be added to the real or psuedo arrays
+      if (body.mass <= 0)
+        break
 
       // if we havent gotten to the minRealIndex yet, then this is considered
       // a real body. If we have, then this body's mass must be under the
       // realMassThreshold
-      body.real = i < minRealIndex || body.mass > world.realMassThreshold
-
+      body.real = i < minRealIndex || body.mass >= physics.realMassThreshold
       if (body.real)
         real.push(body)
       else
@@ -82,8 +111,8 @@ const bodies = {
     // destroyed bodies have zero mass and since we're sorted by mass they'll
     // all be at the end of the array. While there are still destroyed bodies at
     // the end of the all array, pop them and place them in the destroyed array
-    while (last(all) && last(all).mass <= 0) {
-      const body = all.pop()
+    while (last(living).mass <= 0) {
+      const body = living.pop()
       destroyed.push(body)
     }
   }
@@ -96,13 +125,13 @@ const bodies = {
 function receiveStream ({ init, stream }) {
 
   for (const key in init)
-    world[key] = init[key]
+    physics[key] = init[key]
 
-  bodies.all.length = 0
+  bodies.living.length = 0
 
   let i = 0
 
-  world.nextAssignId = stream[i++] // First item in stream is last assigned id
+  bodies.nextAssignId = stream[i++] // First item in stream is last assigned id
 
   while (i < stream.length) {
     const id = stream[i++]
@@ -115,10 +144,10 @@ function receiveStream ({ init, stream }) {
     const pos = new Vector(posX, posY)
     const vel = new Vector(velX, velY)
 
-    bodies.all.push(new Body(id, mass, pos, vel))
+    bodies.living.push(new Body(id, mass, pos, vel))
   }
 
-  if (bodies.all.length > 0) {
+  if (bodies.living.length > 0) {
     bodies.sort()
     tick()
   }
@@ -127,15 +156,18 @@ function receiveStream ({ init, stream }) {
 
 function sendStream () {
 
-  if (++world.physicsStepCurrent < world.physicsSteps)
+  if (++bodies.sendInterval < physics.physicsSteps)
     return
 
-  world.physicsStepCurrent = 0
+  bodies.sendInterval = 0
 
-  const { all, destroyed, created } = bodies
+  if (!sendToParent)
+    return
+
+  const { living, destroyed, created } = bodies
 
   const data = [
-    world.nextAssignId,
+    bodies.nextAssignId,
     destroyed.map(idOfBody),
     created.map(idOfBody)
   ]
@@ -143,7 +175,7 @@ function sendStream () {
   destroyed.length = 0
   created.length = 0
 
-  for (const body of all)
+  for (const body of living)
     data.push(
       body.id,
       body.mass,
@@ -161,12 +193,13 @@ function sendStream () {
 
 function tick (queueNextTick = true) {
 
+  collisionDetection()
+
   calculateForces()
 
   applyForces()
 
-  if (sendToParent)
-    sendStream()
+  sendStream()
 
   if (queueNextTick)
     setTimeout(tick, NEXT_TICK_DELAY)
@@ -174,10 +207,10 @@ function tick (queueNextTick = true) {
 }
 
 function applyForces () {
-  for (const body of bodies.all) {
+  for (const body of bodies.living) {
     const { force, vel, pos } = body
 
-    force.imult(DELTA).idiv(world.physicsSteps)
+    force.imult(DELTA).idiv(physics.physicsSteps)
 
     vel.iadd(vel.add(force)).imult(0.5)
     pos.iadd(vel)
@@ -186,17 +219,35 @@ function applyForces () {
 
 function calculateForces () {
 
-  for (const body of bodies.all)
+  for (const body of bodies.living)
     body.psuedoMass = 0
 
   for (const body of bodies.psuedo)
-    body.calculatePsuedoMass(bodies, world)
+    body.calculatePsuedoMass(bodies, physics)
 
   for (const body of bodies.psuedo)
-    body.calculateForces(bodies, world)
+    body.calculateForces(bodies, physics)
 
   for (const body of bodies.real)
-    body.calculateForces(bodies, world)
+    body.calculateForces(bodies, physics)
+
+}
+
+function collisionDetection () {
+
+  let collisions = 0
+
+  // broad phase
+  partitions.all.length = 0
+  for (const body of bodies.living)
+    partitions.place(body)
+
+  // narow phase
+  for (const body of bodies.living)
+    collisions += body.detectCollisions()
+
+  if (collisions > 0)
+    bodies.sort()
 
 }
 
@@ -216,4 +267,4 @@ const idOfBody = body => body.id
 // Exports for testing
 /******************************************************************************/
 
-export { world, bodies, tick }
+export { physics, bodies, partitions, tick }

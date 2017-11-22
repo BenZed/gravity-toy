@@ -15,9 +15,19 @@ class Body {
 
   real = true
   psuedoMass = 0
-  link = null
 
+  link = null
+  mass = 0
+
+  pos = Vector.zero
+  vel = Vector.zero
   force = Vector.zero
+
+  bounds = {
+    tl: Vector.zero,
+    br: Vector.zero
+  }
+  partition = null
 
   constructor (id, mass, pos, vel) {
 
@@ -80,9 +90,36 @@ class Body {
 
     }
 
-    if (addPsuedoMassOnly)
+    if (!this.real && this.link && addPsuedoMassOnly)
       this.link.psuedoMass += this.mass
   }
+
+  calculateBounds () {
+
+    const { pos, vel, radius, bounds } = this
+
+    bounds.tl.x = pos.x - radius
+    bounds.tl.y = pos.y - radius
+
+    bounds.br.x = pos.x + radius
+    bounds.br.y = pos.y + radius
+
+    if (vel.x < 0)
+      bounds.tl.x += vel.x
+    else
+      bounds.br.x += vel.x
+
+    if (vel.y < 0)
+      bounds.tl.y += vel.y
+    else
+      bounds.br.y += vel.y
+
+  }
+
+  detectCollisions (spatial) {
+
+  }
+
 }
 
 /******************************************************************************/

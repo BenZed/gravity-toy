@@ -3,6 +3,7 @@ import define from 'define-utility'
 
 import { Vector, floor } from 'math-plus'
 import { radiusFromMass } from './util'
+import { MASS_MIN, NO_LINK, CACHED_VALUES_PER_TICK } from './constants'
 
 /******************************************************************************/
 // Timeline Body
@@ -11,19 +12,10 @@ import { radiusFromMass } from './util'
 // This class is for holding all of the data about a body over time.
 
 /******************************************************************************/
-// Data
+// Symbols
 /******************************************************************************/
 
-const NO_LINK = -1
-
-const MASS_MIN = 50
-
 const CACHE = Symbol('cache')
-
-// Each body stores 6 numbers per tick: posX, posY, velX, velY, mass, parentIndex.
-// Mass and parentIndex may be able to be optimized in the future, because they
-// don't change every tick.
-const CACHED_VALUES_PER_TICK = 6
 
 /******************************************************************************/
 // Body Class
@@ -110,4 +102,4 @@ function validateTick (tick) {
 
 export default Body
 
-export { Body, NO_LINK, MASS_MIN, CACHED_VALUES_PER_TICK, CACHE }
+export { Body, CACHE }

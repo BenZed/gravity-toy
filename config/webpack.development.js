@@ -8,7 +8,7 @@ module.exports = {
     contentBase: path.resolve(__dirname, '../src/public'),
     inline: true,
     hot: false,
-    port: 4000,
+    port: 4500,
     host: '0.0.0.0',
     historyApiFallback: true,
     stats: {
