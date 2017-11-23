@@ -2,6 +2,10 @@ import React from 'react'
 import styled from 'styled-components'
 import { Vector, min, max } from 'math-plus'
 
+import SortedArray from './sorted-array'
+import { Bounds } from './bounds'
+import IdMap from './id-map'
+
 const Canvas = styled.canvas``
 
 export default class TestCanvas extends React.Component {
@@ -32,56 +36,13 @@ export default class TestCanvas extends React.Component {
 // Simulation Helper
 /******************************************************************************/
 
-class Edge {
-
-  constructor (body, isX, isMin) {
-    this.body = body
-    this.isX = isX
-    this.isMin = isMin
-    this.refresh()
-  }
-
-  refresh () {
-    const { body, isX, isMin } = this
-
-    const vel = isX ? body.vel.x : body.vel.y
-
-    const axis = isX ? body.pos.x : body.pos.y
-    const radius = isMin ? -body.radius : body.radius
-    const shift = (isMin && vel > 0) || (!isMin && vel < 0) ? -vel : 0
-
-    this.value = axis + radius + shift
-  }
-
-  valueOf () {
-    return this.value
-  }
-}
-
 class Body {
-
-  edges = {
-    l: null,
-    r: null,
-    t: null,
-    b: null
-  }
 
   constructor (pos = Vector.zero, vel = Vector.zero, radius = 1) {
     this.pos = pos
     this.vel = vel
     this.radius = radius
-    this.edges.l = new Edge(this, true, true)
-    this.edges.r = new Edge(this, true, false)
-    this.edges.t = new Edge(this, false, true)
-    this.edges.b = new Edge(this, false, false)
-  }
-
-  refreshEdges () {
-    this.edges.l.refresh()
-    this.edges.r.refresh()
-    this.edges.t.refresh()
-    this.edges.b.refresh()
+    this.bounds = new Bounds(this)
   }
 
 }
@@ -96,6 +57,7 @@ function circle (x, y, r, style = 'white') {
   ctx.arc(x, y, r, 0, 2 * Math.PI)
   ctx.fillStyle = style
   ctx.fill()
+  ctx.closePath()
 }
 
 function rect (x, y, w, h, color = 'white') {
@@ -116,10 +78,10 @@ function body (body) {
   )
 
   ctx::rect(
-    body.edges.l.value,
-    body.edges.t.value,
-    body.edges.r.value - body.edges.l.value,
-    body.edges.b.value - body.edges.t.value,
+    body.bounds.l.value,
+    body.bounds.t.value,
+    body.bounds.r - body.bounds.l,
+    body.bounds.b - body.bounds.t,
     'rgba(255,125,125,0.25)'
   )
   ctx::circle(body.pos.x, body.pos.y, body.radius, 'white')
@@ -134,15 +96,28 @@ function id (body) {
   }
 }
 
+function overlap (b1, b2) {
+  const ctx = this
+  const l = min(b1.bounds.l, b2.bounds.l)
+  const t = min(b1.bounds.t, b2.bounds.t)
+  const r = max(b1.bounds.r, b2.bounds.r)
+  const b = max(b1.bounds.b, b2.bounds.b)
+
+  const w = r - l
+  const h = b - t
+
+  ctx::rect(l, t, w, h, `rgba(125,255,125,0.125)`)
+}
+
 /******************************************************************************/
 // Main
 /******************************************************************************/
 
-const bodies = Array(100).fill(true).map((v, i) => {
+const bodies = Array(200).fill(true).map((v, i) => {
 
   const body = new Body()
   body.id = i + 1
-  body.radius = 5 + Math.random() * 20
+  body.radius = 3 + Math.random() * 4
   const r = body.radius
   const r2 = r * 2
   body.pos.x = r + (Math.random() * (innerWidth - r2))
@@ -154,77 +129,97 @@ const bodies = Array(100).fill(true).map((v, i) => {
 const biggest = bodies.reduce((a, b) => a.radius > b.radius ? a : b).radius
 
 bodies.forEach(body => {
-  const delta = biggest - body.radius
+  const delta = (biggest - body.radius) * 4
   body.vel.x = delta - (Math.random() * delta * 2)
   body.vel.y = delta - (Math.random() * delta * 2)
-  body.refreshEdges()
+  body.bounds.refresh()
 })
+
 /******************************************************************************/
 // Broad Phase
 /******************************************************************************/
 
-function edgesOverlap (e1, e2) {
+class BroadPhase {
 
-  if (e1.l > e2.r || e2.l > e1.r)
-    return false
+  bodies = null
+  boundsX = new SortedArray()
+  boundsY = new SortedArray()
+  pairs = {}
 
-  if (e1.b < e2.t || e2.b < e1.t)
-    return false
+  pairId (b1, b2) {
+    const lo = b1.id < b2.id ? b1.id : b2.id
+    const hi = lo === b1.id ? b2.id : b1.id
+    return `${lo}-${hi}`
+  }
 
-  return true
-}
-
-const broadphase = {
-
-  edgesX: [],
-  edgesY: [],
-
-  start (bodies) {
-    bodies.forEach(body => { this.edgesX.push(body.edges.l, body.edges.r) })
-    bodies.forEach(body => { this.edgesY.push(body.edges.t, body.edges.b) })
-  },
-
-  update (ctx) {
+  constructor (bodies) {
     for (const body of bodies)
-      body.refreshEdges()
+      this.boundsX.push(body.bounds.l, body.bounds.r)
+  }
 
-    console.clear()
-
-    insertionSort(this.edgesX)
-    for (let i = 0; i < this.edgesX.length; i++)
-      this.edgesX[i].index = i
-
+  calcPairs () {
+    this.pairs = {}
+    let iter = 0
     for (const body of bodies) {
-      for (let i = body.edges.l.index + 1; i < body.edges.r.index; i++) {
-        const edge = this.edgesX[i]
-        if (edge.body !== body && edgesOverlap(edge.body.edges, body.edges)) {
-          const l = min(body.edges.l, edge.body.edges.l)
-          const t = min(body.edges.t, edge.body.edges.t)
-          const r = max(body.edges.r, edge.body.edges.r)
-          const b = max(body.edges.b, edge.body.edges.b)
+      body.bounds.refresh()
+      iter++
+    }
 
-          const w = r - l
-          const h = b - t
-          ctx::rect(l, t, w, h, `rgba(125,255,125,0.1)`)
+    this.boundsX.sort()
+
+    for (let i = 0; i < this.boundsX.length; i++) {
+      this.boundsX[i].index = i
+      iter++
+    }
+
+    for (const b1 of bodies) {
+      iter++
+      for (let i = b1.bounds.l.index + 1; i < b1.bounds.r.index; i++) {
+        iter++
+        const b2 = this.boundsX[i].body
+        if (b1.bounds.overlap(b2.bounds)) {
+          const pairKey = this.pairId(b1, b2)
+          if (!this.pairs[pairKey])
+            this.pairs[pairKey] = { b1, b2 }
         }
       }
     }
+
+    console.clear()
+    console.log('iterations for this solve:', iter, Object.keys(this.pairs))
   }
+
+  addBody (body) {
+    body.bounds.refresh()
+
+    const { l, r, t, b } = body.bounds
+
+    this.boundsX.insert(l, r)
+    this.boundsY.insert(t, b)
+
+  }
+
 }
 
-broadphase.start(bodies)
+const broadphase = new BroadPhase(bodies)
 
 /******************************************************************************/
 // Main
 /******************************************************************************/
 
 function main () {
+  broadphase.calcPairs()
   const ctx = this.getContext('2d')
 
   ctx::rect(0, 0, innerWidth, innerHeight, 'black')
   bodies.forEach(ctx::body)
   bodies.forEach(ctx::id)
-  broadphase.update(ctx)
+
+  for (const key in broadphase.pairs) {
+    const { b1, b2 } = broadphase.pairs[key]
+    ctx::overlap(b1, b2)
+  }
+
   bodies.forEach(body => {
     body.pos.iadd(body.vel)
     if (body.pos.x < 0)
@@ -238,8 +233,6 @@ function main () {
 
     if (body.pos.y > innerHeight)
       body.pos.y = 0
-
-    body.refreshEdges()
   })
 
 }
@@ -247,21 +240,3 @@ function main () {
 /******************************************************************************/
 // Helper
 /******************************************************************************/
-
-function insertionSort (arr) {
-
-  const { length } = arr
-
-  for (let i = 1; i < length; i++) {
-
-    const value = arr[i]
-
-    let j
-    for (j = i - 1; j >= 0 && arr[j] > value; j--)
-      arr[j + 1] = arr[j]
-
-    arr[j + 1] = value
-  }
-
-  return arr
-}
