@@ -4,7 +4,6 @@ import { Vector, min, max } from 'math-plus'
 
 import SortedArray from './sorted-array'
 import { Bounds } from './bounds'
-import IdMap from './id-map'
 
 const Canvas = styled.canvas``
 
@@ -26,7 +25,6 @@ export default class TestCanvas extends React.Component {
   }
 
   render () {
-
     return <Canvas onClick={this.next} innerRef={dom => { this.canvas = dom }} />
   }
 
@@ -106,18 +104,18 @@ function overlap (b1, b2) {
   const w = r - l
   const h = b - t
 
-  ctx::rect(l, t, w, h, `rgba(125,255,125,0.125)`)
+  ctx::rect(l, t, w, h, `rgba(125,255,125,0.5)`)
 }
 
 /******************************************************************************/
-// Main
+// Create  bodies
 /******************************************************************************/
 
-const bodies = Array(200).fill(true).map((v, i) => {
+const bodies = Array(3000).fill(true).map((v, i) => {
 
   const body = new Body()
   body.id = i + 1
-  body.radius = 3 + Math.random() * 4
+  body.radius = 1 + Math.random() * 2
   const r = body.radius
   const r2 = r * 2
   body.pos.x = r + (Math.random() * (innerWidth - r2))
@@ -132,7 +130,6 @@ bodies.forEach(body => {
   const delta = (biggest - body.radius) * 4
   body.vel.x = delta - (Math.random() * delta * 2)
   body.vel.y = delta - (Math.random() * delta * 2)
-  body.bounds.refresh()
 })
 
 /******************************************************************************/
@@ -142,60 +139,72 @@ bodies.forEach(body => {
 class BroadPhase {
 
   bodies = null
+
   boundsX = new SortedArray()
   boundsY = new SortedArray()
+
   pairs = {}
 
-  pairId (b1, b2) {
-    const lo = b1.id < b2.id ? b1.id : b2.id
-    const hi = lo === b1.id ? b2.id : b1.id
-    return `${lo}-${hi}`
-  }
-
   constructor (bodies) {
-    for (const body of bodies)
-      this.boundsX.push(body.bounds.l, body.bounds.r)
-  }
-
-  calcPairs () {
-    this.pairs = {}
-    let iter = 0
+    this.bodies = bodies
     for (const body of bodies) {
       body.bounds.refresh()
-      iter++
+      this.boundsX.insert(body.bounds.l, body.bounds.r)
+      this.boundsY.insert(body.bounds.t, body.bounds.b)
     }
 
-    this.boundsX.sort()
-
-    for (let i = 0; i < this.boundsX.length; i++) {
-      this.boundsX[i].index = i
-      iter++
-    }
-
-    for (const b1 of bodies) {
-      iter++
-      for (let i = b1.bounds.l.index + 1; i < b1.bounds.r.index; i++) {
-        iter++
-        const b2 = this.boundsX[i].body
-        if (b1.bounds.overlap(b2.bounds)) {
-          const pairKey = this.pairId(b1, b2)
-          if (!this.pairs[pairKey])
-            this.pairs[pairKey] = { b1, b2 }
-        }
-      }
-    }
-
-    console.clear()
-    console.log('iterations for this solve:', iter, Object.keys(this.pairs))
+    this.sortBounds(this.boundsX)
   }
 
-  addBody (body) {
-    body.bounds.refresh()
+  pairKey (b1, b2) {
+    return b1.id < b2.id
+      ? `${b1.id}-${b2.id}`
+      : `${b2.id}-${b1.id}`
+  }
 
-    const { l, r, t, b } = body.bounds
+  pairCheck (b1, b2) {
+    this.checks++
+    if (b1 === b2)
+      return
 
-    this.boundsX.insert(l, r)
-    this.boundsY.insert(t, b)
+    const pairKey = this.pairKey(b1, b2)
+    const overlaps = b1.bounds.overlap(b2.bounds)
+    const hasPair = pairKey in this.pairs
+
+    if (hasPair && !overlaps)
+      delete this.pairs[pairKey]
+
+    else if (!hasPair && overlaps)
+      this.pairs[pairKey] = { b1, b2 }
+  }
+
+  * [Symbol.iterator] () {
+    yield this.boundsX
+    yield this.boundsY
+  }
+
+  sortBounds () {
+    this.checks = 0
+
+    for (const bounds of this) {
+      for (const body of this.bodies)
+        body.bounds.refresh()
+
+      for (let j = 1; j < bounds.length; j++) {
+        const e1 = bounds[j]
+
+        let i = j - 1
+        while (i >= 0 && bounds[i].value > e1.value) {
+          const e2 = bounds[i]
+          this.pairCheck(e1.body, e2.body)
+          bounds[i + 1] = e2
+          i--
+        }
+
+        bounds[i + 1] = e1
+      }
+    }
+    console.log(this.bodies.length * this.bodies.length, this.checks)
 
   }
 
@@ -208,7 +217,6 @@ const broadphase = new BroadPhase(bodies)
 /******************************************************************************/
 
 function main () {
-  broadphase.calcPairs()
   const ctx = this.getContext('2d')
 
   ctx::rect(0, 0, innerWidth, innerHeight, 'black')
@@ -219,6 +227,7 @@ function main () {
     const { b1, b2 } = broadphase.pairs[key]
     ctx::overlap(b1, b2)
   }
+  console.log(broadphase.pairs)
 
   bodies.forEach(body => {
     body.pos.iadd(body.vel)
@@ -233,7 +242,10 @@ function main () {
 
     if (body.pos.y > innerHeight)
       body.pos.y = 0
+    // broadphase.updateBody(body)
   })
+
+  broadphase.sortBounds()
 
 }
 

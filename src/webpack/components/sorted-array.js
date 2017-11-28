@@ -78,7 +78,8 @@ class SortedArray extends Array {
   indexOf (value) {
     let index = search(this, value, true)
 
-    // Sure, whatever.
+    // Search returns the last index of a given value, where indexOf should
+    // return the first
     while (this[index - 1] === value)
       index--
 

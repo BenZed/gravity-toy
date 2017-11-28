@@ -13,7 +13,7 @@ class Edge {
     this.body = body
     this.isX = isX
     this.isMin = isMin
-    this.refresh()
+    this.value = isMin ? -Infinity : Infinity
   }
 
   refresh () {
