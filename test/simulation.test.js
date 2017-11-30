@@ -216,8 +216,8 @@ describe('Simulation', function () {
 
       it('invalidates data after given tick', async () => {
         sim.createBodies(bodies(1), 0)
-
         await sim.runForNumTicks(10)
+
         expect(sim).to.have.property('lastTick', 10)
 
         sim.createBodies(bodies(1), 5)

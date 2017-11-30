@@ -171,11 +171,17 @@ class Simulation extends EventEmitter {
 
     let ticks = 0
 
-    const condition = () => ticks++ >= totalTicks
+    const condition = () => ++ticks >= totalTicks
 
     const description = `for ${totalTicks} ticks`
 
     return this.runUntil(condition, startTick, description)
+  }
+
+  runForOneTick (startTick = this.lastTick) {
+    const description = `for one tick`
+
+    return this.runUntil(oneTick, startTick, description)
   }
 
   stop () {
@@ -412,6 +418,12 @@ function updateUsedBytes () {
     allocations += body[CACHE].data.length
 
   bodies.usedBytes = min(bodies.maxBytes, allocations * NUMBER_SIZE)
+}
+
+// This is used in the runForOneTick function which calls the runUntil function
+// using this as a condition. runUntil true means it only runs for one tick.
+function oneTick () {
+  return true
 }
 
 /******************************************************************************/

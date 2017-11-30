@@ -30,6 +30,8 @@ class TestSimulation {
     worker.bodies.created.length = 0
     worker.bodies.destroyed.length = 0
     worker.bodies.nextAssignId = 0
+    for (const key in worker.bodies.overlaps)
+      delete worker.bodies.overlaps[key]
   }
 
   createBodies (props) {
@@ -39,19 +41,20 @@ class TestSimulation {
 
       const id = worker.bodies.nextAssignId++
       const body = new PhysicsBody(id, mass, pos, vel)
-      worker.bodies.living.push(body)
 
       return body
     })
 
+    worker.bodies.setBodies(created, worker.physics)
+
     return created
   }
 
-  runUntil (condition, doEveryTick) {
+  runUntil (condition, doEveryTick = () => {}) {
     if (worker.bodies.living.length === 0)
       throw new Error('Cannot start without any bodies.')
 
-    worker.bodies.sort()
+    worker.bodies.sort(worker.physics)
 
     return new Promise(resolve => {
       const interval = setInterval(() => {
@@ -68,12 +71,16 @@ class TestSimulation {
     })
   }
 
-  runForNumTicks (totalTicks, doEveryTick = () => {}) {
+  runForNumTicks (totalTicks, doEveryTick) {
     let ticks = 0
     const totalTicksAdjusted = totalTicks * worker.physics.physicsSteps
     const condition = () => ++ticks >= totalTicksAdjusted
 
     return this.runUntil(condition, doEveryTick)
+  }
+
+  runForOneTick (doEveryTick) {
+    return this.runUntil(() => true, doEveryTick)
   }
 
 }
@@ -82,7 +89,7 @@ class TestSimulation {
 // Tests
 /******************************************************************************/
 
-describe.only('Integration', function () {
+describe('Integration', function () {
 
   this.slow(1000)
 
@@ -165,7 +172,7 @@ describe.only('Integration', function () {
         })
 
         const bodies = sim.createBodies([{ mass: 100 }, { mass: 200 }, { mass: 300 }])
-        worker.bodies.sort()
+        worker.bodies.sort(worker.physics)
         const numRealBodiesShouldBe = 4 - threshold / 100 // circumstantial
         expect(bodies.filter(body => body.real)).to.have.length(numRealBodiesShouldBe)
       }
@@ -178,7 +185,7 @@ describe.only('Integration', function () {
           realMassThreshold: 100
         })
         const bodies = sim.createBodies(Array(15).fill({ mass: 99 }))
-        worker.bodies.sort()
+        worker.bodies.sort(worker.physics)
         expect(bodies.filter(body => body.real)).to.have.length(count)
       }
     })
@@ -212,7 +219,7 @@ describe.only('Integration', function () {
         { mass: 100, pos: new Vector(50, 0) }
       ])
 
-      worker.bodies.sort()
+      worker.bodies.sort(worker.physics)
 
       expect(psuedo).to.have.property('real', false)
       expect(real).to.have.property('real', true)
@@ -236,7 +243,7 @@ describe.only('Integration', function () {
         { mass: 99, pos: new Vector(10, 0) }
       ])
 
-      worker.bodies.sort()
+      worker.bodies.sort(worker.physics)
 
       expect(p1).to.have.property('real', false)
       expect(p2).to.have.property('real', false)
@@ -261,7 +268,7 @@ describe.only('Integration', function () {
         { mass: 1000, pos: new Vector(0, 0) }
       ])
 
-      worker.bodies.sort()
+      worker.bodies.sort(worker.physics)
 
       expect(psuedo).to.have.property('real', false)
       expect(real).to.have.property('real', true)
@@ -290,7 +297,7 @@ describe.only('Integration', function () {
         { mass: 1000, pos: new Vector(0, 1) }
       ])
 
-      worker.bodies.sort()
+      worker.bodies.sort(worker.physics)
       expect(p1).to.have.property('real', false)
       expect(p2).to.have.property('real', false)
       expect(p3).to.have.property('real', false)
@@ -304,7 +311,7 @@ describe.only('Integration', function () {
       expect(r1.link).to.be.equal(null)
 
       const totalMass = worker.bodies.living.reduce((m, b) => m + b.mass, 0)
-      const realMass = worker.bodies.real.reduce((m, b) => m + b.mass + b.psuedoMass, 0)
+      const realMass = worker.bodies.real.reduce((m, b) => m + b.mass + b.massFromPsuedoBodies, 0)
 
       expect(realMass).to.be.equal(totalMass)
     })
@@ -312,9 +319,10 @@ describe.only('Integration', function () {
 
   describe.only('collision detection', () => {
 
+    // These could probably be organized better
     describe('broad phase', () => {
 
-      describe('body.calculateBounds', () => {
+      describe('body.bounds.refresh', () => {
 
         it('describes a bounding box around a body accounting for radius and velocity', () => {
 
@@ -326,61 +334,130 @@ describe.only('Integration', function () {
             vel: new Vector(0, 0)
           })
 
-          body.calculateBounds()
-          expect(body.bounds.tl.x).to.equal(-1)
-          expect(body.bounds.tl.y).to.equal(-1)
-          expect(body.bounds.br.x).to.equal(1)
-          expect(body.bounds.br.y).to.equal(1)
+          body.bounds.refresh()
+          expect(body.bounds.l.value).to.equal(-1)
+          expect(body.bounds.t.value).to.equal(-1)
+          expect(body.bounds.r.value).to.equal(1)
+          expect(body.bounds.b.value).to.equal(1)
 
           body.vel.x = 1
           body.vel.y = 1
-          body.calculateBounds()
+          body.bounds.refresh()
 
-          expect(body.bounds.tl.x).to.equal(-1)
-          expect(body.bounds.tl.y).to.equal(-1)
-          expect(body.bounds.br.x).to.equal(2)
-          expect(body.bounds.br.y).to.equal(2)
+          expect(body.bounds.l.value).to.equal(-2)
+          expect(body.bounds.t.value).to.equal(-2)
+          expect(body.bounds.r.value).to.equal(1)
+          expect(body.bounds.b.value).to.equal(1)
 
           body.pos.x = 10
           body.pos.y = 10
           body.vel.x = -1
           body.vel.y = 1
-          body.calculateBounds()
+          body.bounds.refresh()
 
-          expect(body.bounds.tl.x).to.equal(8)
-          expect(body.bounds.tl.y).to.equal(9)
-          expect(body.bounds.br.x).to.equal(11)
-          expect(body.bounds.br.y).to.equal(12)
+          expect(body.bounds.l.value).to.equal(9)
+          expect(body.bounds.t.value).to.equal(8)
+          expect(body.bounds.r.value).to.equal(12)
+          expect(body.bounds.b.value).to.equal(11)
 
           body.vel.x = 1
           body.vel.y = -1
-          body.calculateBounds()
+          body.bounds.refresh()
 
-          expect(body.bounds.tl.x).to.equal(9)
-          expect(body.bounds.tl.y).to.equal(8)
-          expect(body.bounds.br.x).to.equal(12)
-          expect(body.bounds.br.y).to.equal(11)
+          expect(body.bounds.l.value).to.equal(8)
+          expect(body.bounds.t.value).to.equal(9)
+          expect(body.bounds.r.value).to.equal(11)
+          expect(body.bounds.b.value).to.equal(12)
+        })
+      })
+
+      describe('bodies.overlaps', () => {
+
+        let sim, b1, b2
+        const tests = {}
+        before(async () => {
+
+          sim = new TestSimulation({
+            physicsSteps: 1
+          });
+
+          ([ b1, b2 ] = sim.createBodies([
+            { mass: 1000, pos: new Vector(0, 0), vel: new Vector(40, 40) },
+            { mass: 1000, pos: new Vector(25, 0), vel: new Vector(40, 40) }
+          ]))
+
+          await sim.runForOneTick()
+
+          tests.b1OverlapB2 = b1.bounds.overlap(b2.bounds)
+          tests.b1b2PairInOverlapsObj = { ...worker.bodies.overlaps }
+
+          b1.vel.x = b2.vel.x
+          b1.vel.y = 10
+          b2.vel.y = -10
+
+          await sim.runForNumTicks(5)
+
+          tests.b1OverlapB2Stop = b1.bounds.overlap(b2.bounds)
+          tests.b1b2PairNotInOverlapsObj = { ...worker.bodies.overlaps }
         })
 
+        it('bodies with overlapping bounds are placed in an "overlaps" object', () => {
+          expect(tests.b1OverlapB2).to.be.equal(true)
+          expect(tests.b1b2PairInOverlapsObj).to.have.property(`${b1.id}-${b2.id}`)
+        })
+
+        it('overlapping pairs are removed when bounds stop overlapping', () => {
+          expect(tests.b1OverlapB2Stop).to.be.equal(false)
+          expect(tests.b1b2PairNotInOverlapsObj).to.not.have.property(`${b1.id}-${b2.id}`)
+
+        })
       })
-
-      it.only('bodies are placed into spatial partitions', async () => {
-
-        const sim = new TestSimulation({ physicsSteps: 1 })
-
-        sim.createBodies([
-          { mass: 200, pos: new Vector(0, 0) },
-          { mass: 500, pos: new Vector(1, 5) }
-        ])
-
-        await sim.runForNumTicks(1)
-
-        expect(worker.partitions.all).to.have.length(2)
-
-      })
-
     })
 
-  })
+    describe('narrow phase', () => {
+      describe('bodies register collisions on intersect courses', () => {
+        const sizes = [ 'big', 'medium', 'small' ]
+        const speeds = [ 'fast', 'slow' ]
 
+        for (const speed1 of speeds)
+          for (const size1 of sizes)
+            for (const speed2 of speeds)
+              for (const size2 of sizes)
+                it(`${speed1} ${size1} vs ${speed2} ${size2}`)
+      })
+
+      describe('on body destroyed', () => {
+
+        let big, small
+        before(async () => {
+
+          const sim = new TestSimulation();
+
+          [ big, small ] = sim.createBodies([{
+            mass: 1000
+          }, {
+            mass: 500,
+            pos: new Vector(20, 0)
+          }])
+
+          await sim.runUntil(() => big.mass === 0 || small.mass === 0)
+        })
+
+        it('larger of two bodies is kept, smaller is destroyed', () => {
+          expect(small.mass).to.be.equal(0)
+        })
+
+        it('larger absorbs mass of smaller', () => {
+          expect(big.mass).to.be.equal(1500)
+        })
+
+        it('larger position and velocity is effected by impact')
+
+        it('destroyed body edges are removed from boundsX and boundsY lists')
+
+        it('all overlaps are removed when body is destroyed')
+
+      })
+    })
+  })
 })

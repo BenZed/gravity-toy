@@ -1,8 +1,8 @@
 import { DEFAULT_PHYSICS, NO_LINK } from '../constants'
-import { min, Vector } from 'math-plus'
+import { Vector } from 'math-plus'
 
 import Body from './body'
-import Partition from './partition'
+import BodyManager from './body-manager'
 
 // This module doesn't need to export a class.
 // It will only ever be required by a newly instanced child process.
@@ -34,89 +34,13 @@ const sendToParent = isWebWorker
 // Data
 /******************************************************************************/
 
-const DELTA = 1 / 60 // 60 ticks represents 1 second
-
 const NEXT_TICK_DELAY = 0
 
 const physics = {
   ...DEFAULT_PHYSICS
 }
 
-// for broad phase collision detection
-const partitions = {
-
-  all: [],
-
-  place (body) {
-    body.calculateBounds()
-    body.partition = null
-
-    for (const partition of this.all)
-      if (partition.fits(body))
-        break
-
-    if (!body.partition) {
-      body.partition = new Partition(body)
-      this.all.push(body.partition)
-    }
-
-  }
-
-}
-
-const bodies = {
-
-  nextAssignId: 0,
-  sendInterval: 0,
-
-  living: [],
-  real: [],
-  psuedo: [],
-  destroyed: [],
-  created: [],
-
-  sort () {
-
-    const { living, real, psuedo, destroyed } = this
-
-    real.length = 0
-    psuedo.length = 0
-
-    if (living.length === 0)
-      return
-
-    // largest at 0, smallest at last
-    living.sort(byMass)
-
-    const minRealIndex = min(physics.realBodiesMin, living.length)
-
-    for (let i = 0; i < living.length; i++) {
-      const body = living[i]
-
-      // If we encounter a destroyed body, then all future bodies will also be
-      // destroyed, and they shouldn't be added to the real or psuedo arrays
-      if (body.mass <= 0)
-        break
-
-      // if we havent gotten to the minRealIndex yet, then this is considered
-      // a real body. If we have, then this body's mass must be under the
-      // realMassThreshold
-      body.real = i < minRealIndex || body.mass >= physics.realMassThreshold
-      if (body.real)
-        real.push(body)
-      else
-        psuedo.push(body)
-    }
-
-    // destroyed bodies have zero mass and since we're sorted by mass they'll
-    // all be at the end of the array. While there are still destroyed bodies at
-    // the end of the all array, pop them and place them in the destroyed array
-    while (last(living).mass <= 0) {
-      const body = living.pop()
-      destroyed.push(body)
-    }
-  }
-}
+const bodies = new BodyManager()
 
 /******************************************************************************/
 // I/O
@@ -127,7 +51,7 @@ function receiveStream ({ init, stream }) {
   for (const key in init)
     physics[key] = init[key]
 
-  bodies.living.length = 0
+  const created = []
 
   let i = 0
 
@@ -144,11 +68,11 @@ function receiveStream ({ init, stream }) {
     const pos = new Vector(posX, posY)
     const vel = new Vector(velX, velY)
 
-    bodies.living.push(new Body(id, mass, pos, vel))
+    created.push(new Body(id, mass, pos, vel))
   }
 
-  if (bodies.living.length > 0) {
-    bodies.sort()
+  if (created.length > 0) {
+    bodies.setBodies(created, physics)
     tick()
   }
 
@@ -193,11 +117,14 @@ function sendStream () {
 
 function tick (queueNextTick = true) {
 
-  collisionDetection()
+  // broad phase
+  bodies.updateOverlaps()
 
-  calculateForces()
+  // narrow phase
+  bodies.checkCollisions(physics)
 
-  applyForces()
+  bodies.calculateForces(physics)
+  bodies.applyForces(physics)
 
   sendStream()
 
@@ -206,60 +133,9 @@ function tick (queueNextTick = true) {
 
 }
 
-function applyForces () {
-  for (const body of bodies.living) {
-    const { force, vel, pos } = body
-
-    force.imult(DELTA).idiv(physics.physicsSteps)
-
-    vel.iadd(vel.add(force)).imult(0.5)
-    pos.iadd(vel)
-  }
-}
-
-function calculateForces () {
-
-  for (const body of bodies.living)
-    body.psuedoMass = 0
-
-  for (const body of bodies.psuedo)
-    body.calculatePsuedoMass(bodies, physics)
-
-  for (const body of bodies.psuedo)
-    body.calculateForces(bodies, physics)
-
-  for (const body of bodies.real)
-    body.calculateForces(bodies, physics)
-
-}
-
-function collisionDetection () {
-
-  let collisions = 0
-
-  // broad phase
-  partitions.all.length = 0
-  for (const body of bodies.living)
-    partitions.place(body)
-
-  // narow phase
-  for (const body of bodies.living)
-    collisions += body.detectCollisions()
-
-  if (collisions > 0)
-    bodies.sort()
-
-}
-
 /******************************************************************************/
 // Helper
 /******************************************************************************/
-
-const byMass = (a, b) => a.mass > b.mass
-  ? -1 : a.mass < b.mass
-  ? 1 : 0 // eslint-disable-line indent
-
-const last = arr => arr[arr.length - 1]
 
 const idOfBody = body => body.id
 
@@ -267,4 +143,4 @@ const idOfBody = body => body.id
 // Exports for testing
 /******************************************************************************/
 
-export { physics, bodies, partitions, tick }
+export { physics, bodies, tick }

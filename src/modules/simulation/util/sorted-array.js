@@ -93,6 +93,16 @@ class SortedArray extends Array {
     }
     return this
   }
+
+  remove (...values) {
+    for (const value of values) {
+      const index = this.indexOf(value)
+      if (index > -1)
+        this.splice(index, 1)
+    }
+
+    return this
+  }
 }
 
 /******************************************************************************/
