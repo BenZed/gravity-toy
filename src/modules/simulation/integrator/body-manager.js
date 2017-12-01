@@ -89,6 +89,8 @@ class BodyManager {
       boundsX.insert(bounds.l, bounds.r)
       boundsY.insert(bounds.t, bounds.b)
     }
+
+    this.updateOverlaps()
   }
 
   calculateForces (physics) {
@@ -171,6 +173,7 @@ class BodyManager {
 
     boundsX.remove(small.bounds.r, small.bounds.l)
     boundsY.remove(small.bounds.b, small.bounds.t)
+    console.log(boundsX.length)
   }
 
   sort (physics) {
@@ -233,9 +236,9 @@ function didCollide (...args) {
   // Due to float point precision errors, we can't use the same linear algebra
   // to determine the position of moving circles if their velocities are very
   // close because we'll get false positives.
-  if (rel.sqrMagnitude < RELATIVE_VELOCITY_EPSILON)
-    dist = fast.pos.sub(slow.pos).magnitude
-  else {
+
+  dist = fast.pos.sub(slow.pos).magnitude
+  if (rel.sqrMagnitude < RELATIVE_VELOCITY_EPSILON) {
     const col = closestPointOnLine(fast.pos.sub(rel), fast.pos, slow.pos)
     dist = col.sub(slow.pos).magnitude
   }

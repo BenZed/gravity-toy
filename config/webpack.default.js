@@ -76,6 +76,10 @@ module.exports = {
     ]
   },
 
+  node: {
+    child_process: 'empty'
+  },
+
   plugins: [
     new HtmlWebpackPlugin({
       inject: 'head',

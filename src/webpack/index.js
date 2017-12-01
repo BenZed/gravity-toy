@@ -15,6 +15,6 @@ addEventListener(window, 'load', () => {
 
   const mainTag = document.getElementById('gravity-toy')
 
-  render(<TestCanvas />, mainTag)
+  render(<GravityToy />, mainTag)
 
 })
