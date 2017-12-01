@@ -13,13 +13,14 @@ import { Vector, PI } from 'math-plus'
 
 function drawBody (ctx, body) {
 
-  const { radius, pos } = body
+  const { radius, pos, vel } = body
 
   ctx.beginPath()
   ctx.arc(pos.x, pos.y, radius, 0, 2 * PI)
   ctx.closePath()
 
-  ctx.fillStyle = 'white'
+  const speed = vel.magnitude
+  ctx.fillStyle = speed > 10 ? 'red' : speed > 5 ? 'orange' : speed > 2 ? 'yellow' : 'white'
   ctx.fill()
 }
 

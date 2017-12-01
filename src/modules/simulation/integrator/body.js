@@ -65,6 +65,10 @@ class Bounds {
     return true
   }
 
+  toString () {
+    return `{ left: ${this.l.value}, right: ${this.r.value}, top: ${this.t.value}, bottom: ${this.b.value} }`
+  }
+
   refresh () {
     this.l.refresh()
     this.r.refresh()

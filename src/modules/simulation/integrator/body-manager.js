@@ -17,11 +17,11 @@ class BodyManager {
   nextAssignId = 0
   sendInterval = 0
 
-  destroyed = new SortedArray()
-  created = new SortedArray()
-  psuedo = new SortedArray()
-  living = new SortedArray()
-  real = new SortedArray()
+  destroyed = []
+  created = []
+  psuedo = []
+  living = []
+  real = []
 
   boundsX = new SortedArray()
   boundsY = new SortedArray()
@@ -33,39 +33,42 @@ class BodyManager {
     }
   }
 
-  checkOverlaps = (e1, e2) => {
+  checkBoundsIfEdgesOverlap = (e1, e2) => {
+
+    const above = e1 >= e2
+    if (above)
+      this.checkBounds(e1.body, e2.body)
+
+    return above ? 1 : -1
+  }
+
+  checkBounds = (b1, b2) => {
+
+    if (b1 === b2)
+      return
 
     const { overlaps } = this
 
-    const above = e1 >= e2
-    if (above) {
+    const key = pairKey(b1, b2)
+    const hasPair = key in overlaps
+    const hasOverlap = b1.bounds.overlap(b2.bounds)
 
-      const b1 = e1.body
-      const b2 = e2.body
+    if (hasPair && !hasOverlap)
+      delete overlaps[key]
 
-      const key = pairKey(b1, b2)
-      const hasPair = key in overlaps
-      const hasOverlap = b1.bounds.overlap(b2.bounds)
-
-      if (hasPair && !hasOverlap)
-        delete overlaps[key]
-
-      else if (!hasPair && hasOverlap)
-        overlaps[key] = [ b1, b2 ]
-    }
-
-    return above
+    else if (!hasPair && hasOverlap)
+      overlaps[key] = [ b1, b2 ]
   }
 
   updateOverlaps () {
 
-    const { boundsX, boundsY, living, checkOverlaps } = this
+    const { boundsX, boundsY, living, checkBoundsIfEdgesOverlap } = this
 
     for (const body of living)
       body.bounds.refresh()
 
-    boundsX.sort(checkOverlaps)
-    boundsY.sort(checkOverlaps)
+    boundsX.sort(checkBoundsIfEdgesOverlap)
+    boundsY.sort(checkBoundsIfEdgesOverlap)
 
   }
 
@@ -90,7 +93,13 @@ class BodyManager {
       boundsY.insert(bounds.t, bounds.b)
     }
 
-    this.updateOverlaps()
+    // Initial bound check, because if bodies are created already in
+    // each others bounds, overlap check done by the sorted arrays will
+    // miss. This is slow as fuck, but it's only done once per instance
+    for (const b1 of this.living)
+      for (const b2 of this.living)
+        this.checkBounds(b1, b2)
+
   }
 
   calculateForces (physics) {
@@ -173,7 +182,6 @@ class BodyManager {
 
     boundsX.remove(small.bounds.r, small.bounds.l)
     boundsY.remove(small.bounds.b, small.bounds.t)
-    console.log(boundsX.length)
   }
 
   sort (physics) {
@@ -217,6 +225,7 @@ class BodyManager {
       const body = living.pop()
       destroyed.push(body)
     }
+
   }
 
 }

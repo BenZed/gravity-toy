@@ -75,7 +75,6 @@ function receiveStream ({ init, stream }) {
     bodies.setBodies(created, physics)
     tick()
   }
-
 }
 
 function sendStream () {

@@ -369,8 +369,14 @@ function writeTick (stream) {
   let i = 0
   bodies.nextAssignId = stream[i++]
 
-  // TODO do something with destroyed and created ids
   const destroyedIds = stream[i++]
+  for (const destroyedId of destroyedIds) {
+    const body = bodies.map.get(destroyedId)
+    const cache = body[CACHE]
+    cache.deathTick = tick.last
+  }
+
+  // TODO do something with created ids
   const createdIds = stream[i++]
 
   while (i < stream.length) {
@@ -449,6 +455,9 @@ function setBodyValuesFromCache (body, tick) {
 }
 
 function idArrayCheck (haystack, needle) {
+
+  if (haystack.length === 0)
+    return true
 
   for (let i = 0; i < haystack.length; i++)
     if (haystack[i] === needle) {

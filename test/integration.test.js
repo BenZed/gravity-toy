@@ -411,6 +411,32 @@ describe('Integration', function () {
           expect(tests.b1b2PairNotInOverlapsObj).to.not.have.property(`${b1.id}-${b2.id}`)
 
         })
+
+        it('bodies starting in overlapping positions are considered', async () => {
+
+          const sim = new TestSimulation({
+            physicsSteps: 1
+          })
+
+          // These props were curated from randomly generated bodies in a test
+          // bed.
+          const [ small, big ] = sim.createBodies([{
+            mass: 135.5901425892382,
+            pos: new Vector(740.66514718532036, 345.91316877961964)
+          }, {
+            mass: 136.06562760166597,
+            pos: new Vector(739.64049275300404, 348.45004395745675)
+          }])
+
+          await sim.runForNumTicks(10)
+
+          // The props given describe bodies so close together they should
+          // have merged, not flung apart.
+
+          expect(big.vel.magnitude).to.be.below(1) // should actually be very close to zero
+          expect(small.mass).to.be.equal(0)
+
+        })
       })
     })
 
@@ -458,6 +484,7 @@ describe('Integration', function () {
         it('all overlaps are removed when body is destroyed')
 
       })
+
     })
   })
 })
