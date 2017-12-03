@@ -13,7 +13,7 @@ import SortedArray from 'modules/simulation/util/sorted-array'
 const props = []
 
 function addSomeBodiesForShitsAndGiggles (sim) {
-  if (props.length === 0) for (let i = 0; i < 3000; i++)
+  if (props.length === 0) for (let i = 0; i < 5000; i++)
     props.push({
       mass: random(50, 150),
       pos: new Vector(
@@ -78,8 +78,8 @@ class GravityToy extends React.Component {
   componentDidMount () {
 
     this.simulation = new Simulation({
-      physicsSteps: 3,
-      g: 2.5
+      physicsSteps: 1,
+      g: 1
     })
     addSomeBodiesForShitsAndGiggles(this.simulation)
     this.renderer = new Renderer(this.canvas)

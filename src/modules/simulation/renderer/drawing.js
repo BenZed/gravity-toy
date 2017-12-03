@@ -1,4 +1,5 @@
-import { Vector, PI } from 'math-plus'
+import { Vector, PI, max } from 'math-plus'
+import { WeightedColorizer } from '../util'
 
 /******************************************************************************/
 // Draw Helpers
@@ -6,6 +7,15 @@ import { Vector, PI } from 'math-plus'
 
 // This contains a whole bunch of draw helpers so they don't have to be placed
 // renderer class page
+
+const speed = new WeightedColorizer(
+  [ 'blue', 'cyan', 'white', 'orange', 'red' ],
+  [ -25, 0, 25 ]
+)
+
+const colorBy = {
+  speed
+}
 
 /******************************************************************************/
 // Helpers
@@ -15,12 +25,21 @@ function drawBody (ctx, body) {
 
   const { radius, pos, vel } = body
 
+  const speed = vel.magnitude
+  const speedDistortionRadius = max(speed, radius)
+  const speedDistortionAngle = vel.angle * PI / 180
+
   ctx.beginPath()
-  ctx.arc(pos.x, pos.y, radius, 0, 2 * PI)
+  ctx.ellipse(
+    pos.x, pos.y, // position
+    speedDistortionRadius,
+    radius,
+    speedDistortionAngle,
+    0, 2 * PI
+  )
   ctx.closePath()
 
-  const speed = vel.magnitude
-  ctx.fillStyle = speed > 10 ? 'red' : speed > 5 ? 'orange' : speed > 2 ? 'yellow' : 'white'
+  ctx.fillStyle = colorBy.speed(vel.magnitude)
   ctx.fill()
 }
 

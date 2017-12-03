@@ -5,6 +5,7 @@ import { radiusFromMass, massFromRadius } from './radius-from-mass'
 // import calcBaryCenter from './calculate-bary-center'
 import SortedArray from './sorted-array'
 import closestPointOnLine from './closest-point-on-line'
+import WeightedColorizer from './weighted-colorizer'
 
 export {
   // isOrderedFiniteArray,
@@ -12,7 +13,8 @@ export {
   massFromRadius,
   // randomVector,
   // calcBaryCenter,
-  // WeightedColorizer,
   closestPointOnLine,
-  SortedArray
+
+  SortedArray,
+  WeightedColorizer
 }
