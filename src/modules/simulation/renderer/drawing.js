@@ -8,13 +8,13 @@ import { WeightedColorizer } from '../util'
 // This contains a whole bunch of draw helpers so they don't have to be placed
 // renderer class page
 
-const speed = new WeightedColorizer(
+const stress = new WeightedColorizer(
   [ 'blue', 'cyan', 'white', 'orange', 'red' ],
-  [ -25, 0, 25 ]
+  [ -30, 0, 30 ]
 )
 
 const colorBy = {
-  speed
+  stress
 }
 
 /******************************************************************************/
@@ -39,7 +39,7 @@ function drawBody (ctx, body) {
   )
   ctx.closePath()
 
-  ctx.fillStyle = colorBy.speed(vel.magnitude)
+  ctx.fillStyle = colorBy.stress(speedDistortionRadius - radius)
   ctx.fill()
 }
 

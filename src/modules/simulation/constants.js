@@ -10,10 +10,11 @@
 export const DEFAULT_PHYSICS = Object.freeze({
 
   // Gravitational Constant
-  g: 1,
+  // In this case it's arbitrary
+  g: 10,
 
   // Higher steps mean more calculation time, but more precision
-  physicsSteps: 4,
+  physicsSteps: 1,
 
   // As a lossy optimization, bodies below a certain mass threshold can be considered
   // pseudo bodies and excluded from the primary integration loop. This speeds
@@ -21,7 +22,7 @@ export const DEFAULT_PHYSICS = Object.freeze({
   realMassThreshold: 0,
 
   // There must be at least this many real bodies before bodies under the aforementioned
-  // mass threshold are considered psuedo
+  // mass threshold are considered psuedo. Infinity means disabled.
   realBodiesMin: Infinity
 
 })
@@ -39,19 +40,19 @@ export const NUMBER_SIZE = 8
 // Most attracted to. "Parent" would be a misnomber, becase a large body could
 // have a smaller body that is exerting more force on it than any other body.
 // If a body was just created, it will have no link for it's initial tick, so
-// It gets this value as it'd "linkId"
+// It gets this value as it's "linkId"
 export const NO_LINK = -1
 
 // Each body stores 6 numbers per tick: posX, posY, velX, velY, mass, parentIndex.
-// Mass and parentIndex may be able to be optimized in the future, because they
-// don't change every tick.
+// Mass may be able to be optimized in the future, because it doesn't change
+// every tick.
 export const CACHED_VALUES_PER_TICK = 6
 
 // Arbitrary minimum mass for a body
-export const MASS_MIN = 50
+export const MASS_MIN = 1
 
-// Arbitrary unit, but works for pixels
+// If the min radius of a body is 0.5, then the min diameter would be 1, so 1 pixel
 export const RADIUS_MIN = 0.5
 
-// Scaler for increase in radius in relationship to mass
-export const RADIUS_FACTOR = 0.25
+// Arbitrary scaler for increase in radius in relationship to mass
+export const RADIUS_FACTOR = 0.5

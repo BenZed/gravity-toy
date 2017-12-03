@@ -18,6 +18,7 @@ class BodyManager {
   sendInterval = 0
 
   destroyed = []
+  absorbing = []
   created = []
   psuedo = []
   living = []

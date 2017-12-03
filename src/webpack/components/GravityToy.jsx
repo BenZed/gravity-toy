@@ -4,6 +4,7 @@ import addEventListener from 'add-event-listener'
 import { Renderer, Simulation } from 'modules/simulation'
 import { clamp, Vector, random } from 'math-plus'
 
+import Timeline from './Timeline'
 import SortedArray from 'modules/simulation/util/sorted-array'
 
 /******************************************************************************/
@@ -13,18 +14,23 @@ import SortedArray from 'modules/simulation/util/sorted-array'
 const props = []
 
 function addSomeBodiesForShitsAndGiggles (sim) {
-  if (props.length === 0) for (let i = 0; i < 5000; i++)
+  if (props.length === 0) for (let i = 0; i < 1000; i++)
     props.push({
-      mass: random(50, 150),
+      mass: random(1, 1),
       pos: new Vector(
         random(0, innerWidth),
         random(0, innerHeight)
       ),
       vel: new Vector(
-        random(-1, 1),
-        random(-1, 1)
+        random(-0.1, 0.1),
+        random(-0.1, 0.1)
       )
     })
+
+  props.push({
+    mass: 1000000000,
+    pos: new Vector(innerWidth * 1000, innerHeight * 0.5)
+  })
 
   sim.createBodies(props)
 
@@ -43,10 +49,10 @@ async function tryFindBodiesMovingWayToFast (sim, rend) {
   rend.render(sim)
 
   const props = fast.map(f =>
-  `{
-    mass: ${f.mass},
-    pos: new Vector(${f.pos.x}, ${f.pos.y})
-  }`)
+    `{
+      mass: ${f.mass},
+      pos: new Vector(${f.pos.x}, ${f.pos.y})
+    }`)
 
   console.log(props.join(', '))
 }
@@ -77,10 +83,7 @@ class GravityToy extends React.Component {
 
   componentDidMount () {
 
-    this.simulation = new Simulation({
-      physicsSteps: 1,
-      g: 1
-    })
+    this.simulation = new Simulation()
     addSomeBodiesForShitsAndGiggles(this.simulation)
     this.renderer = new Renderer(this.canvas)
 
@@ -125,29 +128,29 @@ class GravityToy extends React.Component {
     this.canvas = ref
   }
 
-  onKeyDown = async ({ key }) => {
-
-    let delta = 0
-    if (key === 'a')
-      delta = -1
-    else if (key === 'd')
-      delta = 1
-
-    const { simulation: sim, renderer } = this
-
-    let tick = sim.currentTick + delta
-    if (tick < sim.firstTick)
-      tick = sim.firstTick
-
-    if (tick > sim.lastTick && sim.running)
-      return
-
-    if (tick > sim.lastTick)
-      await sim.runUntil(() => sim.lastTick >= tick)
-    sim.currentTick = tick
-    renderer.render(sim)
-
-  }
+  // onKeyDown = async ({ key }) => {
+  //
+  //   let delta = 0
+  //   if (key === 'a')
+  //     delta = -1
+  //   else if (key === 'd')
+  //     delta = 1
+  //
+  //   const { simulation: sim, renderer } = this
+  //
+  //   let tick = sim.currentTick + delta
+  //   if (tick < sim.firstTick)
+  //     tick = sim.firstTick
+  //
+  //   if (tick > sim.lastTick && sim.running)
+  //     return
+  //
+  //   if (tick > sim.lastTick)
+  //     await sim.runUntil(() => sim.lastTick >= tick)
+  //   sim.currentTick = tick
+  //   renderer.render(sim)
+  //
+  // }
 
   render () {
 
@@ -157,7 +160,8 @@ class GravityToy extends React.Component {
 
     return [
       <Title key='title'>Gravity Toy</Title>,
-      <Canvas key='canvas' { ...handlers} />
+      <Canvas key='canvas' { ...handlers} />,
+      <Timeline key='timeline' />
     ]
 
   }
