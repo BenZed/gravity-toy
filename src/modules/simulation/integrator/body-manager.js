@@ -5,9 +5,10 @@ import { SortedArray, radiusFromMass, closestPointOnLine } from '../util'
 // Constants
 /******************************************************************************/
 
-const DELTA = 1 / 60 // 60 ticks represents 1 second
+const DELTA = 1 / 60 // 30 ticks represents 1 second
 
 const RELATIVE_VELOCITY_EPSILON = 1
+
 /******************************************************************************/
 // Main
 /******************************************************************************/
@@ -85,21 +86,15 @@ class BodyManager {
     boundsY.length = 0
 
     for (const body of this.living) {
-
       const { bounds } = body
 
       bounds.refresh()
 
-      boundsX.insert(bounds.l, bounds.r)
-      boundsY.insert(bounds.t, bounds.b)
+      // push, rather than insert so that any initially overlapping bodies will
+      // be caught by the first updateOverlaps()
+      boundsX.push(bounds.l, bounds.r)
+      boundsY.push(bounds.t, bounds.b)
     }
-
-    // Initial bound check, because if bodies are created already in
-    // each others bounds, overlap check done by the sorted arrays will
-    // miss. This is slow as fuck, but it's only done once per instance
-    for (const b1 of this.living)
-      for (const b2 of this.living)
-        this.checkBounds(b1, b2)
 
   }
 
@@ -181,8 +176,10 @@ class BodyManager {
 
     const { boundsX, boundsY } = this
 
-    boundsX.remove(small.bounds.r, small.bounds.l)
-    boundsY.remove(small.bounds.b, small.bounds.t)
+    boundsX.remove(small.bounds.r)
+    boundsX.remove(small.bounds.l)
+    boundsY.remove(small.bounds.b)
+    boundsY.remove(small.bounds.t)
   }
 
   sort (physics) {
@@ -310,7 +307,7 @@ function calculateForces (body, bodies, physics, addPsuedoMassOnly = false) {
 
   }
 
-  if (!body.real && body.link && addPsuedoMassOnly)
+  if (addPsuedoMassOnly && !body.real && body.link)
     body.link.massFromPsuedoBodies += body.mass
 }
 

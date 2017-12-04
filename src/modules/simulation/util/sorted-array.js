@@ -86,22 +86,19 @@ class SortedArray extends Array {
     return index
   }
 
-  insert (...values) {
-    for (const value of values) {
-      const index = search(this, value)
-      this.splice(index, 0, value)
-    }
-    return this
+  insert (value) {
+    const index = search(this, value)
+    this.splice(index, 0, value)
+
+    return index
   }
 
-  remove (...values) {
-    for (const value of values) {
-      const index = this.indexOf(value)
-      if (index > -1)
-        this.splice(index, 1)
-    }
+  remove (value) {
+    const index = this.indexOf(value)
+    if (index > -1)
+      this.splice(index, 1)
 
-    return this
+    return index
   }
 }
 

@@ -9,9 +9,9 @@
 
 export const DEFAULT_PHYSICS = Object.freeze({
 
-  // Gravitational Constant
-  // In this case it's arbitrary
-  g: 10,
+  // Gravitational Constant, completely arbitrary value. This number was chosen
+  // because it makes bodies move quickly at zoom x1
+  g: 16,
 
   // Higher steps mean more calculation time, but more precision
   physicsSteps: 1,
@@ -55,4 +55,4 @@ export const MASS_MIN = 1
 export const RADIUS_MIN = 0.5
 
 // Arbitrary scaler for increase in radius in relationship to mass
-export const RADIUS_FACTOR = 0.5
+export const RADIUS_FACTOR = 0.625

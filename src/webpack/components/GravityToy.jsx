@@ -11,25 +11,39 @@ import SortedArray from 'modules/simulation/util/sorted-array'
 // TEMPORARY TODO Remove
 /******************************************************************************/
 
-const props = []
-
 function addSomeBodiesForShitsAndGiggles (sim) {
-  if (props.length === 0) for (let i = 0; i < 1000; i++)
+
+  const props = []
+
+  for (let i = 0; i < 3990; i++)
     props.push({
-      mass: random(1, 1),
+      mass: random(1, 10),
       pos: new Vector(
         random(0, innerWidth),
         random(0, innerHeight)
       ),
       vel: new Vector(
-        random(-0.1, 0.1),
-        random(-0.1, 0.1)
+        random(-1, 1),
+        random(-1, 1)
+      )
+    })
+
+  for (let i = 0; i < 10; i++)
+    props.push({
+      mass: random(1, 1000),
+      pos: new Vector(
+        random(0, innerWidth),
+        random(0, innerHeight)
+      ),
+      vel: new Vector(
+        random(-1, 1),
+        random(-1, 1)
       )
     })
 
   props.push({
-    mass: 1000000000,
-    pos: new Vector(innerWidth * 1000, innerHeight * 0.5)
+    mass: 1000000,
+    pos: new Vector(innerWidth * 100, innerHeight * 0.5)
   })
 
   sim.createBodies(props)
@@ -78,12 +92,17 @@ const Title = styled.h1`
 class GravityToy extends React.Component {
 
   state = {
-    speed: 1
+    speed: 1,
+    currentTime: 0,
+    maxTime: Infinity
   }
 
   componentDidMount () {
 
-    this.simulation = new Simulation()
+    this.simulation = new Simulation({
+      minRealBodies: 256,
+      realMassThreshold: 10
+    })
     addSomeBodiesForShitsAndGiggles(this.simulation)
     this.renderer = new Renderer(this.canvas)
 
@@ -109,6 +128,12 @@ class GravityToy extends React.Component {
       simulation.firstTick,
       simulation.lastTick
     )
+
+    if (simulation.lastTick > 0) {
+      const maxTime = simulation.usedCacheMemory / simulation.maxCacheMemory * 100
+      const currentTime = simulation.currentTick / simulation.lastTick * 100
+      this.setState({ maxTime, currentTime })
+    }
 
     renderer.render(simulation)
 
@@ -154,16 +179,14 @@ class GravityToy extends React.Component {
 
   render () {
 
-    const { innerRef } = this
-
+    const { innerRef, state } = this
     const handlers = { innerRef }
 
     return [
       <Title key='title'>Gravity Toy</Title>,
       <Canvas key='canvas' { ...handlers} />,
-      <Timeline key='timeline' />
+      <Timeline key='timeline' {...state}/>
     ]
-
   }
 
 }
