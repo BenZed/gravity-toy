@@ -9,8 +9,8 @@ import { WeightedColorizer } from '../util'
 // renderer class page
 
 const stress = new WeightedColorizer(
-  [ 'blue', 'cyan', 'white', 'orange', 'red' ],
-  [ -30, 0, 30 ]
+  [ 'white', 'orange', 'red' ],
+  [ 0, 30 ]
 )
 
 const colorBy = {
@@ -48,7 +48,24 @@ function drawBody (ctx, body) {
 /******************************************************************************/
 
 export function clearCanvas (ctx, canvas) {
+
+  // Reset all transformations
+  ctx.resetTransform()
+
+  // Erase Canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height)
+  const zoom = 20
+
+  // Center on view
+  const viewWidth = canvas.width * zoom
+  const viewHeight = canvas.height * zoom
+
+  ctx.scale(1 / zoom, 1 / zoom)
+  ctx.translate(
+    viewWidth * 0.5 - canvas.width * 0.5,
+    viewHeight * 0.5 - canvas.height * 0.5
+  )
+
 }
 
 export function drawBodies (ctx, simulation) {

@@ -28,12 +28,3 @@ function closestPointOnLine (lineStart, lineEnd, point) {
 /******************************************************************************/
 
 export default closestPointOnLine
-
-// Point d = closestpointonline(circle1.x, circle1.y,
-//                 circle1.x + circle1.vx, circle1.y + circle1.vy, circle2.x, circle2.y);
-// double closestdistsq = Math.pow(circle2.x - d.x, 2) + Math.pow(circle2.y - d.y), 2);
-// if(closestdistsq <= Math.pow(circle1.radius + circle2.radius, 2){
-//     // a collision has occurred
-// }else{
-//     // no collision has occurred
-// }

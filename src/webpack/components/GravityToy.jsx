@@ -2,7 +2,7 @@ import React from 'react'
 import styled from 'styled-components'
 import addEventListener from 'add-event-listener'
 import { Renderer, Simulation } from 'modules/simulation'
-import { clamp, Vector, random } from 'math-plus'
+import { clamp, Vector, random, cos, sqrt, sin, PI } from 'math-plus'
 
 import Timeline from './Timeline'
 import SortedArray from 'modules/simulation/util/sorted-array'
@@ -11,40 +11,44 @@ import SortedArray from 'modules/simulation/util/sorted-array'
 // TEMPORARY TODO Remove
 /******************************************************************************/
 
+const props = []
+
+function randomPointInCircle (radius) {
+
+  const angle = random() * 2 * PI
+
+  const rRadiusSqr = random() * radius * radius
+
+  const rRadius = sqrt(rRadiusSqr)
+
+  return new Vector(rRadius * cos(angle), rRadius * sin(angle))
+
+}
+
 function addSomeBodiesForShitsAndGiggles (sim) {
+  const speed = 15
+  const spread = 2
 
-  const props = []
+  const big = {
+    mass: 100000,
+    pos: new Vector(innerWidth * 0.5, innerHeight * 0.5)
+  }
+  props.push(big)
 
-  for (let i = 0; i < 3990; i++)
-    props.push({
-      mass: random(1, 10),
-      pos: new Vector(
-        random(0, innerWidth),
-        random(0, innerHeight)
-      ),
-      vel: new Vector(
-        random(-1, 1),
-        random(-1, 1)
-      )
-    })
-
-  for (let i = 0; i < 10; i++)
+  for (let i = 0; i < 5000; i++)
     props.push({
       mass: random(1, 1000),
-      pos: new Vector(
-        random(0, innerWidth),
-        random(0, innerHeight)
-      ),
+      pos: randomPointInCircle(innerWidth * spread).iadd(big.pos),
       vel: new Vector(
-        random(-1, 1),
-        random(-1, 1)
+        random(-speed, speed),
+        random(-speed, speed)
       )
     })
 
-  props.push({
-    mass: 1000000,
-    pos: new Vector(innerWidth * 100, innerHeight * 0.5)
-  })
+  for (let i = 1; i < props.length; i++) {
+    const prop = props[i]
+    prop.vel = prop.pos.sub(big.pos).normalize().mult(speed)
+  }
 
   sim.createBodies(props)
 
