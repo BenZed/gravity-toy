@@ -1,4 +1,6 @@
 import { clearCanvas, drawBodies } from './drawing'
+import Camera from './camera'
+import define from 'define-utility'
 
 /******************************************************************************/
 // Main Component
@@ -7,16 +9,17 @@ import { clearCanvas, drawBodies } from './drawing'
 class Renderer {
 
   constructor (canvas) {
-    this.canvas = canvas
+    this::define()
+      .enum.let('canvas', canvas)
+      .enum.const('camera', new Camera(this))
   }
 
   render (simulation) {
 
-    const { canvas } = this
-    const ctx = canvas.getContext('2d')
+    const ctx = this.canvas.getContext('2d')
 
-    clearCanvas(ctx, canvas)
-    drawBodies(ctx, simulation)
+    clearCanvas(ctx, this)
+    drawBodies(ctx, this, simulation)
   }
 
 }

@@ -56,3 +56,6 @@ export const RADIUS_MIN = 0.5
 
 // Arbitrary scaler for increase in radius in relationship to mass
 export const RADIUS_FACTOR = 0.625
+
+// 60 ticks equals one second
+export const TICK_DURATION = 1 / 60

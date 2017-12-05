@@ -1,11 +1,10 @@
 import { min, sqrt, Vector } from 'math-plus'
 import { SortedArray, radiusFromMass, closestPointOnLine } from '../util'
+import { TICK_DURATION } from '../constants'
 
 /******************************************************************************/
 // Constants
 /******************************************************************************/
-
-const DELTA = 1 / 60 // 30 ticks represents 1 second
 
 const RELATIVE_VELOCITY_EPSILON = 1
 
@@ -123,7 +122,7 @@ class BodyManager {
     for (const body of living) {
       const { force, vel, pos } = body
 
-      force.imult(DELTA).idiv(physics.physicsSteps)
+      force.imult(TICK_DURATION).idiv(physics.physicsSteps)
 
       vel.iadd(vel.add(force)).imult(0.5)
       pos.iadd(vel)

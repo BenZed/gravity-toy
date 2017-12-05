@@ -1,5 +1,6 @@
-import { Vector, PI, max } from 'math-plus'
+import { Vector, PI, max, min } from 'math-plus'
 import { WeightedColorizer } from '../util'
+import { RADIUS_MIN } from '../constants'
 
 /******************************************************************************/
 // Draw Helpers
@@ -21,19 +22,28 @@ const colorBy = {
 // Helpers
 /******************************************************************************/
 
-function drawBody (ctx, body) {
+function drawBody (ctx, renderer, body) {
 
   const { radius, pos, vel } = body
+  const { camera, canvas } = renderer
 
-  const speed = vel.magnitude
-  const speedDistortionRadius = max(speed, radius)
-  const speedDistortionAngle = vel.angle * PI / 180
+  const relativeVel = camera.referenceFrame
+    ? vel.sub(camera.referenceFrame.vel)
+    : vel
+
+  const viewVel = relativeVel.div(camera.current.zoom)
+  const viewRadius = max(radius / camera.current.zoom, RADIUS_MIN)
+  const viewPos = camera.worldToCanvas(pos, canvas)
+
+  const speed = viewVel.magnitude
+  const speedDistortionRadius = max(speed, viewRadius)
+  const speedDistortionAngle = viewVel.angle * PI / 180
 
   ctx.beginPath()
   ctx.ellipse(
-    pos.x, pos.y, // position
+    viewPos.x, viewPos.y, // position
     speedDistortionRadius,
-    radius,
+    viewRadius,
     speedDistortionAngle,
     0, 2 * PI
   )
@@ -47,30 +57,18 @@ function drawBody (ctx, body) {
 // Exports
 /******************************************************************************/
 
-export function clearCanvas (ctx, canvas) {
+export function clearCanvas (ctx, renderer) {
 
-  // Reset all transformations
-  ctx.resetTransform()
+  const { canvas } = renderer
 
   // Erase Canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  const zoom = 20
-
-  // Center on view
-  const viewWidth = canvas.width * zoom
-  const viewHeight = canvas.height * zoom
-
-  ctx.scale(1 / zoom, 1 / zoom)
-  ctx.translate(
-    viewWidth * 0.5 - canvas.width * 0.5,
-    viewHeight * 0.5 - canvas.height * 0.5
-  )
 
 }
 
-export function drawBodies (ctx, simulation) {
+export function drawBodies (ctx, renderer, simulation) {
 
   for (const body of simulation.livingBodies())
-    drawBody(ctx, body)
+    drawBody(ctx, renderer, body)
 
 }

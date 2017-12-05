@@ -73,7 +73,7 @@ class Simulation extends EventEmitter {
 
   }
 
-  run (tick = this.lastTick) {
+  run (tick = this.currentTick) {
 
     this::assertTick(tick)
 
@@ -131,7 +131,7 @@ class Simulation extends EventEmitter {
     this[INTEGRATOR].start(stream)
   }
 
-  runUntil (condition, startTick = this.lastTick, description = 'until condition met') {
+  runUntil (condition, startTick = this.currentTick, description = 'until condition met') {
     this::assertTick(startTick)
 
     if (!is(condition, Function))
@@ -165,7 +165,7 @@ class Simulation extends EventEmitter {
     })
   }
 
-  runForNumTicks (totalTicks, startTick = this.lastTick) {
+  runForNumTicks (totalTicks, startTick = this.currentTick) {
     if (!is(totalTicks, Number) || totalTicks <= 0)
       throw new Error('totalTicks must be a number above zero.')
 

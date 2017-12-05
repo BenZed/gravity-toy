@@ -8,7 +8,7 @@ import Timeline from './Timeline'
 import SortedArray from 'modules/simulation/util/sorted-array'
 
 /******************************************************************************/
-// TEMPORARY TODO Remove
+// Temporary TODO Remove
 /******************************************************************************/
 
 const props = []
@@ -16,26 +16,24 @@ const props = []
 function randomPointInCircle (radius) {
 
   const angle = random() * 2 * PI
-
   const rRadiusSqr = random() * radius * radius
-
   const rRadius = sqrt(rRadiusSqr)
 
   return new Vector(rRadius * cos(angle), rRadius * sin(angle))
-
 }
 
 function addSomeBodiesForShitsAndGiggles (sim) {
-  const speed = 15
+  const speed = 4
   const spread = 2
 
   const big = {
     mass: 100000,
     pos: new Vector(innerWidth * 0.5, innerHeight * 0.5)
   }
+
   props.push(big)
 
-  for (let i = 0; i < 5000; i++)
+  for (let i = 0; i < 500; i++)
     props.push({
       mass: random(1, 1000),
       pos: randomPointInCircle(innerWidth * spread).iadd(big.pos),
@@ -51,7 +49,6 @@ function addSomeBodiesForShitsAndGiggles (sim) {
   }
 
   sim.createBodies(props)
-
 }
 
 async function tryFindBodiesMovingWayToFast (sim, rend) {
@@ -108,12 +105,13 @@ class GravityToy extends React.Component {
       realMassThreshold: 10
     })
     addSomeBodiesForShitsAndGiggles(this.simulation)
-    this.renderer = new Renderer(this.canvas)
 
+    this.renderer = new Renderer(this.canvas)
     this.simulation.on('cache-full', this.cacheFull)
 
     addEventListener(window, 'resize', this.resize)
     addEventListener(window, 'keypress', this.onKeyDown)
+
     this.interval = requestAnimationFrame(this.update)
 
     this.resize()
