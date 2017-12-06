@@ -6,6 +6,7 @@ import { clamp, Vector, random, cos, sqrt, sin, PI } from 'math-plus'
 
 import Timeline from './Timeline'
 import SortedArray from 'modules/simulation/util/sorted-array'
+import Hammer from 'hammerjs'
 
 /******************************************************************************/
 // Temporary TODO Remove
@@ -24,18 +25,18 @@ function randomPointInCircle (radius) {
 
 function addSomeBodiesForShitsAndGiggles (sim) {
   const speed = 4
-  const spread = 2
+  const spread = 0.1
 
   const big = {
-    mass: 100000,
+    mass: 3000,
     pos: new Vector(innerWidth * 0.5, innerHeight * 0.5)
   }
 
   props.push(big)
 
-  for (let i = 0; i < 500; i++)
+  for (let i = 0; i < 5000; i++)
     props.push({
-      mass: random(1, 1000),
+      mass: random(1, 5),
       pos: randomPointInCircle(innerWidth * spread).iadd(big.pos),
       vel: new Vector(
         random(-speed, speed),
@@ -71,6 +72,7 @@ async function tryFindBodiesMovingWayToFast (sim, rend) {
 
   console.log(props.join(', '))
 }
+
 /******************************************************************************/
 // Sub Components
 /******************************************************************************/
@@ -107,17 +109,30 @@ class GravityToy extends React.Component {
     addSomeBodiesForShitsAndGiggles(this.simulation)
 
     this.renderer = new Renderer(this.canvas)
+    this.hammer = new Hammer(this.canvas)
     this.simulation.on('cache-full', this.cacheFull)
 
     addEventListener(window, 'resize', this.resize)
     addEventListener(window, 'keypress', this.onKeyDown)
 
-    this.interval = requestAnimationFrame(this.update)
+    this.hammer.on('pan', this.onPan)
+    this.hammer.on('panend', this.onPanEnd)
+
+    this.animate = requestAnimationFrame(this.update)
 
     this.resize()
     this.simulation.run()
 
     // tryFindBodiesMovingWayToFast(this.simulation, this.renderer)
+  }
+
+  componentWillUnmount () {
+
+    cancelAnimationFrame(this.animate)
+
+    this.simulation.stop()
+    this.renderer.canvas = null
+    this.hammer.destroy()
   }
 
   update = () => {
@@ -155,30 +170,6 @@ class GravityToy extends React.Component {
     this.canvas = ref
   }
 
-  // onKeyDown = async ({ key }) => {
-  //
-  //   let delta = 0
-  //   if (key === 'a')
-  //     delta = -1
-  //   else if (key === 'd')
-  //     delta = 1
-  //
-  //   const { simulation: sim, renderer } = this
-  //
-  //   let tick = sim.currentTick + delta
-  //   if (tick < sim.firstTick)
-  //     tick = sim.firstTick
-  //
-  //   if (tick > sim.lastTick && sim.running)
-  //     return
-  //
-  //   if (tick > sim.lastTick)
-  //     await sim.runUntil(() => sim.lastTick >= tick)
-  //   sim.currentTick = tick
-  //   renderer.render(sim)
-  //
-  // }
-
   render () {
 
     const { innerRef, state } = this
@@ -186,7 +177,7 @@ class GravityToy extends React.Component {
 
     return [
       <Title key='title'>Gravity Toy</Title>,
-      <Canvas key='canvas' { ...handlers} />,
+      <Canvas key='canvas' {...handlers} />,
       <Timeline key='timeline' {...state}/>
     ]
   }

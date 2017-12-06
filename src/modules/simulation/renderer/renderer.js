@@ -18,6 +18,8 @@ class Renderer {
 
     const ctx = this.canvas.getContext('2d')
 
+    this.camera.update()
+
     clearCanvas(ctx, this)
     drawBodies(ctx, this, simulation)
   }

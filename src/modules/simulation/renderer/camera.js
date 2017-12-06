@@ -23,11 +23,11 @@ class Coords {
 
   constructor (camera) {
     this::define()
-      .enum.const('pos', Vector.zero)
+      .enum.const('pos', new Vector(960, 540))
       .const('camera', camera)
   }
 
-  [ZOOM] = 10
+  [ZOOM] = 1
 
   get zoom () {
     return this[ZOOM]
@@ -89,7 +89,7 @@ class Camera {
 
     const { target, current, renderer: { cameraSpeed } } = this
 
-    const delta = TICK_DURATION * cameraSpeed
+    const delta = TICK_DURATION * 5
 
     current.zoom = lerp(current.zoom, target.zoom, delta)
     current.pos.ilerp(target.pos, delta)

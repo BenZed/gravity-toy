@@ -5,7 +5,7 @@ import React from 'react'
 import { render } from 'react-dom'
 
 import GravityToy from './components/GravityToy'
-import TestCanvas from './components/TestCanvas'
+import TouchEmulator from 'hammer-touchemulator'
 
 /******************************************************************************/
 // Execute
@@ -14,6 +14,8 @@ import TestCanvas from './components/TestCanvas'
 addEventListener(window, 'load', () => {
 
   const mainTag = document.getElementById('gravity-toy')
+
+  TouchEmulator()
 
   render(<GravityToy />, mainTag)
 
