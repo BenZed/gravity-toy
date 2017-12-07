@@ -34,7 +34,7 @@ class Coords {
   }
 
   set zoom (value) {
-    const { minZoom, maxZoom } = this.camera.renderer
+    const { minZoom = 1, maxZoom = 1000 } = this.camera.renderer
 
     this[ZOOM] = clamp(value, minZoom, maxZoom)
   }
@@ -62,10 +62,10 @@ class Camera {
   }
 
   set referenceFrame (body) {
-    if (this[REFERENCE_FRAME])
+    if (this[REFERENCE_FRAME] && this[REFERENCE_FRAME].exists)
       this.target.pos.iadd(this[REFERENCE_FRAME].pos)
 
-    if (body)
+    if (body && body.exists)
       this.target.pos.isub(body.pos)
 
     this[REFERENCE_FRAME] = body
@@ -87,12 +87,18 @@ class Camera {
 
   update = () => {
 
-    const { target, current, renderer: { cameraSpeed } } = this
+    while (this.referenceFrame && !this.referenceFrame.exists)
+      this.referenceFrame = this.referenceFrame.absorbedBy
 
-    const delta = TICK_DURATION * 5
+    const { target, current, referenceFrame, renderer: { cameraSpeed = 5 } } = this
+
+    const targetPos = referenceFrame
+      ? target.pos.add(referenceFrame.pos) : target.pos
+
+    const delta = TICK_DURATION * cameraSpeed
 
     current.zoom = lerp(current.zoom, target.zoom, delta)
-    current.pos.ilerp(target.pos, delta)
+    current.pos.ilerp(targetPos, delta)
 
   }
 

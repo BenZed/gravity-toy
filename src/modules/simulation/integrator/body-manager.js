@@ -243,11 +243,11 @@ function didCollide (...args) {
   // to determine the position of moving circles if their velocities are very
   // close because we'll get false positives.
 
-  dist = fast.pos.sub(slow.pos).magnitude
-  if (rel.sqrMagnitude < RELATIVE_VELOCITY_EPSILON) {
+  if (rel.sqrMagnitude >= RELATIVE_VELOCITY_EPSILON) {
     const col = closestPointOnLine(fast.pos.sub(rel), fast.pos, slow.pos)
     dist = col.sub(slow.pos).magnitude
-  }
+  } else
+    dist = fast.pos.sub(slow.pos).magnitude
 
   return dist < fast.radius + slow.radius
 }

@@ -1,6 +1,6 @@
 import is from 'is-explicit'
 import define from 'define-utility'
-import { min } from 'math-plus'
+import { min, clamp } from 'math-plus'
 
 import EventEmitter from 'events'
 import Integrator from './integrator'
@@ -209,10 +209,14 @@ class Simulation extends EventEmitter {
   }
 
   set currentTick (value) {
-    this.setCurrentTick(value)
+    this.setCurrentTick(value, false)
   }
 
-  setCurrentTick (tick) {
+  setCurrentTick (tick, autoClamp = true) {
+
+    if (autoClamp)
+      tick = clamp(tick, this.firstTick, this.lastTick)
+
     this::assertTick(tick)
 
     const bodies = this[BODIES]

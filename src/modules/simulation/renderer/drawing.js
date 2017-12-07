@@ -49,7 +49,7 @@ function drawBody (ctx, renderer, body) {
   )
   ctx.closePath()
 
-  ctx.fillStyle = colorBy.stress(speedDistortionRadius - radius)
+  ctx.fillStyle = body === camera.referenceFrame ? 'cyan' : colorBy.stress(speedDistortionRadius - radius)
   ctx.fill()
 }
 
@@ -61,9 +61,7 @@ export function clearCanvas (ctx, renderer) {
 
   const { canvas } = renderer
 
-  // Erase Canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-
 }
 
 export function drawBodies (ctx, renderer, simulation) {

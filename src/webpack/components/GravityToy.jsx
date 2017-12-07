@@ -1,18 +1,17 @@
 import React from 'react'
 import styled from 'styled-components'
-import addEventListener from 'add-event-listener'
-import { Renderer, Simulation } from 'modules/simulation'
-import { clamp, Vector, random, cos, sqrt, sin, PI } from 'math-plus'
 
 import Timeline from './Timeline'
-import SortedArray from 'modules/simulation/util/sorted-array'
-import Hammer from 'hammerjs'
+
+import { Renderer, Simulation } from 'modules/simulation'
+import CameraController from '../modules/camera-controller'
+
+import addEventListener, { removeEventListener } from 'add-event-listener'
+import { clamp, Vector, random, cos, sqrt, sin, PI } from 'math-plus'
 
 /******************************************************************************/
 // Temporary TODO Remove
 /******************************************************************************/
-
-const props = []
 
 function randomPointInCircle (radius) {
 
@@ -24,19 +23,25 @@ function randomPointInCircle (radius) {
 }
 
 function addSomeBodiesForShitsAndGiggles (sim) {
-  const speed = 4
-  const spread = 0.1
+  const speed = 1
+  const spread = 4
 
   const big = {
-    mass: 3000,
+    mass: 10000,
     pos: new Vector(innerWidth * 0.5, innerHeight * 0.5)
   }
 
-  props.push(big)
+  const fast = {
+    mass: 100,
+    pos: big.pos.sub(new Vector(2000, 2000)),
+    vel: new Vector(100, 100)
+  }
 
-  for (let i = 0; i < 5000; i++)
+  const props = [ big, fast ]
+
+  for (let i = 0; i < 100; i++)
     props.push({
-      mass: random(1, 5),
+      mass: random(1, 500),
       pos: randomPointInCircle(innerWidth * spread).iadd(big.pos),
       vel: new Vector(
         random(-speed, speed),
@@ -44,33 +49,7 @@ function addSomeBodiesForShitsAndGiggles (sim) {
       )
     })
 
-  for (let i = 1; i < props.length; i++) {
-    const prop = props[i]
-    prop.vel = prop.pos.sub(big.pos).normalize().mult(speed)
-  }
-
   sim.createBodies(props)
-}
-
-async function tryFindBodiesMovingWayToFast (sim, rend) {
-
-  await sim.runForNumTicks(10)
-
-  sim.currentTick = 10
-  rend.render(sim)
-
-  const fast = [ ...sim.bodies() ].filter(b => b.vel.magnitude > 5)
-
-  sim.currentTick = 0
-  rend.render(sim)
-
-  const props = fast.map(f =>
-    `{
-      mass: ${f.mass},
-      pos: new Vector(${f.pos.x}, ${f.pos.y})
-    }`)
-
-  console.log(props.join(', '))
 }
 
 /******************************************************************************/
@@ -84,9 +63,47 @@ const Canvas = styled.canvas`
 `
 
 const Title = styled.h1`
-  font-family: 'Arial Black';
+  font-family: 'Helvetica';
   margin: 0.25em;
 `
+
+/******************************************************************************/
+// Setup
+/******************************************************************************/
+
+function setupSimulation () {
+
+  const toy = this
+
+  toy.simulation = new Simulation({
+    minRealBodies: 256,
+    realMassThreshold: 10
+  })
+
+  toy.simulation.on('cache-full', () => console.log('cache full'))
+  addSomeBodiesForShitsAndGiggles(toy.simulation)
+}
+
+function setupRenderer () {
+
+  const toy = this
+
+  toy.renderer = new Renderer(toy.canvas)
+  toy.animate = requestAnimationFrame(toy.update)
+
+}
+
+function setupCameraControls () {
+
+  const toy = this
+
+  toy.renderer.camera.referenceFrame = toy.simulation.toArray()[0]
+  toy.renderer.camera.target.pos.imult(0)
+  toy.renderer.camera.target.zoom = 3
+
+  toy.cameraController = new CameraController(toy)
+
+}
 
 /******************************************************************************/
 // Main Component
@@ -102,28 +119,15 @@ class GravityToy extends React.Component {
 
   componentDidMount () {
 
-    this.simulation = new Simulation({
-      minRealBodies: 256,
-      realMassThreshold: 10
-    })
-    addSomeBodiesForShitsAndGiggles(this.simulation)
-
-    this.renderer = new Renderer(this.canvas)
-    this.hammer = new Hammer(this.canvas)
-    this.simulation.on('cache-full', this.cacheFull)
+    this::setupSimulation()
+    this::setupRenderer()
+    this::setupCameraControls()
 
     addEventListener(window, 'resize', this.resize)
-    addEventListener(window, 'keypress', this.onKeyDown)
-
-    this.hammer.on('pan', this.onPan)
-    this.hammer.on('panend', this.onPanEnd)
-
-    this.animate = requestAnimationFrame(this.update)
-
+    addEventListener(window, 'deviceorientation', this.resize)
     this.resize()
-    this.simulation.run()
 
-    // tryFindBodiesMovingWayToFast(this.simulation, this.renderer)
+    this.simulation.run()
   }
 
   componentWillUnmount () {
@@ -131,8 +135,25 @@ class GravityToy extends React.Component {
     cancelAnimationFrame(this.animate)
 
     this.simulation.stop()
+    this.simulation.removeAllListeners('cache-full')
+
+    removeEventListener(window, 'resize', this.resize)
+
     this.renderer.canvas = null
-    this.hammer.destroy()
+    cancelAnimationFrame(this.animate)
+
+    this.cameraController.destroy()
+  }
+
+  resize = () => {
+    const { canvas } = this
+
+    // setting a canvas dimension clears its content, even if it's the same value.
+    // so we check that it's necessary first
+    if (canvas.width !== innerWidth && canvas.height !== innerHeight) {
+      canvas.width = innerWidth
+      canvas.height = innerHeight
+    }
   }
 
   update = () => {
@@ -140,11 +161,7 @@ class GravityToy extends React.Component {
     const { simulation, renderer } = this
     const { speed } = this.state
 
-    simulation.currentTick = clamp(
-      simulation.currentTick + speed,
-      simulation.firstTick,
-      simulation.lastTick
-    )
+    simulation.setCurrentTick(simulation.currentTick + speed)
 
     if (simulation.lastTick > 0) {
       const maxTime = simulation.usedCacheMemory / simulation.maxCacheMemory * 100
@@ -157,15 +174,6 @@ class GravityToy extends React.Component {
     requestAnimationFrame(this.update)
   }
 
-  cacheFull = () => {
-    console.error('CACHE IS FULL')
-  }
-
-  resize = () => {
-    this.canvas.height = innerHeight
-    this.canvas.width = innerWidth
-  }
-
   innerRef = ref => {
     this.canvas = ref
   }
@@ -173,11 +181,10 @@ class GravityToy extends React.Component {
   render () {
 
     const { innerRef, state } = this
-    const handlers = { innerRef }
 
     return [
       <Title key='title'>Gravity Toy</Title>,
-      <Canvas key='canvas' {...handlers} />,
+      <Canvas key='canvas' innerRef={innerRef} />,
       <Timeline key='timeline' {...state}/>
     ]
   }
