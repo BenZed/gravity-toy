@@ -4,10 +4,13 @@ import styled from 'styled-components'
 import Timeline from './Timeline'
 
 import { Renderer, Simulation } from 'modules/simulation'
-import CameraController from '../modules/camera-controller'
+// import CameraController from '../modules/camera-controller'
+import { CameraMove } from '../actions'
 
 import addEventListener, { removeEventListener } from 'add-event-listener'
-import { clamp, Vector, random, cos, sqrt, sin, PI } from 'math-plus'
+import { Vector, random, cos, sqrt, sin, PI } from 'math-plus'
+
+import isMobile from '../modules/is-mobile'
 
 /******************************************************************************/
 // Temporary TODO Remove
@@ -23,11 +26,11 @@ function randomPointInCircle (radius) {
 }
 
 function addSomeBodiesForShitsAndGiggles (sim) {
-  const speed = 1
-  const spread = 4
+  const speed = 5
+  const spread = 1
 
   const big = {
-    mass: 10000,
+    mass: 20000,
     pos: new Vector(innerWidth * 0.5, innerHeight * 0.5)
   }
 
@@ -39,9 +42,19 @@ function addSomeBodiesForShitsAndGiggles (sim) {
 
   const props = [ big, fast ]
 
-  for (let i = 0; i < 100; i++)
+  for (let i = 0; i < (isMobile() ? 100 : 1000); i++)
     props.push({
-      mass: random(1, 500),
+      mass: random(10, 500),
+      pos: randomPointInCircle(innerWidth * spread).iadd(big.pos),
+      vel: new Vector(
+        random(-speed, speed),
+        random(-speed, speed)
+      )
+    })
+
+  for (let i = 0; i < (isMobile() ? 250 : 2500); i++)
+    props.push({
+      mass: random(1, 10),
       pos: randomPointInCircle(innerWidth * spread).iadd(big.pos),
       vel: new Vector(
         random(-speed, speed),
@@ -101,7 +114,7 @@ function setupCameraControls () {
   toy.renderer.camera.target.pos.imult(0)
   toy.renderer.camera.target.zoom = 3
 
-  toy.cameraController = new CameraController(toy)
+  // toy.cameraController = new CameraController(toy)
 
 }
 
@@ -114,7 +127,8 @@ class GravityToy extends React.Component {
   state = {
     speed: 1,
     currentTime: 0,
-    maxTime: Infinity
+    maxTime: Infinity,
+    action: null
   }
 
   componentDidMount () {
@@ -128,6 +142,9 @@ class GravityToy extends React.Component {
     this.resize()
 
     this.simulation.run()
+    this.setState({
+      action: new CameraMove(this)
+    })
   }
 
   componentWillUnmount () {
@@ -156,10 +173,10 @@ class GravityToy extends React.Component {
     }
   }
 
-  update = () => {
+  update = timeStamp => {
 
     const { simulation, renderer } = this
-    const { speed } = this.state
+    const { speed, action } = this.state
 
     simulation.setCurrentTick(simulation.currentTick + speed)
 
@@ -169,7 +186,17 @@ class GravityToy extends React.Component {
       this.setState({ maxTime, currentTime })
     }
 
+    if (action && action.active && action.startTime === null)
+      action.startTime = timeStamp
+
+    if (action && action.active) {
+      action.currentTime = timeStamp
+      action.onTick(timeStamp - action.startTime)
+    }
+
     renderer.render(simulation)
+    if (action)
+      action.onDraw(renderer.canvas.getContext('2d'))
 
     requestAnimationFrame(this.update)
   }
@@ -182,9 +209,15 @@ class GravityToy extends React.Component {
 
     const { innerRef, state } = this
 
+    const { action } = state
+
+    const start = action && action.start
+    const update = action && action.update
+    const end = action && action.end
+
     return [
       <Title key='title'>Gravity Toy</Title>,
-      <Canvas key='canvas' innerRef={innerRef} />,
+      <Canvas key='canvas' innerRef={innerRef} onTouchStart={start} onTouchMove={update} onTouchEnd={end}/>,
       <Timeline key='timeline' {...state}/>
     ]
   }
