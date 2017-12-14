@@ -36,7 +36,7 @@ function addSomeBodiesForShitsAndGiggles (sim) {
 
   const fast = {
     mass: 100,
-    pos: big.pos.sub(new Vector(2000, 2000)),
+    pos: big.pos.sub(new Vector(15000, 15000)),
     vel: new Vector(100, 100)
   }
 
@@ -52,7 +52,7 @@ function addSomeBodiesForShitsAndGiggles (sim) {
       )
     })
 
-  for (let i = 0; i < (isMobile() ? 250 : 2500); i++)
+  for (let i = 0; i < (isMobile() ? 250 : 5000); i++)
     props.push({
       mass: random(1, 10),
       pos: randomPointInCircle(innerWidth * spread).iadd(big.pos),

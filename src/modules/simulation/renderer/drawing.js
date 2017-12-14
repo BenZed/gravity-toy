@@ -14,8 +14,22 @@ const stress = new WeightedColorizer(
   [ 0, 30 ]
 )
 
+const doppler = new WeightedColorizer(
+  [ 'blue', 'dodgerblue', 'white', 'crimson', 'red' ],
+  [ -30, -10, 0, 10, 30 ]
+)
+
 const colorBy = {
-  stress
+  stress,
+  doppler
+}
+
+function dot (a, b) {
+
+  const an = a.normalize()
+  const bn = b.normalize()
+
+  return an.x * bn.x + an.y * bn.y
 }
 
 /******************************************************************************/
@@ -49,8 +63,35 @@ function drawBody (ctx, renderer, body) {
   )
   ctx.closePath()
 
-  ctx.fillStyle = body === camera.referenceFrame ? 'cyan' : colorBy.stress(speedDistortionRadius - radius)
+  if (body === camera.referenceFrame)
+    ctx.fillStyle = 'white'
+  else if (camera.referenceFrame) {
+
+    const relativePos = pos.sub(camera.referenceFrame.pos)
+    const _dot = dot(relativeVel, relativePos)
+
+    ctx.fillStyle = colorBy.doppler(_dot * relativeVel.magnitude)
+  } else
+    ctx.fillStyle = colorBy.stress(speedDistortionRadius - radius)
+
   ctx.fill()
+
+
+  // Draw reference ring
+  if (body === camera.referenceFrame) {
+    ctx.beginPath()
+    ctx.ellipse(
+      viewPos.x, viewPos.y, // position
+      speedDistortionRadius,
+      viewRadius,
+      speedDistortionAngle,
+      0, 2 * PI
+    )
+    ctx.closePath()
+    ctx.strokeStyle = 'lime'
+    ctx.lineWidth = 2
+    ctx.stroke()
+  }
 }
 
 /******************************************************************************/
