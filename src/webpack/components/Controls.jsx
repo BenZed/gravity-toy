@@ -3,13 +3,15 @@ import { string } from 'prop-types'
 import styled from 'styled-components'
 import Pointer from './Pointer'
 
-import { clamp } from 'math-plus'
+import { round } from 'math-plus'
 
 /******************************************************************************/
 // Data
 /******************************************************************************/
 
 const PURPLE = `#c96af2`
+
+const FONTSIZE = '5vw'
 /******************************************************************************/
 // Styled Components
 /******************************************************************************/
@@ -17,33 +19,30 @@ const PURPLE = `#c96af2`
 const Title = styled.h1.attrs({
   children: 'gravity toy'
 })`
-  position: fixed;
-  bottom: 0;
-  left: 0;
-
   text-transform: uppercase;
 
   opacity: 0.5;
-
-  margin: 0.25em;
+  margin: 0;
 
   font-family: 'Helvetica';
-  font-size: 5vw;
+  font-size: ${FONTSIZE};
 `
 
-const MenuCaret = styled(Pointer)`
-  transform: translate(0.4em, 1em) rotate(90deg) scale(1.5, 1.5);
-
-  position: relative;
-  z-index: 10;
-
-  cursor: ew-resize;
+const Zoomer = styled.div.attrs({
+  children: props => `${props.zoom::round()}x`
+})`
+  font-size: ${FONTSIZE};
 `
 
 const ControlsContainer = styled.div`
-  box-sizing: border-box;
   width: calc(100% - 2.5em);
   height: 3em;
+
+  box-sizing: border-box;
+  margin: 0.5em;
+
+  display: flex;
+  align-items: baseline;
 
   color: ${PURPLE};
   fill: ${PURPLE};
@@ -69,26 +68,13 @@ class Controls extends React.Component {
 
   startMenuX = 0
 
-  onCaretMove = e => {
-    let currentMenuX = e.touches[0].clientX / innerWidth
-
-    currentMenuX = currentMenuX::clamp()
-    this.setState({ currentMenuX })
-  }
-
   render () {
 
     const { children, ...props } = this.props
-    const { onCaretMove } = this
-    const { currentMenuX } = this.state
 
     return <ControlsContainer {...props}>
       <Title/>
-      <MenuCaret
-        style={{ left: `${currentMenuX * 100}%` }}
-        onTouchMove={onCaretMove}
-        // style={{ left: }}
-      />
+      <Zoomer zoom={1}/>
       { children }
     </ControlsContainer>
   }
