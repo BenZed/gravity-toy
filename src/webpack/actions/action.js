@@ -27,6 +27,10 @@ class Coords {
     this.renderer = renderer
   }
 
+  toString () {
+    return `[${this.constructor.name}]`
+  }
+
 }
 
 class Touch extends Coords {

@@ -2,6 +2,7 @@ import React from 'react'
 import styled from 'styled-components'
 
 import Timeline from './Timeline'
+import Controls from './Controls'
 
 import { Renderer, Simulation } from 'modules/simulation'
 // import CameraController from '../modules/camera-controller'
@@ -68,9 +69,9 @@ function addSomeBodiesForShitsAndGiggles (sim) {
 
   const props = [ big ]
 
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 10; i++) {
 
-    const dist = radiusFromMass(big.mass) * 50
+    const dist = radiusFromMass(big.mass) * 200
     const pos = randomVector(dist).iadd(big.pos)
     const vel = orbitalVelocity(pos, big, sim.g)
 
@@ -81,20 +82,20 @@ function addSomeBodiesForShitsAndGiggles (sim) {
     })
   }
 
-  // for (let i = 0; i < 1000; i++) {
-  //
-  //   const parent = props[0]
-  //
-  //   const dist = radiusFromMass(parent.mass) * 50
-  //   const pos = randomVector(dist).iadd(parent.pos)
-  //   const vel = orbitalVelocity(pos, parent, sim.g)
-  //
-  //   props.push({
-  //     mass: random(1, 10),
-  //     pos,
-  //     vel
-  //   })
-  // }
+  for (let i = 0; i < 90; i++) {
+
+    const parent = props::random()
+
+    const dist = radiusFromMass(parent.mass) * 20
+    const pos = randomVector(dist).iadd(parent.pos)
+    const vel = orbitalVelocity(pos, parent, sim.g)
+
+    props.push({
+      mass: random(1, 10),
+      pos,
+      vel
+    })
+  }
 
   sim.createBodies(props)
 }
@@ -107,22 +108,6 @@ const Canvas = styled.canvas`
   position: fixed;
   top: 0;
   left: 0;
-`
-
-const Title = styled.h1`
-  position: fixed;
-  bottom: 0;
-  left: 0;
-
-  opacity: 0.5;
-
-  margin: 0.25em;
-
-  font-family: 'Helvetica';
-  font-size: 5vw;
-
-  color: #c96af2;
-
 `
 
 /******************************************************************************/
@@ -158,8 +143,6 @@ function setupCameraControls () {
   toy.renderer.camera.referenceFrame = toy.simulation.toArray()[0]
   toy.renderer.camera.target.pos.imult(0)
   toy.renderer.camera.target.zoom = 1
-
-  // toy.cameraController = new CameraController(toy)
 
 }
 
@@ -209,8 +192,9 @@ class GravityToy extends React.Component {
 
   setCurrentTime = time => {
     const { simulation } = this
+
     const tick = floor(time / 100 * simulation.lastTick)
-    console.log(tick)
+
     simulation.setCurrentTick(tick)
   }
 
@@ -264,13 +248,10 @@ class GravityToy extends React.Component {
   wheelZoom = e => {
 
     const { ZOOM_FACTOR, ZOOM_MAX_SPEED } = CameraMove
-
     const { camera } = this.renderer
 
     const dist = e.deltaY * 0.25
-
     const speed = min(camera.current.zoom, ZOOM_MAX_SPEED) * ZOOM_FACTOR
-
     const delta = dist * speed
 
     camera.target.zoom += delta
@@ -289,7 +270,7 @@ class GravityToy extends React.Component {
     const timeline = { ...state, setCurrentTime, setSpeed }
 
     return [
-      <Title key='title'>GRAVITY TOY</Title>,
+      <Controls key='controls'/>,
       <Canvas key='canvas' innerRef={innerRef} onWheel={this.wheelZoom} onTouchStart={start} onTouchMove={update} onTouchEnd={end}/>,
       <Timeline key='timeline' {...timeline}/>
     ]
