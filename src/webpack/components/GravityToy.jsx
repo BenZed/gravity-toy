@@ -6,17 +6,51 @@ import Timeline from './Timeline'
 import { Renderer, Simulation } from 'modules/simulation'
 // import CameraController from '../modules/camera-controller'
 import { CameraMove } from '../actions'
+import TouchEmulator from 'hammer-touchemulator'
 
 import addEventListener, { removeEventListener } from 'add-event-listener'
-import { Vector, random, cos, sqrt, sin, PI } from 'math-plus'
+import { Vector, random, cos, sqrt, sin, min, floor, PI } from 'math-plus'
+import { radiusFromMass } from 'modules/simulation/util'
 
 import isMobile from '../modules/is-mobile'
+import is from 'is-explicit'
+
+/******************************************************************************/
+// Setup Touch
+/******************************************************************************/
+
+TouchEmulator()
+
+TouchEmulator.template = () => {} // Do not visualize touch
 
 /******************************************************************************/
 // Temporary TODO Remove
 /******************************************************************************/
 
-function randomPointInCircle (radius) {
+function orbitalVelocity (bodyOrPos, parent, g) {
+
+  const pos = is(bodyOrPos, Vector) ? bodyOrPos : bodyOrPos.pos
+
+  const relative = pos.sub(parent.pos)
+  const dist = relative.magnitude
+
+  // I'm not sure why I have to divide by 10. According to Google
+  // this equation should work without it
+  const speed = sqrt(g * parent.mass / dist) * 0.1
+
+  return relative
+    .iperpendicular()
+    .imult(speed)
+    .iadd(parent.vel)
+
+}
+
+function escapeSpeed (child, parent, g) {
+  const relative = child.pos.sub(parent.pos)
+  return g * parent.mass * child.mass / relative.sqrMagnitude
+}
+
+function randomVector (radius) {
 
   const angle = random() * 2 * PI
   const rRadiusSqr = random() * radius * radius
@@ -26,41 +60,41 @@ function randomPointInCircle (radius) {
 }
 
 function addSomeBodiesForShitsAndGiggles (sim) {
-  const speed = 5
-  const spread = 1
 
   const big = {
-    mass: 20000,
+    mass: 10000,
     pos: new Vector(innerWidth * 0.5, innerHeight * 0.5)
   }
 
-  const fast = {
-    mass: 100,
-    pos: big.pos.sub(new Vector(15000, 15000)),
-    vel: new Vector(100, 100)
+  const props = [ big ]
+
+  for (let i = 0; i < 100; i++) {
+
+    const dist = radiusFromMass(big.mass) * 50
+    const pos = randomVector(dist).iadd(big.pos)
+    const vel = orbitalVelocity(pos, big, sim.g)
+
+    props.push({
+      mass: random(100, 500),
+      pos,
+      vel
+    })
   }
 
-  const props = [ big, fast ]
-
-  for (let i = 0; i < (isMobile() ? 100 : 1000); i++)
-    props.push({
-      mass: random(10, 500),
-      pos: randomPointInCircle(innerWidth * spread).iadd(big.pos),
-      vel: new Vector(
-        random(-speed, speed),
-        random(-speed, speed)
-      )
-    })
-
-  for (let i = 0; i < (isMobile() ? 250 : 5000); i++)
-    props.push({
-      mass: random(1, 10),
-      pos: randomPointInCircle(innerWidth * spread).iadd(big.pos),
-      vel: new Vector(
-        random(-speed, speed),
-        random(-speed, speed)
-      )
-    })
+  // for (let i = 0; i < 1000; i++) {
+  //
+  //   const parent = props[0]
+  //
+  //   const dist = radiusFromMass(parent.mass) * 50
+  //   const pos = randomVector(dist).iadd(parent.pos)
+  //   const vel = orbitalVelocity(pos, parent, sim.g)
+  //
+  //   props.push({
+  //     mass: random(1, 10),
+  //     pos,
+  //     vel
+  //   })
+  // }
 
   sim.createBodies(props)
 }
@@ -76,8 +110,19 @@ const Canvas = styled.canvas`
 `
 
 const Title = styled.h1`
-  font-family: 'Helvetica';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+
+  opacity: 0.5;
+
   margin: 0.25em;
+
+  font-family: 'Helvetica';
+  font-size: 5vw;
+
+  color: #c96af2;
+
 `
 
 /******************************************************************************/
@@ -112,7 +157,7 @@ function setupCameraControls () {
 
   toy.renderer.camera.referenceFrame = toy.simulation.toArray()[0]
   toy.renderer.camera.target.pos.imult(0)
-  toy.renderer.camera.target.zoom = 3
+  toy.renderer.camera.target.zoom = 1
 
   // toy.cameraController = new CameraController(toy)
 
@@ -162,6 +207,17 @@ class GravityToy extends React.Component {
     this.cameraController.destroy()
   }
 
+  setCurrentTime = time => {
+    const { simulation } = this
+    const tick = floor(time / 100 * simulation.lastTick)
+    console.log(tick)
+    simulation.setCurrentTick(tick)
+  }
+
+  setSpeed = speed => {
+    this.setState({ speed })
+  }
+
   resize = () => {
     const { canvas } = this
 
@@ -205,9 +261,24 @@ class GravityToy extends React.Component {
     this.canvas = ref
   }
 
+  wheelZoom = e => {
+
+    const { ZOOM_FACTOR, ZOOM_MAX_SPEED } = CameraMove
+
+    const { camera } = this.renderer
+
+    const dist = e.deltaY * 0.25
+
+    const speed = min(camera.current.zoom, ZOOM_MAX_SPEED) * ZOOM_FACTOR
+
+    const delta = dist * speed
+
+    camera.target.zoom += delta
+  }
+
   render () {
 
-    const { innerRef, state } = this
+    const { innerRef, setCurrentTime, setSpeed, state } = this
 
     const { action } = state
 
@@ -215,10 +286,12 @@ class GravityToy extends React.Component {
     const update = action && action.update
     const end = action && action.end
 
+    const timeline = { ...state, setCurrentTime, setSpeed }
+
     return [
-      <Title key='title'>Gravity Toy</Title>,
-      <Canvas key='canvas' innerRef={innerRef} onTouchStart={start} onTouchMove={update} onTouchEnd={end}/>,
-      <Timeline key='timeline' {...state}/>
+      <Title key='title'>GRAVITY TOY</Title>,
+      <Canvas key='canvas' innerRef={innerRef} onWheel={this.wheelZoom} onTouchStart={start} onTouchMove={update} onTouchEnd={end}/>,
+      <Timeline key='timeline' {...timeline}/>
     ]
   }
 

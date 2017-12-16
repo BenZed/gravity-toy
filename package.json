@@ -55,7 +55,7 @@
     "color-interpolate": "^1.0.2",
     "define-utility": "^2.0.2",
     "is-explicit": "^1.4.1",
-    "math-plus": "^0.5.2",
+    "math-plus": "^0.5.3",
     "uglifyjs-webpack-plugin": "^1.0.1"
   }
 }

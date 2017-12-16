@@ -1,37 +1,47 @@
 import Action from './action'
 
+import { min } from 'math-plus'
+
+const ZOOM_FACTOR = 0.01
+const ZOOM_MAX_SPEED = 50
+
 /******************************************************************************/
 // Main
 /******************************************************************************/
 
 class CameraMove extends Action {
 
+  static ZOOM_FACTOR = ZOOM_FACTOR
+  static ZOOM_MAX_SPEED = ZOOM_MAX_SPEED
+
   cameraZoom = 0
   cameraPos = null
 
   onStart () {
-    const { camera } = this.toy.renderer
+    const { camera: { target } } = this.toy.renderer
 
-    this.cameraZoom = camera.target.zoom
-    this.cameraPos = camera.target.pos.copy()
+    this.cameraZoom = target.zoom
+    this.cameraPos = target.pos.copy()
   }
 
   onTick () {
-    const { camera } = this.toy.renderer
+    const { camera: { current, target, referenceFrame } } = this.toy.renderer
 
-    const zoom = this.cameraZoom / this.touchScale
+    const dist = this.touchDist
+    const speed = min(this.cameraZoom * ZOOM_FACTOR, ZOOM_MAX_SPEED)
+    const zoom = this.cameraZoom + speed * dist
 
-    camera.current.zoom = zoom
-    camera.target.zoom = zoom
+    current.zoom = zoom
+    target.zoom = zoom
 
-    camera.target.pos.x = this.cameraPos.x - this.deltaPos.x * zoom
-    camera.current.pos.x = camera.target.pos.x
+    target.pos.x = this.cameraPos.x - this.deltaPos.x * zoom
+    current.pos.x = target.pos.x
 
-    camera.target.pos.y = this.cameraPos.y - this.deltaPos.y * zoom
-    camera.current.pos.y = camera.target.pos.y
+    target.pos.y = this.cameraPos.y - this.deltaPos.y * zoom
+    current.pos.y = target.pos.y
 
-    if (camera.referenceFrame)
-      camera.current.pos.iadd(camera.referenceFrame.pos)
+    if (referenceFrame)
+      current.pos.iadd(referenceFrame.pos)
 
   }
 

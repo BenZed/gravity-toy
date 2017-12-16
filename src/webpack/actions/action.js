@@ -1,4 +1,4 @@
-import { Vector } from 'math-plus'
+import { Vector, abs } from 'math-plus'
 
 /******************************************************************************/
 // Helper
@@ -66,6 +66,9 @@ class Action extends Coords {
 
   get touchScale () {
 
+    if (this.touches.length <= 1)
+      return 1
+
     let startAggregateDist = 0
     let currentAggregateDist = 0
 
@@ -74,10 +77,25 @@ class Action extends Coords {
       currentAggregateDist += touch.currentPos.sub(this.startPos).magnitude
     }
 
-    if (startAggregateDist === 0 || currentAggregateDist === 0)
-      return 1
-
     return currentAggregateDist / startAggregateDist
+
+  }
+
+  get touchDist () {
+
+    if (this.touches.length <= 1)
+      return 0
+
+    let startAggregateDist = 0
+    let currentAggregateDist = 0
+
+    for (const touch of this.touches) {
+      startAggregateDist += touch.startPos.sub(this.startPos).magnitude
+      currentAggregateDist += touch.currentPos.sub(this.startPos).magnitude
+    }
+
+    const relativeAggregateDist = currentAggregateDist - startAggregateDist
+    return relativeAggregateDist / this.touches.length
 
   }
 
