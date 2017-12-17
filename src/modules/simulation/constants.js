@@ -51,8 +51,8 @@ export const CACHED_VALUES_PER_TICK = 6
 // Arbitrary minimum mass for a body
 export const MASS_MIN = 1
 
-// If the min radius of a body is 0.5, then the min diameter would be 1, so 1 pixel
-export const RADIUS_MIN = 0.5
+// If the min radius of a body is 1, then the min diameter would be 2, so 2 pixels
+export const RADIUS_MIN = 1
 
 // Arbitrary scaler for increase in radius in relationship to mass
 export const RADIUS_FACTOR = 0.625

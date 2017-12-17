@@ -10,10 +10,9 @@ import { CameraMove } from '../actions'
 import TouchEmulator from 'hammer-touchemulator'
 
 import addEventListener, { removeEventListener } from 'add-event-listener'
-import { Vector, random, cos, sqrt, sin, min, floor, PI } from 'math-plus'
+import { Vector, random, cos, round, sqrt, sin, min, floor, PI } from 'math-plus'
 import { radiusFromMass } from 'modules/simulation/util'
 
-import isMobile from '../modules/is-mobile'
 import is from 'is-explicit'
 
 /******************************************************************************/
@@ -46,11 +45,6 @@ function orbitalVelocity (bodyOrPos, parent, g) {
 
 }
 
-function escapeSpeed (child, parent, g) {
-  const relative = child.pos.sub(parent.pos)
-  return g * parent.mass * child.mass / relative.sqrMagnitude
-}
-
 function randomVector (radius) {
 
   const angle = random() * 2 * PI
@@ -62,33 +56,14 @@ function randomVector (radius) {
 
 function addSomeBodiesForShitsAndGiggles (sim) {
 
-  const big = {
-    mass: 10000,
-    pos: new Vector(innerWidth * 0.5, innerHeight * 0.5)
-  }
+  const props = []
+  const dist = 960
+  const speed = 0.5
 
-  const props = [ big ]
+  for (let i = 0; i < 390; i++) {
 
-  for (let i = 0; i < 10; i++) {
-
-    const dist = radiusFromMass(big.mass) * 200
-    const pos = randomVector(dist).iadd(big.pos)
-    const vel = orbitalVelocity(pos, big, sim.g)
-
-    props.push({
-      mass: random(100, 500),
-      pos,
-      vel
-    })
-  }
-
-  for (let i = 0; i < 90; i++) {
-
-    const parent = props::random()
-
-    const dist = radiusFromMass(parent.mass) * 20
-    const pos = randomVector(dist).iadd(parent.pos)
-    const vel = orbitalVelocity(pos, parent, sim.g)
+    const pos = randomVector(dist)//.iadd(innerWidth / 2, innerHeight / 2)
+    const vel = randomVector(speed)
 
     props.push({
       mass: random(1, 10),
@@ -101,7 +76,7 @@ function addSomeBodiesForShitsAndGiggles (sim) {
 }
 
 /******************************************************************************/
-// Sub Components
+// Styled Components
 /******************************************************************************/
 
 const Canvas = styled.canvas`
@@ -155,6 +130,7 @@ class GravityToy extends React.Component {
   state = {
     speed: 1,
     currentTime: 0,
+    zoom: 1,
     maxTime: Infinity,
     action: null
   }
@@ -199,7 +175,19 @@ class GravityToy extends React.Component {
   }
 
   setSpeed = speed => {
-    this.setState({ speed })
+    this.setState({ speed: round(speed) })
+  }
+
+  addZoom = rawDelta => {
+
+    const { ZOOM_FACTOR, ZOOM_MAX_SPEED } = CameraMove
+    const { camera } = this.renderer
+
+    const dist = rawDelta * 0.25
+    const speed = min(camera.current.zoom, ZOOM_MAX_SPEED) * ZOOM_FACTOR
+    const delta = dist * speed
+
+    camera.target.zoom += delta
   }
 
   resize = () => {
@@ -220,11 +208,13 @@ class GravityToy extends React.Component {
 
     simulation.setCurrentTick(simulation.currentTick + speed)
 
+    const zoom = renderer.camera.target.zoom
     if (simulation.lastTick > 0) {
       const maxTime = simulation.usedCacheMemory / simulation.maxCacheMemory * 100
       const currentTime = simulation.currentTick / simulation.lastTick * 100
-      this.setState({ maxTime, currentTime })
-    }
+      this.setState({ maxTime, currentTime, zoom })
+    } else
+      this.setState({ zoom })
 
     if (action && action.active && action.startTime === null)
       action.startTime = timeStamp
@@ -245,33 +235,27 @@ class GravityToy extends React.Component {
     this.canvas = ref
   }
 
-  wheelZoom = e => {
-
-    const { ZOOM_FACTOR, ZOOM_MAX_SPEED } = CameraMove
-    const { camera } = this.renderer
-
-    const dist = e.deltaY * 0.25
-    const speed = min(camera.current.zoom, ZOOM_MAX_SPEED) * ZOOM_FACTOR
-    const delta = dist * speed
-
-    camera.target.zoom += delta
+  onWheel = e => {
+    this.addZoom(e.deltaY)
   }
 
   render () {
 
-    const { innerRef, setCurrentTime, setSpeed, state } = this
+    const { innerRef, onWheel, setCurrentTime, setSpeed, addZoom, state } = this
 
-    const { action } = state
+    const { action, zoom, speed, ...time } = state
 
-    const start = action && action.start
-    const update = action && action.update
-    const end = action && action.end
+    const onTouchStart = action && action.start
+    const onTouchMove = action && action.update
+    const onTouchEnd = action && action.end
 
-    const timeline = { ...state, setCurrentTime, setSpeed }
+    const timeline = { ...time, setCurrentTime }
+    const canvas = { innerRef, onWheel, onTouchStart, onTouchMove, onTouchEnd }
+    const controls = { zoom, speed, setSpeed, addZoom }
 
     return [
-      <Controls key='controls'/>,
-      <Canvas key='canvas' innerRef={innerRef} onWheel={this.wheelZoom} onTouchStart={start} onTouchMove={update} onTouchEnd={end}/>,
+      <Controls key='controls' {...controls}/>,
+      <Canvas key='canvas' {...canvas} />,
       <Timeline key='timeline' {...timeline}/>
     ]
   }

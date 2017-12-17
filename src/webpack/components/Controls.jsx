@@ -3,7 +3,8 @@ import { string } from 'prop-types'
 import styled from 'styled-components'
 import Pointer from './Pointer'
 
-import { round } from 'math-plus'
+import { round, abs } from 'math-plus'
+import { touchable } from './mutators'
 
 /******************************************************************************/
 // Data
@@ -11,7 +12,7 @@ import { round } from 'math-plus'
 
 const PURPLE = `#c96af2`
 
-const FONTSIZE = '5vw'
+const FONTSIZE = 5
 /******************************************************************************/
 // Styled Components
 /******************************************************************************/
@@ -24,25 +25,64 @@ const Title = styled.h1.attrs({
   opacity: 0.5;
   margin: 0;
 
+  position: fixed;
+  top: 0;
+  left: 0.25em;
+
   font-family: 'Helvetica';
-  font-size: ${FONTSIZE};
+  font-size: ${FONTSIZE}vw;
 `
 
-const Zoomer = styled.div.attrs({
-  children: props => `${props.zoom::round()}x`
+const Button = styled.div`
+  font-size: ${FONTSIZE * 0.5}vw;
+  margin-left: 0.5em;
+  position: relative;
+  z-index: 100;
+`::touchable()
+
+const Zoomer = styled(Button).attrs({
+  children: props => `${props.zoom::round()}x`,
+  onPan: ({ addZoom, zoom }) =>
+    ({ deltaX, deltaY }) => addZoom(4 * (deltaX + deltaY))
 })`
-  font-size: ${FONTSIZE};
+`
+
+const SpeedPointer = styled(Pointer).attrs({
+  style: ({ speed }) => Object({
+    transform: `translate(0em, -0.125em) rotate(${speed > 0 ? 90 : -90}deg)`
+  })
+})`
+  transition: transform 250ms;
+`
+
+const Speeder = styled(Button).attrs({
+  children: ({ speed }) => {
+    const num = abs(speed)::round(0.01)
+    const pointer = <SpeedPointer key='pointer' speed={speed}/>
+    return num > 1
+      ? [ num, pointer ]
+      : pointer
+  },
+  onPanStart: ({ speed }) => () => Object({ startSpeed: speed }),
+  onPan: ({ setSpeed }) =>
+    ({ currentX, currentY }, { startSpeed }) => {
+      const delta = (currentX + currentY) / 100
+      // console.log(delta * )
+      setSpeed(startSpeed + delta)
+    }
+})`
 `
 
 const ControlsContainer = styled.div`
   width: calc(100% - 2.5em);
-  height: 3em;
+  height: 5em;
 
   box-sizing: border-box;
   margin: 0.5em;
 
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: center;
 
   color: ${PURPLE};
   fill: ${PURPLE};
@@ -70,11 +110,12 @@ class Controls extends React.Component {
 
   render () {
 
-    const { children, ...props } = this.props
+    const { children, zoom, speed, addZoom, setSpeed, ...props } = this.props
 
     return <ControlsContainer {...props}>
       <Title/>
-      <Zoomer zoom={1}/>
+      <Zoomer zoom={zoom} addZoom={addZoom}/>
+      <Speeder speed={speed} setSpeed={setSpeed}/>
       { children }
     </ControlsContainer>
   }

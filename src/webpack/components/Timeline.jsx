@@ -1,13 +1,13 @@
 import React from 'react'
 import styled from 'styled-components'
 import Pointer from './Pointer'
+import { touchable } from './mutators'
+
 /******************************************************************************/
 // Sub Components
 /******************************************************************************/
 
-const TimelineStyle = styled.div.attrs({
-  // style: ({ maxTime }) => Object({ width: maxTime === Infinity ? 0 : maxTime })
-})`
+const TimelineStyle = styled.div.attrs({ })`
   height: 1em;
   position: fixed;
   width: 100%;
@@ -18,8 +18,7 @@ const TimelineStyle = styled.div.attrs({
     position: relative;
     bottom: -4px;
   }
-
-`
+`::touchable()
 
 /******************************************************************************/
 // Main Component
@@ -27,39 +26,33 @@ const TimelineStyle = styled.div.attrs({
 
 class Timeline extends React.Component {
 
-  startClientX = 0
   startCurrentTime = 0
 
-  onTouchStart = e => {
-    this.startClientX = e.touches[0].clientX
+  onPanStart = () => {
     this.startCurrentTime = this.props.currentTime
   }
 
-  onTouchMove = e => {
-    const deltaPixels = e.touches[0].clientX - this.startClientX
+  onPan = ({ currentX }) => {
     const { setCurrentTime } = this.props
 
     if (this.startMaxTime === Infinity)
       return
 
-    const deltaFactor = deltaPixels / innerWidth
+    const deltaFactor = currentX / innerWidth
     const newCurrentTime = this.startCurrentTime + (deltaFactor * 100)
 
     setCurrentTime(newCurrentTime)
-
   }
 
   render () {
 
     const { children, currentTime, ...props } = this.props
-    const { onTouchStart, onTouchMove } = this
+    const { onPan, onPanStart } = this
 
     delete props.setCurrentTime
     delete props.setSpeed
 
-    return <TimelineStyle {...props}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove} >
+    return <TimelineStyle onPanStart={onPanStart} onPan={onPan} {...props} >
       { children }
       <Pointer style={{ left: `calc(${currentTime}% - 12px)`, cursor: 'col-resize' }}/>
     </TimelineStyle>
