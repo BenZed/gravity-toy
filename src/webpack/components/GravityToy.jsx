@@ -58,9 +58,9 @@ function addSomeBodiesForShitsAndGiggles (sim) {
 
   const props = []
   const dist = min(innerWidth / 2, innerHeight / 2)
-  const speed = 3
+  const speed = 0.1
 
-  for (let i = 0; i < 2000; i++) {
+  for (let i = 0; i < 100; i++) {
 
     const pos = randomVector(dist).iadd(new Vector(innerWidth / 2, innerHeight / 2))
     const vel = randomVector(speed)
@@ -107,7 +107,7 @@ function setupRenderer () {
   const toy = this
 
   toy.renderer = new Renderer(toy.canvas)
-  toy.animate = requestAnimationFrame(toy.update)
+  toy.updateInterval = requestAnimationFrame(toy.updateSimulation)
 
 }
 
@@ -142,7 +142,8 @@ class GravityToy extends React.Component {
       action: new CameraMove(this)
     })
     this.renderer.camera.current.zoom = 10000
-    this.gotoAllBodies()
+    this.selectBiggestBodyAsReferenceFrame()
+    this.viewAllBodies()
   }
 
   componentWillUnmount () {
@@ -157,7 +158,7 @@ class GravityToy extends React.Component {
     removeEventListener(window, 'keydown', this.onKeyDown)
 
     this.renderer.canvas = null
-    cancelAnimationFrame(this.animate)
+    cancelAnimationFrame(this.updateInterval)
 
     this.cameraController.destroy()
   }
@@ -190,7 +191,7 @@ class GravityToy extends React.Component {
     camera.target.zoom += delta
   }
 
-  update = timeStamp => {
+  updateSimulation = timeStamp => {
 
     const { simulation, renderer } = this
     const { action, pause } = this.state
@@ -220,7 +221,7 @@ class GravityToy extends React.Component {
     if (action)
       action.onDraw(renderer.canvas.getContext('2d'))
 
-    requestAnimationFrame(this.update)
+    requestAnimationFrame(this.updateSimulation)
   }
 
   innerRef = ref => {
@@ -254,7 +255,8 @@ class GravityToy extends React.Component {
 
   onKeyDown = e => {
 
-    const { target, current } = this.renderer.camera
+    const { camera } = this.renderer
+    const { target, current } = camera
 
     const INC = 100
     const zoomInc = INC * current.zoom
@@ -300,13 +302,20 @@ class GravityToy extends React.Component {
       case 'Home':
       case 'Enter':
       case 'h':
-        this.gotoReferenceFrame()
+        if (!camera.referenceFrame)
+          this.selectBiggestBodyAsReferenceFrame()
+        else {
+          target.pos.set(camera.referenceFrame.pos)
+          target.zoom = 1
+        }
         break
 
       case 'Backspace':
       case 'Escape':
-        this.renderer.camera.referenceFrame = null
-        this.gotoAllBodies()
+        if (camera.referenceFrame)
+          camera.referenceFrame = null
+        else
+          this.viewAllBodies()
         break
 
       case '-':
@@ -316,24 +325,18 @@ class GravityToy extends React.Component {
     }
   }
 
-  gotoReferenceFrame () {
+  selectBiggestBodyAsReferenceFrame () {
 
     const { simulation } = this
     const { camera } = this.renderer
-    const { target } = camera
 
-    if (camera.referenceFrame) {
-      target.pos.set(camera.referenceFrame.pos)
-      target.zoom = 1
-    } else {
-      // Select the biggest body as a reference frame, otherwise
-      const biggest = [ ...simulation.livingBodies() ]
-        .reduce((b, c) => c.mass > b.mass ? c : b)
-      camera.referenceFrame = biggest
-    }
+    // Select the biggest body as a reference frame, otherwise
+    const biggest = [ ...simulation.livingBodies() ]
+      .reduce((b, c) => c.mass > b.mass ? c : b)
+    camera.referenceFrame = biggest
   }
 
-  gotoAllBodies () {
+  viewAllBodies () {
 
     const { simulation, canvas } = this
     const { camera } = this.renderer

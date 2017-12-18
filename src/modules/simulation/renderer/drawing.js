@@ -1,6 +1,7 @@
-import { Vector, PI, log10, max, clamp, floor } from 'math-plus'
+import { Vector, PI, log10, max, clamp, floor, sign, abs } from 'math-plus'
 import { WeightedColorizer } from '../util'
 import { RADIUS_MIN } from '../constants'
+import { CACHE } from '../body'
 
 /******************************************************************************/
 // Helpers
@@ -261,6 +262,74 @@ function drawGridLine (ctx, renderer, start, horizontal, opac = 0.25) {
 
 }
 
+function getTrailCanvasPositionAtTick (body, tick, camera, canvas) {
+  const bCache = body[CACHE]
+
+  const index = bCache.getTickDataIndex(tick)
+  const mass = bCache.data[index]
+  if (!mass || mass === 0)
+    return null
+
+  const worldPoint = new Vector(
+    bCache.data[index + 1],
+    bCache.data[index + 2]
+  )
+
+  const canvasPoint = camera.worldToCanvas(worldPoint, canvas)
+  return canvasPoint
+}
+
+function drawTrails (ctx, renderer, body, simulation) {
+
+  const { options, camera, canvas } = renderer
+
+  const frame = camera.referenceFrame
+  if (body === frame)
+    return
+
+  const length = options.trailLength
+  const step = options.trailStep
+  const absLength = abs(length)
+  const delta = sign(length)
+
+  ctx.lineWidth = 1
+  ctx.globalAlpha = 1
+  ctx.setLineDash(delta > 0 ? options.detailsDash : [])
+  ctx.strokeStyle = options.trailColor
+
+  let lastPoint = null
+  let tick = simulation.currentTick
+  // prevents jittering caused by step
+  const jitterFix = simulation.currentTick % step
+  tick = delta > 0 ? tick + jitterFix : tick - jitterFix
+
+  ctx.beginPath()
+
+  let firstMove = false
+  for (let i = 0; i < absLength; i += step) {
+    tick += delta * step
+    const canvasPoint = getTrailCanvasPositionAtTick(body, tick, camera, canvas)
+    if (!canvasPoint)
+      continue
+
+    // if (frame)
+    //   canvasPoint.isub(getTrailCanvasPositionAtTick(frame, tick, camera, canvas))
+
+    if (lastPoint && !firstMove) {
+      firstMove = true
+      ctx.moveTo(lastPoint.x, lastPoint.y)
+
+    } else if (firstMove) {
+      ctx.lineTo(canvasPoint.x, canvasPoint.y)
+      ctx.globalAlpha = 0.5
+    }
+
+    lastPoint = canvasPoint
+  }
+  ctx.stroke()
+
+}
+
 function ensureLivingReferenceFrame ({ camera }, simulation) {
 
   while (camera.referenceFrame && !camera.referenceFrame.exists)
@@ -276,6 +345,7 @@ export function clearCanvas (ctx, renderer) {
   const { canvas } = renderer
 
   ctx.clearRect(0, 0, canvas.width, canvas.height)
+
 }
 
 export function drawBodies (ctx, renderer, simulation, speed) {
@@ -288,10 +358,13 @@ export function drawBodies (ctx, renderer, simulation, speed) {
   if (renderer.options.grid)
     drawGrid(ctx, renderer)
 
-  if (renderer.options.relations) for (const body of bodiesByMass)
+  if (renderer.options.relations) for (const body of bodiesByMass) if (body.exists)
     drawBodyParentLine(ctx, renderer, body, simulation)
 
-  for (const body of bodiesByMass)
+  if (renderer.options.trailLength !== 0) for (const body of simulation)
+    drawTrails(ctx, renderer, body, simulation)
+
+  for (const body of bodiesByMass) if (body.exists)
     drawBody(ctx, renderer, body, speed)
 
 }
