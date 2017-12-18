@@ -262,7 +262,7 @@ function drawGridLine (ctx, renderer, start, horizontal, opac = 0.25) {
 
 }
 
-function getTrailCanvasPositionAtTick (body, tick, camera, canvas) {
+function getTrailWorldPositionAtTick (body, tick) {
   const bCache = body[CACHE]
 
   const index = bCache.getTickDataIndex(tick)
@@ -275,8 +275,7 @@ function getTrailCanvasPositionAtTick (body, tick, camera, canvas) {
     bCache.data[index + 2]
   )
 
-  const canvasPoint = camera.worldToCanvas(worldPoint, canvas)
-  return canvasPoint
+  return worldPoint
 }
 
 function drawTrails (ctx, renderer, body, simulation) {
@@ -308,12 +307,16 @@ function drawTrails (ctx, renderer, body, simulation) {
   let firstMove = false
   for (let i = 0; i < absLength; i += step) {
     tick += delta * step
-    const canvasPoint = getTrailCanvasPositionAtTick(body, tick, camera, canvas)
-    if (!canvasPoint)
+    const worldPoint = getTrailWorldPositionAtTick(body, tick)
+    if (!worldPoint)
       continue
 
-    // if (frame)
-    //   canvasPoint.isub(getTrailCanvasPositionAtTick(frame, tick, camera, canvas))
+    if (frame)
+      worldPoint
+        .isub(getTrailWorldPositionAtTick(frame, tick))
+        .iadd(frame.pos)
+
+    const canvasPoint = camera.worldToCanvas(worldPoint, canvas)
 
     if (lastPoint && !firstMove) {
       firstMove = true
@@ -321,7 +324,7 @@ function drawTrails (ctx, renderer, body, simulation) {
 
     } else if (firstMove) {
       ctx.lineTo(canvasPoint.x, canvasPoint.y)
-      ctx.globalAlpha = 0.5
+      ctx.globalAlpha = 0.25
     }
 
     lastPoint = canvasPoint
