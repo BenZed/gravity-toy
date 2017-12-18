@@ -88,6 +88,7 @@ class Body {
   real = true
 
   link = null
+  merge = null
 
   pos = Vector.zero
   vel = Vector.zero

@@ -35,6 +35,7 @@ class Body {
       .enum.const('pos', pos)
       .enum.const('vel', vel)
       .let('linkId', NO_LINK)
+      .let('mergeId', NO_LINK)
       .const('id', id)
       .const(CACHE, {
         birthTick: tick,
@@ -45,7 +46,7 @@ class Body {
   }
 
   get exists () {
-    return is(this.mass, Number)
+    return is(this.mass, Number) && this.mass > 0
   }
 
 }

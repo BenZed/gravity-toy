@@ -19,7 +19,7 @@ const DEFAULT_RENDERING = Object.freeze({
   maxZoom: 1000,
 
   grid: true,
-  relations: true,
+  relations: false,
 
   // length of trail showing where body has been, in ticks.
   // 0 - off
@@ -54,7 +54,7 @@ class Renderer {
 
     const ctx = this.canvas.getContext('2d')
 
-    this.camera.update()
+    this.camera.update(speed)
 
     if (clear)
       clearCanvas(ctx, this)

@@ -60,7 +60,7 @@ function addSomeBodiesForShitsAndGiggles (sim) {
   const dist = 960
   const speed = 0.5
 
-  for (let i = 0; i < 390; i++) {
+  for (let i = 0; i < 1000; i++) {
 
     const pos = randomVector(dist)//.iadd(innerWidth / 2, innerHeight / 2)
     const vel = randomVector(speed)
@@ -115,9 +115,7 @@ function setupCameraControls () {
 
   const toy = this
 
-  toy.renderer.camera.referenceFrame = toy.simulation.toArray()[0]
-  toy.renderer.camera.target.pos.imult(0)
-  toy.renderer.camera.target.zoom = 1
+  const { camera } = toy.renderer
 
 }
 
@@ -129,6 +127,7 @@ class GravityToy extends React.Component {
 
   state = {
     speed: 1,
+    pause: false,
     currentTime: 0,
     zoom: 1,
     maxTime: Infinity,
@@ -141,9 +140,11 @@ class GravityToy extends React.Component {
     this::setupRenderer()
     this::setupCameraControls()
 
-    addEventListener(window, 'resize', this.resize)
-    addEventListener(window, 'deviceorientation', this.resize)
-    this.resize()
+    addEventListener(window, 'resize', this.onResize)
+    addEventListener(window, 'deviceorientation', this.onResize)
+    addEventListener(window, 'keydown', this.onKeyDown)
+
+    this.onResize()
 
     this.simulation.run()
     this.setState({
@@ -158,7 +159,9 @@ class GravityToy extends React.Component {
     this.simulation.stop()
     this.simulation.removeAllListeners('cache-full')
 
-    removeEventListener(window, 'resize', this.resize)
+    removeEventListener(window, 'resize', this.onResize)
+    removeEventListener(window, 'deviceorientation', this.onResize)
+    removeEventListener(window, 'keydown', this.onKeyDown)
 
     this.renderer.canvas = null
     cancelAnimationFrame(this.animate)
@@ -178,6 +181,10 @@ class GravityToy extends React.Component {
     this.setState({ speed: round(speed) })
   }
 
+  setPause = (pause = !this.state.pause) => {
+    this.setState({ pause })
+  }
+
   addZoom = rawDelta => {
 
     const { ZOOM_FACTOR, ZOOM_MAX_SPEED } = CameraMove
@@ -190,21 +197,12 @@ class GravityToy extends React.Component {
     camera.target.zoom += delta
   }
 
-  resize = () => {
-    const { canvas } = this
-
-    // setting a canvas dimension clears its content, even if it's the same value.
-    // so we check that it's necessary first
-    if (canvas.width !== innerWidth && canvas.height !== innerHeight) {
-      canvas.width = innerWidth
-      canvas.height = innerHeight
-    }
-  }
-
   update = timeStamp => {
 
     const { simulation, renderer } = this
-    const { speed, action } = this.state
+    const { action, pause } = this.state
+
+    const speed = pause ? 0 : this.state.speed
 
     simulation.setCurrentTick(simulation.currentTick + speed)
 
@@ -219,12 +217,13 @@ class GravityToy extends React.Component {
     if (action && action.active && action.startTime === null)
       action.startTime = timeStamp
 
+    renderer.render(simulation, speed)
+
     if (action && action.active) {
       action.currentTime = timeStamp
       action.onTick(timeStamp - action.startTime)
     }
 
-    renderer.render(simulation)
     if (action)
       action.onDraw(renderer.canvas.getContext('2d'))
 
@@ -235,8 +234,78 @@ class GravityToy extends React.Component {
     this.canvas = ref
   }
 
+  onResize = () => {
+    const { canvas } = this
+
+    // setting a canvas dimension clears its content, even if it's the same value.
+    // so we check that it's necessary first
+    if (canvas.width !== innerWidth || canvas.height !== innerHeight) {
+      canvas.width = innerWidth
+      canvas.height = innerHeight
+    }
+  }
+
   onWheel = e => {
-    this.addZoom(e.deltaY)
+    e.stopPropagation()
+    e.preventDefault()
+
+    const { camera } = this.renderer
+
+    if (e.shiftKey)
+      this.addZoom(e.deltaY + e.deltaX)
+    else {
+      const delta = new Vector(e.deltaX, e.deltaY).imult(camera.current.zoom)
+      this.renderer.camera.target.pos.iadd(delta)
+    }
+  }
+
+  onKeyDown = e => {
+
+    const { target, current } = this.renderer.camera
+    const INC = 100
+    const zoomInc = INC * current.zoom
+
+    switch (e.key) {
+
+      case 'w':
+        target.pos.y -= zoomInc
+        break
+
+      case 'a':
+        target.pos.x -= zoomInc
+        break
+
+      case 's':
+        target.pos.y += zoomInc
+        break
+
+      case 'd':
+        target.pos.x += zoomInc
+        break
+
+      case 'j':
+      case 'ArrowLeft':
+        this.setSpeed(this.state.speed - 1)
+        break
+
+      case 'k':
+      case ' ':
+        this.setPause()
+        break
+
+      case 'l':
+      case 'ArrowRight':
+        this.setSpeed(this.state.speed + 1)
+        break
+
+      case 'ArrowUp':
+        this.addZoom(INC)
+        break
+
+      case 'ArrowDown':
+        this.addZoom(-INC)
+        break
+    }
   }
 
   render () {

@@ -318,6 +318,10 @@ class Simulation extends EventEmitter {
     return this[BODIES].map.values()
   }
 
+  body (id) {
+    return this[BODIES].map.get(id)
+  }
+
   * bodies (ids = []) {
 
     if (is(ids) && !is(ids, Array))
@@ -359,7 +363,7 @@ class Simulation extends EventEmitter {
 // Private Danglers
 /******************************************************************************/
 
-function writeTick (stream) {
+function writeTick (data) {
 
   const simulation = this
   if (!simulation.running)
@@ -370,19 +374,21 @@ function writeTick (stream) {
 
   tick.last++
 
-  let i = 0
-  bodies.nextAssignId = stream[i++]
+  bodies.nextAssignId = data.nextAssignId
 
-  const destroyedIds = stream[i++]
-  for (const destroyedId of destroyedIds) {
-    const body = bodies.map.get(destroyedId)
+  for (const { id, mergeId } of data.destroyed) {
+    const body = bodies.map.get(id)
+    body.mergeId = mergeId
+
     const cache = body[CACHE]
     cache.deathTick = tick.last
   }
 
   // TODO do something with created ids
-  const createdIds = stream[i++]
+  const createdIds = data.created
 
+  const { stream } = data
+  let i = 0
   while (i < stream.length) {
     const id = stream[i++]
     const body = bodies.map.get(id)
@@ -448,13 +454,11 @@ function setBodyValuesFromCache (body, tick) {
   let index = cache.getTickDataIndex(tick)
 
   body.mass = data[ index++ ] || null
-  const exists = body.mass !== null
-
-  body.pos.x = exists ? data[ index++ ] : NaN
-  body.pos.y = exists ? data[ index++ ] : NaN
-  body.vel.x = exists ? data[ index++ ] : NaN
-  body.vel.y = exists ? data[ index++ ] : NaN
-  body.linkId = exists ? data[ index++ ] : NaN
+  body.pos.x = data[ index++ ]
+  body.pos.y = data[ index++ ]
+  body.vel.x = data[ index++ ]
+  body.vel.y = data[ index++ ]
+  body.linkId = data[ index++ ]
 
 }
 

@@ -87,19 +87,20 @@ function sendStream () {
   if (!sendToParent)
     return
 
-  const { living, destroyed, created } = bodies
+  const { living, destroyed, created, nextAssignId } = bodies
 
-  const data = [
-    bodies.nextAssignId,
-    destroyed.map(idOfBody),
-    created.map(idOfBody)
-  ]
+  const data = {
+    nextAssignId,
+    destroyed: destroyed.map(destroyedIds),
+    created: created.map(idOfBody),
+    stream: []
+  }
 
   destroyed.length = 0
   created.length = 0
 
   for (const body of living)
-    data.push(
+    data.stream.push(
       body.id,
       body.mass,
       body.pos.x, body.pos.y,
@@ -136,6 +137,7 @@ function tick (queueNextTick = true) {
 // Helper
 /******************************************************************************/
 
+const destroyedIds = body => Object({ id: body.id, mergeId: body.merge.id })
 const idOfBody = body => body.id
 
 /******************************************************************************/

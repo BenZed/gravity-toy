@@ -172,6 +172,7 @@ class BodyManager {
 
     small.mass = 0
     small.radius = 0
+    small.merge = big
 
     const { boundsX, boundsY } = this
 

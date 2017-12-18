@@ -62,13 +62,13 @@ class Camera {
   }
 
   set referenceFrame (body) {
-    if (this[REFERENCE_FRAME] && this[REFERENCE_FRAME].exists)
-      this.target.pos.iadd(this[REFERENCE_FRAME].pos)
-
-    if (body && body.exists)
-      this.target.pos.isub(body.pos)
-
-    this[REFERENCE_FRAME] = body
+    // if (this[REFERENCE_FRAME])
+    //   this.target.pos.iadd(this[REFERENCE_FRAME].pos)
+    //
+    // if (body && body.exists) {
+    //   this.target.pos.isub(body.pos)
+      this[REFERENCE_FRAME] = body
+    // }
   }
 
   worldToCanvas (point, canvas) {
@@ -85,20 +85,20 @@ class Camera {
       .iadd(this.current.pos)
   }
 
-  update = () => {
-
-    while (this.referenceFrame && !this.referenceFrame.exists)
-      this.referenceFrame = this.referenceFrame.absorbedBy
+  update = (speed) => {
 
     const { target, current, referenceFrame, renderer: { cameraSpeed = 5 } } = this
 
-    const targetPos = referenceFrame
-      ? target.pos.add(referenceFrame.pos) : target.pos
+    if (referenceFrame && referenceFrame.exists) {
+      const vel = referenceFrame.vel.mult(speed)
+      target.pos.iadd(vel)
+      current.pos.iadd(vel)
+    }
 
     const delta = TICK_DURATION * cameraSpeed
 
     current.zoom = lerp(current.zoom, target.zoom, delta)
-    current.pos.ilerp(targetPos, delta)
+    current.pos.ilerp(target.pos, delta)
 
   }
 

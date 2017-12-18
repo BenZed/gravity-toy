@@ -1,9 +1,13 @@
 import Action from './action'
 
-import { min } from 'math-plus'
+import { min, abs, Vector } from 'math-plus'
 
 const ZOOM_FACTOR = 0.01
 const ZOOM_MAX_SPEED = 50
+
+function approx (a, b, epsilon = 0.001) {
+  return abs(a - b) < epsilon
+}
 
 /******************************************************************************/
 // Main
@@ -18,30 +22,39 @@ class CameraMove extends Action {
   cameraPos = null
 
   onStart () {
-    const { camera: { target } } = this.toy.renderer
+    const { camera: { referenceFrame, target } } = this.toy.renderer
 
     this.cameraZoom = target.zoom
     this.cameraPos = target.pos.copy()
+    this.refStart = referenceFrame ? referenceFrame.pos.copy() : Vector.zero
   }
 
   onTick () {
     const { camera: { current, target, referenceFrame } } = this.toy.renderer
 
     const dist = this.touchDist
-    const speed = min(this.cameraZoom * ZOOM_FACTOR, ZOOM_MAX_SPEED)
-    const zoom = this.cameraZoom + speed * dist
+    const zoomSpeed = min(this.cameraZoom * ZOOM_FACTOR, ZOOM_MAX_SPEED)
+    const zoom = this.cameraZoom + zoomSpeed * dist
 
-    current.zoom = zoom
+    if (approx(current.zoom, target.zoom))
+      current.zoom = zoom
     target.zoom = zoom
 
-    target.pos.x = this.cameraPos.x - this.deltaPos.x * zoom
-    current.pos.x = target.pos.x
+    const refCurrent = referenceFrame
+      ? referenceFrame.pos.copy()
+      : Vector.zero
 
-    target.pos.y = this.cameraPos.y - this.deltaPos.y * zoom
-    current.pos.y = target.pos.y
+    const refOffset = refCurrent.sub(this.refStart)
 
-    if (referenceFrame)
-      current.pos.iadd(referenceFrame.pos)
+    const x = this.cameraPos.x + refOffset.x - this.deltaPos.x * zoom
+    if (approx(current.pos.x, target.pos.x, 1))
+      current.pos.x = x
+    target.pos.x = x
+
+    const y = this.cameraPos.y + refOffset.y - this.deltaPos.y * zoom
+    if (approx(current.pos.y, target.pos.y, 1))
+      current.pos.y = y
+    target.pos.y = y
 
   }
 
