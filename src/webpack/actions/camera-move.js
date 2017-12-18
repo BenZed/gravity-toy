@@ -3,7 +3,7 @@ import Action from './action'
 import { min, abs, Vector } from 'math-plus'
 
 const ZOOM_FACTOR = 0.01
-const ZOOM_MAX_SPEED = 50
+const ZOOM_MAX_SPEED = 500
 
 function approx (a, b, epsilon = 0.001) {
   return abs(a - b) < epsilon

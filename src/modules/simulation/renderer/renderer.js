@@ -10,13 +10,13 @@ import is from 'is-explicit'
 const DEFAULT_RENDERING = Object.freeze({
 
   // could be 'doppler' 'mass'
-  bodyColorBy: 'mass',
+  bodyColorBy: 'doppler',
 
   // could be 'fill' 'outline' or ''
   bodyMode: 'fill',
 
   minZoom: 1,
-  maxZoom: 1000,
+  maxZoom: 1000000,
 
   grid: true,
   relations: false,

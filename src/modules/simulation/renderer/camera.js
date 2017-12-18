@@ -34,7 +34,7 @@ class Coords {
   }
 
   set zoom (value) {
-    const { minZoom = 1, maxZoom = 1000 } = this.camera.renderer
+    const { minZoom = 1, maxZoom = 1000 } = this.camera.renderer.options
 
     this[ZOOM] = clamp(value, minZoom, maxZoom)
   }
@@ -54,21 +54,7 @@ class Camera {
       .enum.const('target', new Coords(this))
       .enum.const('current', new Coords(this))
       .enum.const('options', { ...options })
-      .let(REFERENCE_FRAME, null)
-  }
-
-  get referenceFrame () {
-    return this[REFERENCE_FRAME]
-  }
-
-  set referenceFrame (body) {
-    // if (this[REFERENCE_FRAME])
-    //   this.target.pos.iadd(this[REFERENCE_FRAME].pos)
-    //
-    // if (body && body.exists) {
-    //   this.target.pos.isub(body.pos)
-      this[REFERENCE_FRAME] = body
-    // }
+      .enum.let(REFERENCE_FRAME, null)
   }
 
   worldToCanvas (point, canvas) {

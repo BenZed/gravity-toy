@@ -314,12 +314,12 @@ class Simulation extends EventEmitter {
     bodies.updateUsedBytes()
   }
 
-  [Symbol.iterator] () {
-    return this[BODIES].map.values()
-  }
-
   body (id) {
     return this[BODIES].map.get(id)
+  }
+
+  [Symbol.iterator] () {
+    return this[BODIES].map.values()
   }
 
   * bodies (ids = []) {
@@ -338,19 +338,19 @@ class Simulation extends EventEmitter {
     return this[BODIES].map.size
   }
 
-  * livingBodies (tick = this.currentTick) {
-    this::assertTick(tick)
-
-    for (const body of this) {
-      const cache = body[CACHE]
-      if ((cache.deathTick === null || tick <= cache.deathTick) &&
-        tick >= cache.birthTick)
+  * livingBodies () {
+    for (const body of this)
+      if (body.exists)
         yield body
-    }
   }
 
-  numLivingBodies (tick = this.currentTick) {
-    return [ ...this.livingBodies(tick) ].length
+  numLivingBodies () {
+    let count = 0
+    for (const body of this)
+      if (body.exists)
+        count++
+
+    return count
   }
 
   toArray (id) {

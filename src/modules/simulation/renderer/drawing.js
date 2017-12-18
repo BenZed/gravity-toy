@@ -1,4 +1,4 @@
-import { Vector, PI, log10, max, clamp } from 'math-plus'
+import { Vector, PI, log10, max, clamp, floor } from 'math-plus'
 import { WeightedColorizer } from '../util'
 import { RADIUS_MIN } from '../constants'
 
@@ -147,6 +147,54 @@ function drawBodyParentLine (ctx, renderer, child, simulation) {
 }
 
 function drawGrid (ctx, renderer) {
+
+  const { camera, canvas, options } = renderer
+  const { current } = camera
+  const { zoom } = current
+
+  ctx.strokeStyle = options.detailsColor
+  ctx.setLineDash([])
+  ctx.lineWidth = 1
+
+  const levels = numDigits(zoom)
+  const levelCurrent = 10 ** levels
+  const levelPrev = levelCurrent / 10
+
+  const increment = max(levelPrev / 10, 1)
+  const opacityFactor = clamp(1 - (zoom - levelPrev) / (levelCurrent - levelPrev))
+
+  const canvasHalfWorldSize = new Vector(canvas.width, canvas.height).imult(zoom * 0.5)
+  const topLeftWorld = current.pos.sub(canvasHalfWorldSize)
+  const topLeftSnapped = new Vector(
+    floor(topLeftWorld.x, canvas.width * increment),
+    floor(topLeftWorld.y, canvas.height * increment)
+  )
+
+  const snapped = topLeftSnapped.copy()
+  while (snapped.x < topLeftSnapped.x + canvas.width * zoom &&
+      snapped.y < topLeftSnapped.y + canvas.height * zoom) {
+    snapped.x += canvas.width * increment
+    snapped.y += canvas.height * increment
+
+    let opacityX = GRID_OPACITY_MAX
+    const indexX = snapped.x / canvas.width
+    if (indexX % levelCurrent !== 0 && indexX % levelPrev !== 0)
+      opacityX *= opacityFactor
+
+    // TODO DRY
+    let opacityY = GRID_OPACITY_MAX
+    const indexY = snapped.y / canvas.height
+    if (indexY % levelCurrent !== 0 && indexY % levelPrev !== 0)
+      opacityY *= opacityFactor
+
+    const canvasPoint = camera.worldToCanvas(snapped, canvas)
+    drawGridLine(ctx, renderer, canvasPoint.x, true, opacityX)
+    drawGridLine(ctx, renderer, canvasPoint.y, false, opacityY)
+  }
+}
+
+// TODO remove this?
+function drawGridRelative (ctx, renderer) {
 
   const { camera, canvas, options } = renderer
   const { current, target, referenceFrame: body } = camera

@@ -10,7 +10,7 @@ import { CameraMove } from '../actions'
 import TouchEmulator from 'hammer-touchemulator'
 
 import addEventListener, { removeEventListener } from 'add-event-listener'
-import { Vector, random, cos, round, sqrt, sin, min, floor, PI } from 'math-plus'
+import { Vector, random, cos, round, sqrt, sin, min, max, floor, PI } from 'math-plus'
 import { radiusFromMass } from 'modules/simulation/util'
 
 import is from 'is-explicit'
@@ -57,12 +57,12 @@ function randomVector (radius) {
 function addSomeBodiesForShitsAndGiggles (sim) {
 
   const props = []
-  const dist = 960
-  const speed = 0.5
+  const dist = min(innerWidth / 2, innerHeight / 2)
+  const speed = 3
 
-  for (let i = 0; i < 1000; i++) {
+  for (let i = 0; i < 2000; i++) {
 
-    const pos = randomVector(dist)//.iadd(innerWidth / 2, innerHeight / 2)
+    const pos = randomVector(dist).iadd(new Vector(innerWidth / 2, innerHeight / 2))
     const vel = randomVector(speed)
 
     props.push({
@@ -111,14 +111,6 @@ function setupRenderer () {
 
 }
 
-function setupCameraControls () {
-
-  const toy = this
-
-  const { camera } = toy.renderer
-
-}
-
 /******************************************************************************/
 // Main Component
 /******************************************************************************/
@@ -138,7 +130,6 @@ class GravityToy extends React.Component {
 
     this::setupSimulation()
     this::setupRenderer()
-    this::setupCameraControls()
 
     addEventListener(window, 'resize', this.onResize)
     addEventListener(window, 'deviceorientation', this.onResize)
@@ -150,6 +141,8 @@ class GravityToy extends React.Component {
     this.setState({
       action: new CameraMove(this)
     })
+    this.renderer.camera.current.zoom = 10000
+    this.gotoAllBodies()
   }
 
   componentWillUnmount () {
@@ -262,6 +255,7 @@ class GravityToy extends React.Component {
   onKeyDown = e => {
 
     const { target, current } = this.renderer.camera
+
     const INC = 100
     const zoomInc = INC * current.zoom
 
@@ -298,14 +292,73 @@ class GravityToy extends React.Component {
         this.setSpeed(this.state.speed + 1)
         break
 
+      case '=':
       case 'ArrowUp':
-        this.addZoom(INC)
-        break
-
-      case 'ArrowDown':
         this.addZoom(-INC)
         break
+
+      case 'Home':
+      case 'Enter':
+      case 'h':
+        this.gotoReferenceFrame()
+        break
+
+      case 'Backspace':
+      case 'Escape':
+        this.renderer.camera.referenceFrame = null
+        this.gotoAllBodies()
+        break
+
+      case '-':
+      case 'ArrowDown':
+        this.addZoom(INC)
+        break
     }
+  }
+
+  gotoReferenceFrame () {
+
+    const { simulation } = this
+    const { camera } = this.renderer
+    const { target } = camera
+
+    if (camera.referenceFrame) {
+      target.pos.set(camera.referenceFrame.pos)
+      target.zoom = 1
+    } else {
+      // Select the biggest body as a reference frame, otherwise
+      const biggest = [ ...simulation.livingBodies() ]
+        .reduce((b, c) => c.mass > b.mass ? c : b)
+      camera.referenceFrame = biggest
+    }
+  }
+
+  gotoAllBodies () {
+
+    const { simulation, canvas } = this
+    const { camera } = this.renderer
+    const { target } = camera
+
+    const center = Vector.zero
+
+    const bodies = [ ...simulation.livingBodies() ]
+    const topLeft = bodies[0].pos.copy()
+    const botRight = topLeft.copy()
+
+    for (const body of bodies) {
+      center.iadd(body.pos)
+      topLeft.x = min(topLeft.x, body.pos.x)
+      topLeft.y = min(topLeft.y, body.pos.y)
+      botRight.x = max(botRight.x, body.pos.x)
+      botRight.y = max(botRight.y, body.pos.y)
+    }
+    center.idiv(bodies.length)
+    target.pos.set(center)
+
+    const width = botRight.x - topLeft.x
+    const height = botRight.y - topLeft.y
+
+    target.zoom = max(width / canvas.width, height / canvas.height)
   }
 
   render () {
