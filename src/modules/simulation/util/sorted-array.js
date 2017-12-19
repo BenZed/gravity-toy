@@ -2,15 +2,23 @@
 // Helper
 /******************************************************************************/
 
+const STRICT = Symbol('return -1 if missing')
+
 function ascending (a, b) {
   return a > b ? 1 : a < b ? -1 : 0
 }
 
 function search (arr, value, strict) {
-  let min = 0
-  let max = arr.length
 
-  while (min < max) {
+  let min = 0
+  let max = arr.length - 1
+
+  // If the array is sorted in descending order
+  // const delta = arr[max] < arr[min]
+  //   ? -1
+  //   : 1
+
+  while (min <= max) {
     const mid = (min + max) >> 1
     const _value = arr[mid]
 
@@ -18,12 +26,12 @@ function search (arr, value, strict) {
       return mid
 
     if (_value < value)
-      min = mid + 1
+      min = mid + 1 //delta
     else
       max = mid
   }
 
-  return strict ? -1 : min
+  return strict === STRICT ? -1 : min
 }
 
 /******************************************************************************/
@@ -69,14 +77,13 @@ class SortedArray extends Array {
     return new SortedArray(...mapped)
   }
 
-  // Binary Search
   lastIndexOf (value) {
-    const index = search(this, value, true)
+    const index = search(this, value, STRICT)
     return index
   }
 
   indexOf (value) {
-    let index = search(this, value, true)
+    let index = this.lastIndexOf(value)
 
     // Search returns the last index of a given value, where indexOf should
     // return the first
@@ -94,7 +101,7 @@ class SortedArray extends Array {
   }
 
   remove (value) {
-    const index = this.indexOf(value)
+    const index = this.lastIndexOf(value)
     if (index > -1)
       this.splice(index, 1)
 

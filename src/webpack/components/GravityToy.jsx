@@ -11,6 +11,7 @@ import TouchEmulator from 'hammer-touchemulator'
 
 import addEventListener, { removeEventListener } from 'add-event-listener'
 import { Vector, random, cos, round, sqrt, sin, min, max, floor, PI } from 'math-plus'
+
 import { radiusFromMass } from 'modules/simulation/util'
 
 import is from 'is-explicit'
@@ -58,15 +59,15 @@ function addSomeBodiesForShitsAndGiggles (sim) {
 
   const props = []
   const dist = min(innerWidth / 2, innerHeight / 2)
-  const speed = 0.1
+  const speed = 3
 
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 350; i++) {
 
     const pos = randomVector(dist).iadd(new Vector(innerWidth / 2, innerHeight / 2))
     const vel = randomVector(speed)
 
     props.push({
-      mass: random(1, 10),
+      mass: random(1, 100),
       pos,
       vel
     })

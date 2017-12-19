@@ -317,7 +317,7 @@ describe('Integration', function () {
     })
   })
 
-  describe.only('collision detection', () => {
+  describe('collision detection', () => {
 
     // These could probably be organized better
     describe('broad phase', () => {

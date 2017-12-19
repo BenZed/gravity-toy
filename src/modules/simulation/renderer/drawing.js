@@ -1,4 +1,4 @@
-import { Vector, PI, log10, max, clamp, floor, sign, abs } from 'math-plus'
+import { Vector, PI, log10, max, clamp, floor, sign, abs, sqrt } from 'math-plus'
 import { WeightedColorizer } from '../util'
 import { RADIUS_MIN } from '../constants'
 import { CACHE } from '../body'
@@ -24,10 +24,25 @@ const massColor = new WeightedColorizer(
   [0, 50, 1000, 10000, 100000, 1000000]
 )
 
-// TODO Move this
+// TODO Move these
 function escapeSpeed (child, parent, g) {
   const relative = child.pos.sub(parent.pos)
   return g * parent.mass * child.mass / relative.sqrMagnitude
+}
+
+function baryCenter (a, b) {
+
+  const small = a.mass > b.mass ? b : a
+  const big = small === a ? b : a
+
+  const relative = big.pos.sub(small.pos)
+  const distance = relative.magnitude
+  const baryRadius = distance / (1 + small.mass / big.mass)
+
+  return relative
+    .normalize()
+    .imult(baryRadius)
+    .iadd(small.pos)
 }
 
 function numDigits (n) {
@@ -43,18 +58,23 @@ function colorByMass (ctx, body) {
   ctx.fillStyle = massColor(body.mass)
 }
 
-function colorByDoppler (ctx, body, camera, relativeVel) {
-  if (body === camera.referenceFrame) {
-    ctx.fillStyle = 'white'
-    return
-  }
+// I dont get why, but the Vector.dot function is not working.
+// It looks fine, when I print it to the console, but it doesnt
+// give negative numbers. No Idea why. TODO fix
+function dot (a, b) {
+  const an = a.normalize()
+  const bn = b.normalize()
 
-  const relativePos = body.pos.sub(camera.referenceFrame.pos)
+  return an.x * bn.x + an.y * bn.y
+}
+
+function colorByDoppler (ctx, body, referencePos, relativeVel) {
+
+  const relativePos = body.pos.sub(referencePos)
   const dist = relativePos.magnitude
   const speed = relativeVel.magnitude
 
-  const direction = Vector.dot(relativeVel, relativePos)
-
+  const direction = dot(relativePos, relativeVel)
   const distanceFactor = clamp(dist / DOPPLER_MAX_DIST)
 
   const intensity = distanceFactor * DOPPLER_MAX_VEL + ((1 - distanceFactor) * speed)
@@ -75,13 +95,16 @@ function createCirclePath (ctx, pos, r1, r2 = r1, angle = 0) {
   ctx.closePath()
 }
 
+console.log(Vector.dot.toString())
+
 function drawBody (ctx, renderer, body, speedOfPlayback) {
 
   const { radius, pos, vel } = body
   const { camera, canvas, options } = renderer
+  const frame = camera.referenceFrame
 
-  const relativeVel = camera.referenceFrame
-    ? vel.sub(camera.referenceFrame.vel)
+  const relativeVel = frame
+    ? vel.sub(frame.vel)
     : vel
 
   const viewVel = relativeVel.div(camera.current.zoom)
@@ -94,12 +117,11 @@ function drawBody (ctx, renderer, body, speedOfPlayback) {
   const speedDistortionAngle = viewVel.angle * PI / 180
 
   createCirclePath(ctx, viewPos, speedDistortionRadius, viewRadius, speedDistortionAngle)
-
-  if (options.bodyColorBy === 'mass' || !camera.referenceFrame)
+  if (options.bodyColorBy === 'mass')
     colorByMass(ctx, body)
 
   else if (options.bodyColorBy === 'doppler')
-    colorByDoppler(ctx, body, camera, relativeVel)
+    colorByDoppler(ctx, body, frame ? frame.pos : camera.current.pos, relativeVel)
 
   // slightly fade bodies that would be too small to see
   const sizeFade = ((radius / camera.current.zoom) / RADIUS_MIN)
@@ -108,14 +130,14 @@ function drawBody (ctx, renderer, body, speedOfPlayback) {
   ctx.globalAlpha = 1
 
   // Draw reference ring
-  if (body === camera.referenceFrame)
+  if (body === frame)
     drawReferenceFrameOutline(ctx, options, viewPos, viewRadius)
 }
 
 function detailStroke (ctx, options) {
   ctx.strokeStyle = options.detailsColor
   ctx.setLineDash(options.detailsDash)
-
+  ctx.globalAlpha = 1
   ctx.stroke()
 }
 
@@ -131,7 +153,7 @@ function drawBodyParentLine (ctx, renderer, child, simulation) {
   const { options, camera, canvas } = renderer
 
   const parent = simulation.body(child.linkId)
-  if (!parent || child.mass >= parent.mass)
+  if (!parent)// || child.mass >= parent.mass)
     return
 
   const relSpeed = child.vel.sub(parent.vel).magnitude
@@ -144,7 +166,21 @@ function drawBodyParentLine (ctx, renderer, child, simulation) {
   ctx.beginPath()
   ctx.moveTo(from.x, from.y)
   ctx.lineTo(to.x, to.y)
+
   detailStroke(ctx, options)
+
+  const bary = camera.worldToCanvas(baryCenter(parent, child), canvas)
+  const off = options.detailsPad * 4
+
+  ctx.beginPath()
+  ctx.setLineDash([])
+
+  ctx.moveTo(bary.x - off, bary.y)
+  ctx.lineTo(bary.x + off, bary.y)
+  ctx.moveTo(bary.x, bary.y + off)
+  ctx.lineTo(bary.x, bary.y - off)
+
+  ctx.stroke()
 }
 
 function drawGrid (ctx, renderer) {
@@ -194,55 +230,6 @@ function drawGrid (ctx, renderer) {
   }
 }
 
-// TODO remove this?
-function drawGridRelative (ctx, renderer) {
-
-  const { camera, canvas, options } = renderer
-  const { current, target, referenceFrame: body } = camera
-
-  const coord = body || current
-
-  ctx.strokeStyle = options.detailsColor
-  ctx.setLineDash([])
-  ctx.lineWidth = 1
-
-  const pos = camera.worldToCanvas(coord.pos, canvas)
-
-  const xDiff = canvas.width / current.zoom
-  const yDiff = canvas.height / current.zoom
-  const xDiffHalf = xDiff * 0.5
-  const yDiffHalf = yDiff * 0.5
-
-  const horizontal = true
-  const vertical = false
-
-  const levels = numDigits(target.zoom)
-  const levelCurrent = 10 ** levels
-  const levelPrev = levelCurrent / 10
-
-  const increment = max(levelPrev / 10, 1)
-  const opacityFactor = clamp(1 - (current.zoom - levelPrev) / (levelCurrent - levelPrev))
-
-  for (let count = 0; count < current.zoom * 0.5; count += increment) {
-
-    const xRight = pos.x + xDiffHalf + count * xDiff
-    const xLeft = pos.x - xDiffHalf + count * -xDiff
-    const yUp = pos.y + yDiffHalf + count * yDiff
-    const yDown = pos.y - yDiffHalf + count * -yDiff
-
-    let opacity = GRID_OPACITY_MAX
-    if (count % levelCurrent !== 0 && count % levelPrev !== 0)
-      opacity *= opacityFactor
-
-    drawGridLine(ctx, renderer, xRight, horizontal, opacity)
-    drawGridLine(ctx, renderer, xLeft, horizontal, opacity)
-    drawGridLine(ctx, renderer, yUp, vertical, opacity)
-    drawGridLine(ctx, renderer, yDown, vertical, opacity)
-  }
-
-  ctx.globalAlpha = 1
-}
-
 function drawGridLine (ctx, renderer, start, horizontal, opac = 0.25) {
 
   const { canvas } = renderer
@@ -282,12 +269,13 @@ function drawTrails (ctx, renderer, body, simulation) {
 
   const { options, camera, canvas } = renderer
 
-  const frame = camera.referenceFrame
-  if (body === frame)
+  const rBody = camera.referenceFrame
+  if (body === rBody)
     return
 
-  const length = options.trailLength
-  const step = options.trailStep
+  const zoomRoot = sqrt(camera.current.zoom)
+  const length = options.trailLength * zoomRoot
+  const step = floor(options.trailStep * zoomRoot)
   const absLength = abs(length)
   const delta = sign(length)
 
@@ -299,8 +287,7 @@ function drawTrails (ctx, renderer, body, simulation) {
   let lastPoint = null
   let tick = simulation.currentTick
   // prevents jittering caused by step
-  const jitterFix = simulation.currentTick % step
-  tick = delta > 0 ? tick + jitterFix : tick - jitterFix
+  tick -= simulation.currentTick % step
 
   ctx.beginPath()
 
@@ -311,10 +298,11 @@ function drawTrails (ctx, renderer, body, simulation) {
     if (!worldPoint)
       continue
 
-    if (frame)
+    const rWorldPoint = rBody && getTrailWorldPositionAtTick(rBody, tick)
+    if (rWorldPoint)
       worldPoint
-        .isub(getTrailWorldPositionAtTick(frame, tick))
-        .iadd(frame.pos)
+        .isub(rWorldPoint)
+        .iadd(rBody.pos)
 
     const canvasPoint = camera.worldToCanvas(worldPoint, canvas)
 
@@ -361,8 +349,11 @@ export function drawBodies (ctx, renderer, simulation, speed) {
   if (renderer.options.grid)
     drawGrid(ctx, renderer)
 
-  if (renderer.options.relations) for (const body of bodiesByMass) if (body.exists)
+  // if (renderer.options.relations) for (const body of bodiesByMass) if (body.exists)
+  if (renderer.camera.referenceFrame) {
+    const body = renderer.camera.referenceFrame
     drawBodyParentLine(ctx, renderer, body, simulation)
+  }
 
   if (renderer.options.trailLength !== 0) for (const body of simulation)
     drawTrails(ctx, renderer, body, simulation)
