@@ -26,7 +26,7 @@ function search (arr, value, strict) {
       return mid
 
     if (_value < value)
-      min = mid + 1 //delta
+      min = mid + 1 // delta
     else
       max = mid
   }
@@ -50,7 +50,7 @@ class SortedArray extends Array {
   }
 
   // Insertion sort
-  sort (pred = ascending) {
+  sort (compare = ascending) {
 
     const { length } = this
 
@@ -58,7 +58,7 @@ class SortedArray extends Array {
       const item = this[i]
 
       // eslint-disable-next-line no-var
-      for (var ii = i - 1; ii >= 0 && pred(this[ii], item) > 0; ii--)
+      for (var ii = i - 1; ii >= 0 && compare(this[ii], item) > 0; ii--)
         this[ii + 1] = this[ii]
 
       this[ii + 1] = item
