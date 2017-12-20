@@ -95,8 +95,6 @@ function createCirclePath (ctx, pos, r1, r2 = r1, angle = 0) {
   ctx.closePath()
 }
 
-console.log(Vector.dot.toString())
-
 function drawBody (ctx, renderer, body, speedOfPlayback) {
 
   const { radius, pos, vel } = body
