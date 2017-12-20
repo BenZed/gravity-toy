@@ -41,15 +41,15 @@ function binarySearch (arr, value, strict) {
   return strict === STRICT ? -1 : min
 }
 
-function copySortedArray (sortedArray, toPush) {
+function createSortedArrayWith (comparer, unsafe, items) {
 
-  const copy = new SortedArray()
+  const to = new SortedArray()
 
-  copy.comparer = sortedArray.comparer
-  copy.push(...toPush)
-  copy[UNSAFE] = sortedArray[UNSAFE]
+  to.comparer = comparer
+  to.push(...items)
+  to[UNSAFE] = unsafe
 
-  return copy
+  return to
 }
 
 /******************************************************************************/
@@ -80,25 +80,6 @@ class SortedArray extends Array {
     this.sort()
   }
 
-  get comparer () {
-    return this[COMPARER]
-  }
-
-  [COMPARER] = ascending
-
-  get unsafe () {
-    return this[UNSAFE]
-  }
-
-  [UNSAFE] = false
-
-  set comparer (compareFunc) {
-    if (typeof compareFunc !== 'function')
-      compareFunc = ascending
-
-    this[COMPARER] = compareFunc
-  }
-
   // Insertion sort
   sort (compare = this.comparer) {
 
@@ -125,21 +106,17 @@ class SortedArray extends Array {
 
   filter (...args) {
     const filtered = super.filter(...args)
-    return copySortedArray(this, filtered)
+    return createSortedArrayWith(this.comparer, this.unsafe, filtered)
   }
 
   map (...args) {
     const mapped = super.map(...args)
-
-    const mappedAsSortedArray = copySortedArray(this, mapped)
-    mappedAsSortedArray[UNSAFE] = true
-
-    return mappedAsSortedArray
+    return createSortedArrayWith(this.comparer, true, mapped)
   }
 
   slice (...args) {
     const sliced = super.slice(...args)
-    return copySortedArray(this, sliced)
+    return createSortedArrayWith(this.comparer, this.unsafe, sliced)
   }
 
   // reduce() does not need extending as it does not return an Array
@@ -173,11 +150,7 @@ class SortedArray extends Array {
 
   concat (arr) {
     const concated = super.concat(arr)
-
-    const concatedAsSortedArray = copySortedArray(this, concated)
-    concatedAsSortedArray[UNSAFE] = true
-
-    return concatedAsSortedArray
+    return createSortedArrayWith(this.comparer, true, concated)
   }
 
   // pop, shift and fill do not need to be extended as they cannot
@@ -201,6 +174,8 @@ class SortedArray extends Array {
     return index
   }
 
+  // NEW METHODS
+
   insert (value) {
     const index = binarySearch(this, value)
 
@@ -220,6 +195,28 @@ class SortedArray extends Array {
 
     return index
   }
+
+  // NEW PROPERTIES
+
+  [COMPARER] = ascending
+
+  get comparer () {
+    return this[COMPARER]
+  }
+
+  set comparer (compareFunc) {
+    if (typeof compareFunc !== 'function')
+      compareFunc = ascending
+
+    this[COMPARER] = compareFunc
+  }
+
+  [UNSAFE] = false
+
+  get unsafe () {
+    return this[UNSAFE]
+  }
+
 }
 
 /******************************************************************************/
