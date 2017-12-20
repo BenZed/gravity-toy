@@ -2,6 +2,7 @@ import { Vector, PI, log10, max, clamp, floor, sign, abs, sqrt } from 'math-plus
 import { WeightedColorizer } from '../util'
 import { RADIUS_MIN } from '../constants'
 import { CACHE } from '../body'
+import SortedArray from '../util/sorted-array'
 
 /******************************************************************************/
 // Helpers
@@ -339,8 +340,7 @@ export function clearCanvas (ctx, renderer) {
 
 export function drawBodies (ctx, renderer, simulation, speed) {
 
-  const bodiesByMass = [ ...simulation.livingBodies() ]
-  bodiesByMass.sort()
+  const bodiesByMass = new SortedArray(...simulation.livingBodies())
 
   ensureLivingReferenceFrame(renderer, simulation)
 

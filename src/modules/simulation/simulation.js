@@ -19,9 +19,7 @@ import {
 /******************************************************************************/
 
 const TICK = Symbol('tick')
-
 const BODIES = Symbol('bodies')
-
 const INTEGRATOR = Symbol('integrator')
 
 /******************************************************************************/
@@ -384,14 +382,21 @@ function writeTick (data) {
     cache.deathTick = tick.last
   }
 
-  // TODO do something with created ids
-  const createdIds = data.created
+  for (const id of data.created) {
+    const body = new Body({}, tick.last, id)
+
+    // ignore initial values as they will be defined by the stream
+    body[CACHE].data.length = 0
+
+    bodies.map.set(id, body)
+  }
 
   const { stream } = data
   let i = 0
   while (i < stream.length) {
     const id = stream[i++]
     const body = bodies.map.get(id)
+
     const cache = body[CACHE]
     cache.data.push(
       stream[i++], // mass

@@ -6,7 +6,7 @@ import SortedArray, { UnsafeSortError } from '../src/modules/simulation/util/sor
 
 const descending = (a, b) => a > b ? -1 : a < b ? 1 : 0
 
-describe.only('Sorted Array', () => {
+describe('Sorted Array', () => {
 
   it('is a class', () => {
     expect(() => SortedArray())

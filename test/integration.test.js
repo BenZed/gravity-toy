@@ -2,7 +2,7 @@ import is from 'is-explicit'
 import { expect } from 'chai'
 
 import Simulation from '../lib'
-import { Body, CACHE } from '../lib/body'
+// import { Body, CACHE } from '../lib/body'
 import PhysicsBody from '../lib/integrator/body'
 
 import { Vector } from 'math-plus'
@@ -291,10 +291,10 @@ describe('Integration', function () {
       })
 
       const [ p1, p2, p3, r1 ] = sim.createBodies([
-        { mass: 100, pos: new Vector(1, 1) },
-        { mass: 100, pos: new Vector(1, 0) },
-        { mass: 100, pos: new Vector(0, 1) },
-        { mass: 1000, pos: new Vector(0, 1) }
+        { mass: 100, pos: new Vector(50, 50) },
+        { mass: 100, pos: new Vector(50, 0) },
+        { mass: 100, pos: new Vector(0, 50) },
+        { mass: 1000, pos: new Vector(0, 0) }
       ])
 
       worker.bodies.sort(worker.physics)

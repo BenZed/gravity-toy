@@ -21,7 +21,7 @@ function bodies (count = 1) {
   return props
 }
 
-describe('Simulation', function () {
+describe.only('Simulation', function () {
   this.slow(1000)
 
   it('is a class', () => {
@@ -141,11 +141,10 @@ describe('Simulation', function () {
         await new Promise(resolve => {
           sim.on('cache-full', resolve)
         })
-        expect(() => sim.run()).to.throw('Cannot start simulation. Cache memory')
+        expect(() => sim.run(sim.lastTick)).to.throw('Cannot start simulation. Cache memory')
 
         // Once cache is cleared, start should work again
-        sim.clearAfterTick(0)
-        expect(() => sim.run()).to.not.throw()
+        expect(() => sim.run(0)).to.not.throw()
         sim.stop()
       })
 
@@ -188,10 +187,11 @@ describe('Simulation', function () {
         expect(body.pos.y).to.be.above(posY)
       })
 
-      it('throws if provided tick is out of range', async () => {
+      it('clips given tick to valid range', async () => {
         sim.createBodies(bodies(5))
         await sim.runForNumTicks(4)
-        expect(() => sim.setCurrentTick(6)).to.throw(RangeError)
+        sim.setCurrentTick(5)
+        expect(sim.currentTick).to.equal(4)
       })
 
       it('non existant bodies are given a null mass', async () => {
@@ -200,6 +200,9 @@ describe('Simulation', function () {
         await sim.runForNumTicks(10)
 
         const [ body ] = sim.createBodies(bodies(1), 5)
+
+        sim.setCurrentTick(5)
+        expect(body.mass).to.be.equal(100)
 
         sim.setCurrentTick(2)
         return expect(body.mass).to.be.null
@@ -244,17 +247,16 @@ describe('Simulation', function () {
 
     describe('numLivingBodies()', () => {
 
-      it('returns the number of living bodies at a given tick', async () => {
+      it('returns the number of living bodies at current tick', async () => {
         sim.createBodies(bodies(1))
         await sim.runForNumTicks(10)
         sim.createBodies(bodies(1), 5)
 
-        expect(sim.numLivingBodies(0)).to.be.equal(1)
-        expect(sim.numLivingBodies(5)).to.be.equal(2)
-      })
+        sim.currentTick = 5
+        expect(sim.numLivingBodies()).to.be.equal(2)
 
-      it('throws if provided tick is out of range', () => {
-        expect(() => sim.numLivingBodies(5)).to.throw(RangeError)
+        sim.currentTick = 2
+        expect(sim.numLivingBodies()).to.be.equal(1)
       })
     })
 
@@ -410,11 +412,12 @@ describe('Simulation', function () {
 
         let err
         try {
-          await sim.runForNumTicks(1000)
+          await sim.runForNumTicks(10000)
         } catch (e) {
           err = e
         }
 
+        expect(err).to.be.instanceof(Error)
         expect(err).to.have.property('message')
         return expect(err.message.includes('Could not run for')).to.be.true
       })
@@ -576,7 +579,7 @@ describe('Simulation', function () {
     })
 
     describe('* livingBodies()', () => {
-      it('yields every body alive at tick', async () => {
+      it('yields every body alive at current tick', async () => {
         const sim = new Simulation()
 
         const [ body ] = sim.createBodies(bodies(1))
@@ -591,15 +594,6 @@ describe('Simulation', function () {
 
         expect([...sim.livingBodies()]).to.have.length(2)
 
-      })
-
-      it('throws if tick is out of range', () => {
-        expect(() => {
-          const sim = new Simulation()
-
-          for (const body of sim.livingBodies(1))
-            console.log(body)
-        }).to.throw(RangeError)
       })
     })
   })

@@ -17,12 +17,12 @@ class BodyManager {
   nextAssignId = 0
   sendInterval = 0
 
-  destroyed = []
-  absorbing = []
-  created = []
-  psuedo = []
-  living = []
-  real = []
+  destroyed = new SortedArray()
+  absorbing = new SortedArray()
+  created = new SortedArray()
+  psuedo = new SortedArray()
+  living = new SortedArray()
+  real = new SortedArray()
 
   boundsX = new SortedArray()
   boundsY = new SortedArray()

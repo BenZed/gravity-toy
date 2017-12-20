@@ -49,6 +49,10 @@ class Body {
     return is(this.mass, Number) && this.mass > 0
   }
 
+  valueOf () {
+    return this.mass
+  }
+
 }
 
 /******************************************************************************/

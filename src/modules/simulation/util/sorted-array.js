@@ -81,9 +81,10 @@ class SortedArray extends Array {
   }
 
   // Insertion sort
-  sort (compare = this.comparer) {
+  sort (comparer) {
 
-    this.comparer = compare
+    if (comparer)
+      this.comparer = comparer
 
     const { length } = this
 
