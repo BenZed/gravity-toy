@@ -21,7 +21,7 @@ function bodies (count = 1) {
   return props
 }
 
-describe.only('Simulation', function () {
+describe('Simulation', function () {
   this.slow(1000)
 
   it('is a class', () => {
@@ -470,14 +470,22 @@ describe.only('Simulation', function () {
 
     describe('toJSON', () => {
 
-      let sim
+      let sim, json
       before(async () => {
         sim = new Simulation()
         sim.createBodies(bodies(10))
         await sim.runForNumTicks(10)
+        json = sim.toJSON()
       })
 
-      it('returns simulation state as a serializable object')
+      it('returns simulation state as a serializable object', () => {
+        expect(json).to.have.property('bodies')
+        expect(json).to.have.property('g')
+        expect(json).to.have.property('realBodiesMin')
+        expect(json).to.have.property('realMassThreshold')
+        expect(json).to.have.property('physicsSteps')
+        expect(json).to.have.property('maxCacheMemory')
+      })
 
     })
 

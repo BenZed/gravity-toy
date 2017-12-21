@@ -32,6 +32,14 @@ class Simulation extends EventEmitter {
     if (typeof json === 'string')
       json = JSON.parse(json)
 
+    const { bodies, ...init } = json
+
+    const sim = new Simulation(init)
+
+    sim.createBodies(bodies)
+
+    return sim
+
   }
 
   constructor (props = {}) {
@@ -372,17 +380,14 @@ class Simulation extends EventEmitter {
     } = this[INTEGRATOR].init
 
     const bodies = []
-    for (const body of this) {
+    for (const body of this.livingBodies()) {
 
-      const { birthTick, deathTick, data } = body[CACHE]
+      const { pos, vel, mass } = body
+
       bodies.push({
-        id: body.id,
-        mergeId: body.mergeId,
-        cache: {
-          birthTick,
-          deathTick,
-          data
-        }
+        pos: { x: pos.x, y: pos.y },
+        vel: { x: vel.x, y: vel.y },
+        mass
       })
     }
 
