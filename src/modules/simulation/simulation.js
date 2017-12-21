@@ -28,6 +28,12 @@ const INTEGRATOR = Symbol('integrator')
 
 class Simulation extends EventEmitter {
 
+  static fromJSON (json) {
+    if (typeof json === 'string')
+      json = JSON.parse(json)
+
+  }
+
   constructor (props = {}) {
 
     super()
@@ -176,7 +182,7 @@ class Simulation extends EventEmitter {
     return this.runUntil(condition, startTick, description)
   }
 
-  runForOneTick (startTick = this.lastTick) {
+  runForOneTick (startTick = this.currentTick) {
     const description = `for one tick`
 
     return this.runUntil(oneTick, startTick, description)
@@ -351,8 +357,43 @@ class Simulation extends EventEmitter {
     return count
   }
 
-  toArray (id) {
-    return [ ...this.bodies(id) ]
+  toArray (ids) {
+    return [ ...this.bodies(ids) ]
+  }
+
+  toJSON () {
+
+    const {
+      g, maxCacheMemory
+    } = this
+
+    const {
+      physicsSteps, realMassThreshold, realBodiesMin
+    } = this[INTEGRATOR].init
+
+    const bodies = []
+    for (const body of this) {
+
+      const { birthTick, deathTick, data } = body[CACHE]
+      bodies.push({
+        id: body.id,
+        mergeId: body.mergeId,
+        cache: {
+          birthTick,
+          deathTick,
+          data
+        }
+      })
+    }
+
+    return {
+      bodies,
+      g,
+      physicsSteps,
+      realMassThreshold,
+      realBodiesMin,
+      maxCacheMemory
+    }
   }
 
 }

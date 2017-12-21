@@ -18,8 +18,8 @@ export const DEFAULT_PHYSICS = Object.freeze({
 
   // As a lossy optimization, bodies below a certain mass threshold can be considered
   // pseudo bodies and excluded from the primary integration loop. This speeds
-  // up the simulation at a cost of realism. 0 means disabled.
-  realMassThreshold: 0,
+  // up the simulation at a cost of realism.
+  realMassThreshold: 10,
 
   // There must be at least this many real bodies before bodies under the aforementioned
   // mass threshold are considered psuedo. Infinity means disabled.
