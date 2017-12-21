@@ -17,6 +17,14 @@ import { radiusFromMass } from 'modules/simulation/util'
 import is from 'is-explicit'
 
 /******************************************************************************/
+// Constants
+/******************************************************************************/
+
+const SAVE_INTERVAL = 5000
+const SAVE_KEY = 'simulation-saved'
+const SAVE_MAX_SIZE = 1024 * 1024 // 1 mb
+
+/******************************************************************************/
 // Setup Touch
 /******************************************************************************/
 
@@ -55,13 +63,13 @@ function randomVector (radius) {
   return new Vector(rRadius * cos(angle), rRadius * sin(angle))
 }
 
-function addSomeBodiesForShitsAndGiggles (sim) {
+function createDefaultBodies (sim) {
 
   const props = []
-  const dist = min(innerWidth / 2, innerHeight / 2)
+  const dist = 1200
   const speed = 3
 
-  for (let i = 0; i < 350; i++) {
+  for (let i = 0; i < 1000; i++) {
 
     const pos = randomVector(dist).iadd(new Vector(innerWidth / 2, innerHeight / 2))
     const vel = randomVector(speed)
@@ -94,13 +102,30 @@ function setupSimulation () {
 
   const toy = this
 
-  toy.simulation = new Simulation({
-    minRealBodies: 256,
-    realMassThreshold: 10
-  })
+  try {
+
+    const saved = window.localStorage.getItem(SAVE_KEY)
+    const json = JSON.parse(saved)
+    if (!json)
+      throw new Error('No saved simulation.')
+
+    console.log(`loading`, json.bodies.length, `bodies`)
+
+    toy.simulation = Simulation.fromJSON(json)
+
+  } catch (err) {
+    // Just create the default if there is any error
+    console.error(err) // TODO remove this
+
+    toy.simulation = new Simulation({
+      minRealBodies: 256,
+      realMassThreshold: 10
+    })
+    createDefaultBodies(toy.simulation)
+  }
 
   toy.simulation.on('cache-full', () => console.log('cache full'))
-  addSomeBodiesForShitsAndGiggles(toy.simulation)
+  this.saveInterval = setInterval(toy.saveSimulation, SAVE_INTERVAL)
 }
 
 function setupRenderer () {
@@ -192,6 +217,27 @@ class GravityToy extends React.Component {
     camera.target.zoom += delta
   }
 
+  saveSimulation = () => {
+
+    const { simulation } = this
+
+    try {
+
+      const json = simulation.toJSON()
+      const str = JSON.stringify(json)
+      const size = (str.length * 4)
+      if (size > SAVE_MAX_SIZE)
+        throw new Error('Simulation too large.')
+
+      window.localStorage.setItem(SAVE_KEY, str)
+      console.log(`saving`, json.bodies.length, `bodies`, size / 1024, 'kb')
+
+    } catch (err) {
+      console.error('Could not save simulation', err.message)
+    }
+
+  }
+
   updateSimulation = timeStamp => {
 
     const { simulation, renderer } = this
@@ -264,6 +310,12 @@ class GravityToy extends React.Component {
 
     switch (e.key) {
 
+      case 'Escape':
+      // kill save and reload
+        window.localStorage.removeItem(SAVE_KEY)
+        setTimeout(() => location.reload(), 100)
+        break
+
       case 'w':
         target.pos.y -= zoomInc
         break
@@ -312,7 +364,7 @@ class GravityToy extends React.Component {
         break
 
       case 'Backspace':
-      case 'Escape':
+      // case 'Escape':
         if (camera.referenceFrame)
           camera.referenceFrame = null
         else

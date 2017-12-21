@@ -55,6 +55,9 @@ function validateProps (props) {
   if (!is(props.g, Number) || props.g <= 0)
     throw new Error('props.g must be above zero')
 
+  if (props.realBodiesMin === null)
+    props.realBodiesMin = Infinity // Infinity cant be saved to json
+
   if (!is(props.realBodiesMin, Number) || props.realBodiesMin < 0)
     throw new Error('props.realBodiesMin must not be negative')
 

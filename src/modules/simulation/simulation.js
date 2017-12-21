@@ -1,6 +1,6 @@
 import is from 'is-explicit'
 import define from 'define-utility'
-import { min, clamp } from 'math-plus'
+import { min, clamp, Vector } from 'math-plus'
 
 import EventEmitter from 'events'
 import Integrator from './integrator'
@@ -36,7 +36,16 @@ class Simulation extends EventEmitter {
 
     const sim = new Simulation(init)
 
-    sim.createBodies(bodies)
+    const props = bodies.map(body => {
+      const prop = {
+        pos: Vector.toVector(body.pos),
+        vel: Vector.toVector(body.vel),
+        mass: body.mass
+      }
+      return prop
+    })
+
+    sim.createBodies(props)
 
     return sim
 
