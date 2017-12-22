@@ -391,9 +391,10 @@ class Simulation extends EventEmitter {
     const bodies = []
     for (const body of this.livingBodies()) {
 
-      const { pos, vel, mass } = body
+      const { pos, vel, mass, id } = body
 
       bodies.push({
+        id,
         pos: { x: pos.x, y: pos.y },
         vel: { x: vel.x, y: vel.y },
         mass

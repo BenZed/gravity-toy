@@ -20,7 +20,7 @@ import is from 'is-explicit'
 // Constants
 /******************************************************************************/
 
-const SAVE_INTERVAL = 5000
+const SAVE_INTERVAL = 2500
 const SAVE_KEY = 'simulation-saved'
 const SAVE_MAX_SIZE = 1024 * 1024 // 1 mb
 
@@ -112,6 +112,13 @@ function setupSimulation () {
     console.log(`loading`, json.bodies.length, `bodies`)
 
     toy.simulation = Simulation.fromJSON(json)
+    const { camera } = toy.renderer
+    const { x, y, zoom, referenceFrameIndex } = json.camera
+
+    camera.target.pos.set(new Vector(x, y))
+    camera.target.zoom = zoom
+    if (referenceFrameIndex >= 0)
+      camera.referenceFrame = toy.simulation.toArray()[referenceFrameIndex]
 
   } catch (err) {
     // Just create the default if there is any error
@@ -122,6 +129,8 @@ function setupSimulation () {
       realMassThreshold: 10
     })
     createDefaultBodies(toy.simulation)
+
+    this.viewAllBodies()
   }
 
   toy.simulation.on('cache-full', () => console.log('cache full'))
@@ -154,8 +163,8 @@ class GravityToy extends React.Component {
 
   componentDidMount () {
 
-    this::setupSimulation()
     this::setupRenderer()
+    this::setupSimulation()
 
     addEventListener(window, 'resize', this.onResize)
     addEventListener(window, 'deviceorientation', this.onResize)
@@ -164,12 +173,11 @@ class GravityToy extends React.Component {
     this.onResize()
 
     this.simulation.run()
+    this.renderer.camera.current.zoom = 10000
     this.setState({
       action: new CameraMove(this)
     })
-    this.renderer.camera.current.zoom = 10000
-    this.selectBiggestBodyAsReferenceFrame()
-    this.viewAllBodies()
+
   }
 
   componentWillUnmount () {
@@ -219,18 +227,37 @@ class GravityToy extends React.Component {
 
   saveSimulation = () => {
 
-    const { simulation } = this
+    const { simulation, renderer: { camera } } = this
 
     try {
 
       const json = simulation.toJSON()
+
+      const frame = camera.referenceFrame
+
+      const referenceFrameIndex = frame && frame.exists
+        ? json.bodies.reduce((index, body, i) =>
+          body.id === frame.id ? i : index
+          , -1)
+        : -1
+
+      for (const body of json.bodies)
+      // Save space in localStorage by not keeping the body.id
+        delete body.id
+
+      json.camera = {
+        referenceFrameIndex,
+        x: camera.target.pos.x,
+        y: camera.target.pos.y,
+        zoom: camera.target.zoom
+      }
+
       const str = JSON.stringify(json)
       const size = (str.length * 4)
       if (size > SAVE_MAX_SIZE)
         throw new Error('Simulation too large.')
 
       window.localStorage.setItem(SAVE_KEY, str)
-      console.log(`saving`, json.bodies.length, `bodies`, size / 1024, 'kb')
 
     } catch (err) {
       console.error('Could not save simulation', err.message)
