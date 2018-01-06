@@ -11,7 +11,7 @@ export const DEFAULT_PHYSICS = Object.freeze({
 
   // Gravitational Constant, completely arbitrary value. This number was chosen
   // because it makes bodies move quickly at zoom x1
-  g: 16,
+  g: 24,
 
   // Higher steps mean more calculation time, but more precision
   physicsSteps: 1,
@@ -36,8 +36,8 @@ export const ONE_MB = 1024 ** 2
 // size of a javascript number value, in bytes
 export const NUMBER_SIZE = 8
 
-// A link is a body id. A body's "link" is simply the body that the body is
-// Most attracted to. "Parent" would be a misnomber, becase a large body could
+// A link is a body id. A body's "link" is simply the body that it is
+// Most attracted to. "Parent" would be a misnomer, becase a large body could
 // have a smaller body that is exerting more force on it than any other body.
 // If a body was just created, it will have no link for it's initial tick, so
 // It gets this value as it's "linkId"

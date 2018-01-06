@@ -1,20 +1,20 @@
-import React from 'react'
+import { random, sqrt, cos, sin, PI, Vector } from 'math-plus'
 
 /******************************************************************************/
-// Main Component
+// Main
 /******************************************************************************/
 
-const Pointer = props =>
-  <svg height={16} width={24} {...props}>
-    <g>
-      <path
-        d='m-0.01851,15.99311c0,0 24.0242,0.01282 24.0242,0.01282c0,0 -12.0121,-15.9734 -12.01923,-15.98029'
-      />
-    </g>
-  </svg>
+function randomVector (radius) {
+
+  const angle = random(2 * PI)
+  const rRadiusSqr = random(radius ** 2)
+  const rRadius = sqrt(rRadiusSqr)
+
+  return new Vector(rRadius * cos(angle), rRadius * sin(angle))
+}
 
 /******************************************************************************/
 // Exports
 /******************************************************************************/
 
-export default Pointer
+export default randomVector

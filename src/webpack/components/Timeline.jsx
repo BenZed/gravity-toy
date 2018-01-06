@@ -20,6 +20,13 @@ const TimelineStyle = styled.div.attrs({ })`
   }
 `::touchable()
 
+const TimelinePointer = styled(Pointer).attrs({
+  style: props => Object({ left: `calc(${props.currentTime}% - 12px)` })
+})`
+  cursor: 'col-resize';
+  fill: ${props => props.theme.fg};
+`
+
 /******************************************************************************/
 // Main Component
 /******************************************************************************/
@@ -54,7 +61,7 @@ class Timeline extends React.Component {
 
     return <TimelineStyle onPanStart={onPanStart} onPan={onPan} {...props} >
       { children }
-      <Pointer style={{ left: `calc(${currentTime}% - 12px)`, cursor: 'col-resize' }}/>
+      <TimelinePointer currentTime={currentTime}/>
     </TimelineStyle>
   }
 }

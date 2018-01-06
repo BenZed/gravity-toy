@@ -14,6 +14,7 @@ import SortedArray from '../util/sorted-array'
 const DOPPLER_MAX_VEL = 30
 const DOPPLER_MAX_DIST = 400000
 const GRID_OPACITY_MAX = 0.5
+const NO_DASH = []
 
 const dopplerColor = new WeightedColorizer(
   [ 'blue', 'cyan', 'white', 'orange', 'red' ],
@@ -172,7 +173,7 @@ function drawBodyParentLine (ctx, renderer, child, simulation) {
   const off = options.detailsPad * 4
 
   ctx.beginPath()
-  ctx.setLineDash([])
+  ctx.setLineDash(NO_DASH)
 
   ctx.moveTo(bary.x - off, bary.y)
   ctx.lineTo(bary.x + off, bary.y)
@@ -189,7 +190,7 @@ function drawGrid (ctx, renderer) {
   const { zoom } = current
 
   ctx.strokeStyle = options.detailsColor
-  ctx.setLineDash([])
+  ctx.setLineDash(NO_DASH)
   ctx.lineWidth = 1
 
   const levels = numDigits(zoom)

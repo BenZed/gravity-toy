@@ -1,20 +1,19 @@
 import React from 'react'
-import styled from 'styled-components'
+import styled, { ThemeProvider } from 'styled-components'
 
 import Timeline from './Timeline'
-import Controls from './Controls'
+import Controls from './controls'
 
 import { Renderer, Simulation } from 'modules/simulation'
 // import CameraController from '../modules/camera-controller'
 import { CameraMove } from '../actions'
-import TouchEmulator from 'hammer-touchemulator'
 
 import addEventListener, { removeEventListener } from 'add-event-listener'
-import { Vector, random, cos, round, sqrt, sin, min, max, floor, PI } from 'math-plus'
+import { Vector, random, round, min, max, floor } from 'math-plus'
 
-import { radiusFromMass } from 'modules/simulation/util'
+import { randomVector } from 'modules/simulation/util'
 
-import is from 'is-explicit'
+import defaultTheme from '../modules/theme'
 
 /******************************************************************************/
 // Constants
@@ -25,53 +24,20 @@ const SAVE_KEY = 'simulation-saved'
 const SAVE_MAX_SIZE = 1024 * 1024 // 1 mb
 
 /******************************************************************************/
-// Setup Touch
-/******************************************************************************/
-
-TouchEmulator()
-
-TouchEmulator.template = () => {} // Do not visualize touch
-
-/******************************************************************************/
 // Temporary TODO Remove
 /******************************************************************************/
-
-function orbitalVelocity (bodyOrPos, parent, g) {
-
-  const pos = is(bodyOrPos, Vector) ? bodyOrPos : bodyOrPos.pos
-
-  const relative = pos.sub(parent.pos)
-  const dist = relative.magnitude
-
-  // I'm not sure why I have to divide by 10. According to Google
-  // this equation should work without it
-  const speed = sqrt(g * parent.mass / dist) * 0.1
-
-  return relative
-    .iperpendicular()
-    .imult(speed)
-    .iadd(parent.vel)
-
-}
-
-function randomVector (radius) {
-
-  const angle = random() * 2 * PI
-  const rRadiusSqr = random() * radius * radius
-  const rRadius = sqrt(rRadiusSqr)
-
-  return new Vector(rRadius * cos(angle), rRadius * sin(angle))
-}
 
 function createDefaultBodies (sim) {
 
   const props = []
-  const dist = 1200
+  const center = new Vector(innerWidth / 2, innerHeight / 2)
+
+  const dist = 520
   const speed = 3
 
-  for (let i = 0; i < 1000; i++) {
+  for (let i = 0; i < 512; i++) {
 
-    const pos = randomVector(dist).iadd(new Vector(innerWidth / 2, innerHeight / 2))
+    const pos = randomVector(dist).iadd(center)
     const vel = randomVector(speed)
 
     props.push({
@@ -101,6 +67,7 @@ const Canvas = styled.canvas`
 function setupSimulation () {
 
   const toy = this
+  const { camera } = toy.renderer
 
   try {
 
@@ -112,11 +79,14 @@ function setupSimulation () {
     console.log(`loading`, json.bodies.length, `bodies`)
 
     toy.simulation = Simulation.fromJSON(json)
-    const { camera } = toy.renderer
     const { x, y, zoom, referenceFrameIndex } = json.camera
 
-    camera.target.pos.set(new Vector(x, y))
+    const center = new Vector(x, y)
+
+    camera.current.pos.set(center)
+    camera.target.pos.set(center)
     camera.target.zoom = zoom
+
     if (referenceFrameIndex >= 0)
       camera.referenceFrame = toy.simulation.toArray()[referenceFrameIndex]
 
@@ -128,9 +98,14 @@ function setupSimulation () {
       minRealBodies: 256,
       realMassThreshold: 10
     })
+
+    const center = new Vector(innerWidth / 2, innerHeight / 2)
+
     createDefaultBodies(toy.simulation)
 
-    this.viewAllBodies()
+    camera.current.pos.set(center)
+    camera.target.pos.set(center)
+
   }
 
   toy.simulation.on('cache-full', () => console.log('cache full'))
@@ -173,7 +148,6 @@ class GravityToy extends React.Component {
     this.onResize()
 
     this.simulation.run()
-    this.renderer.camera.current.zoom = 10000
     this.setState({
       action: new CameraMove(this)
     })
@@ -467,8 +441,13 @@ class GravityToy extends React.Component {
 
 }
 
+const GravityToyThemed = ({ theme = defaultTheme, ...props }) =>
+  <ThemeProvider theme={theme}>
+    <GravityToy {...props} />
+  </ThemeProvider>
+
 /******************************************************************************/
 // Exports
 /******************************************************************************/
 
-export default GravityToy
+export default GravityToyThemed
