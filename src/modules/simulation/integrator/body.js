@@ -1,5 +1,5 @@
 import { radiusFromMass } from '../util'
-import { Vector } from 'math-plus'
+import { Vector } from '@benzed/math'
 
 /******************************************************************************/
 // Physics Body

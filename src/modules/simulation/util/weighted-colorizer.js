@@ -1,6 +1,6 @@
 import colorInterpolate from 'color-interpolate'
 
-import { lerp } from 'math-plus'
+import { lerp } from '@benzed/math'
 import is from 'is-explicit'
 
 /******************************************************************************/

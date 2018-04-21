@@ -4,14 +4,14 @@ import styled, { ThemeProvider } from 'styled-components'
 import Timeline from './Timeline'
 import Controls from './controls'
 
-import { Renderer, Simulation } from 'modules/simulation'
+import { Renderer, Simulation } from '../../modules/simulation'
 // import CameraController from '../modules/camera-controller'
 import { CameraMove } from '../actions'
 
 import addEventListener, { removeEventListener } from 'add-event-listener'
-import { Vector, random, round, min, max, floor } from 'math-plus'
+import { Vector, random, round, min, max, floor } from '@benzed/math'
 
-import { randomVector } from 'modules/simulation/util'
+import { randomVector } from '../../modules/simulation/util'
 
 import defaultTheme from '../modules/theme'
 

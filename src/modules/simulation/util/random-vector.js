@@ -1,4 +1,4 @@
-import { random, sqrt, cos, sin, PI, Vector } from 'math-plus'
+import { random, sqrt, cos, sin, PI, Vector } from '@benzed/math'
 
 /******************************************************************************/
 // Main

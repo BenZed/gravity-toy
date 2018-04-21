@@ -68,10 +68,6 @@ function getIndex (idA, map) {
 
 class IdMap {
 
-  static get [Symbol.species] () {
-    return IdMap
-  }
-
   static idValid = idValid
 
   static idsEqual = idsEqual

@@ -1,6 +1,6 @@
 import is from 'is-explicit'
 import define from 'define-utility'
-import { min, clamp, Vector } from 'math-plus'
+import { min, clamp, Vector } from '@benzed/math'
 
 import EventEmitter from 'events'
 import Integrator from './integrator'

@@ -1,5 +1,5 @@
 import define from 'define-utility'
-import { Vector, clamp, lerp } from 'math-plus'
+import { Vector, clamp, lerp } from '@benzed/math'
 import { TICK_DURATION } from '../constants'
 
 /******************************************************************************/

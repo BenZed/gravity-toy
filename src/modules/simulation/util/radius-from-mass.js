@@ -1,4 +1,4 @@
-import { cbrt } from 'math-plus'
+import { cbrt } from '@benzed/math'
 
 import { MASS_MIN, RADIUS_MIN, RADIUS_FACTOR } from '../constants'
 

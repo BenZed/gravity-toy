@@ -1,5 +1,5 @@
 import { DEFAULT_PHYSICS, NO_LINK } from '../constants'
-import { Vector } from 'math-plus'
+import { Vector } from '@benzed/math'
 
 import Body from './body'
 import BodyManager from './body-manager'

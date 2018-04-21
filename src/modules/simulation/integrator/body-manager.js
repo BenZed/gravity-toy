@@ -1,4 +1,4 @@
-import { min, sqrt, Vector } from 'math-plus'
+import { min, sqrt, Vector } from '@benzed/math'
 import { SortedArray, radiusFromMass, closestPointOnLine } from '../util'
 import { TICK_DURATION } from '../constants'
 

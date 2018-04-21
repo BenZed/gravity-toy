@@ -1,7 +1,7 @@
 import is from 'is-explicit'
 import define from 'define-utility'
 
-import { Vector, floor } from 'math-plus'
+import { Vector, floor } from '@benzed/math'
 import { radiusFromMass } from './util'
 import { MASS_MIN, NO_LINK, CACHED_VALUES_PER_TICK } from './constants'
 

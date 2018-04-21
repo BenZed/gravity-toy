@@ -1,5 +1,5 @@
 import is from 'is-explicit'
-import { Vector, sqrt } from 'math-plus'
+import { Vector, sqrt } from '@benzed/math'
 import { DEFAULT_PHYSICS } from '../constants'
 
 /******************************************************************************/

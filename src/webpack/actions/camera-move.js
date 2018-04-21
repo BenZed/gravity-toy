@@ -1,6 +1,6 @@
 import Action from './action'
 
-import { min, abs, Vector } from 'math-plus'
+import { min, abs, Vector } from '@benzed/math'
 
 const ZOOM_FACTOR = 0.01
 const ZOOM_MAX_SPEED = 500

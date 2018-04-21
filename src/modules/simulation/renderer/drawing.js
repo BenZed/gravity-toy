@@ -1,4 +1,4 @@
-import { Vector, PI, log10, max, clamp, floor, sign, abs, sqrt } from 'math-plus'
+import { Vector, PI, log10, max, clamp, floor, sign, abs, sqrt } from '@benzed/math'
 import { WeightedColorizer } from '../util'
 import { RADIUS_MIN } from '../constants'
 import { CACHE } from '../body'
