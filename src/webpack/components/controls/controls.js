@@ -2,8 +2,6 @@ import React from 'react'
 import { string } from 'prop-types'
 import styled from 'styled-components'
 
-import SpeedButton from './speed-button'
-
 /******************************************************************************/
 // Styled Components
 /******************************************************************************/
@@ -62,8 +60,6 @@ class Controls extends React.Component {
 
     return <ControlsContainer {...props}>
       <Title/>
-      {/* <Zoomer zoom={zoom} addZoom={addZoom}/> */}
-      <SpeedButton speed={speed} setSpeed={setSpeed}/>
       { children }
     </ControlsContainer>
   }

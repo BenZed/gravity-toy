@@ -10,7 +10,7 @@ import is from 'is-explicit'
 const DEFAULT_RENDERING = Object.freeze({
 
   // could be 'doppler' 'mass'
-  bodyColorBy: 'doppler',
+  bodyColorBy: 'mass',
 
   // could be 'fill' 'outline' or ''
   bodyMode: 'fill',
@@ -18,7 +18,7 @@ const DEFAULT_RENDERING = Object.freeze({
   minZoom: 1,
   maxZoom: 1000000,
 
-  grid: false,
+  grid: true,
   relations: false,
 
   // length of trail showing where body has been, in ticks.

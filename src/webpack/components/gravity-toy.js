@@ -23,6 +23,21 @@ const SAVE_INTERVAL = 2500
 const SAVE_KEY = 'simulation-saved'
 const SAVE_MAX_SIZE = 1024 * 1024 // 1 mb
 
+const DEFAULT_BODIES = {
+
+  count: 256,
+  speed: 1,
+  radius: 800,
+
+  MASS: {
+    min: 1,
+    max: 100,
+    chanceOfSuperMax: 0.1,
+    superMaxMultiplier: 20
+  }
+
+}
+
 /******************************************************************************/
 // Temporary TODO Remove
 /******************************************************************************/
@@ -32,16 +47,18 @@ function createDefaultBodies (sim) {
   const props = []
   const center = new Vector(innerWidth / 2, innerHeight / 2)
 
-  const dist = 520
-  const speed = 5
+  const { radius, speed, count, MASS } = DEFAULT_BODIES
 
-  for (let i = 0; i < 1024; i++) {
+  for (let i = 0; i < count; i++) {
 
-    const pos = randomVector(dist).iadd(center)
+    const pos = randomVector(radius).iadd(center)
     const vel = randomVector(speed)
+    let mass = random(MASS.min, MASS.max)
+    if (random() < MASS.chanceOfSuperMax)
+      mass *= random(1, MASS.superMaxMultiplier)
 
     props.push({
-      mass: random(1, 100),
+      mass,
       pos,
       vel
     })
@@ -312,8 +329,9 @@ class GravityToy extends React.Component {
     switch (e.key) {
 
       case 'Escape':
-      // kill save and reload
+        // destroy save
         window.localStorage.removeItem(SAVE_KEY)
+        // reload
         setTimeout(() => location.reload(), 100)
         break
 
@@ -365,7 +383,6 @@ class GravityToy extends React.Component {
         break
 
       case 'Backspace':
-      // case 'Escape':
         if (camera.referenceFrame)
           camera.referenceFrame = null
         else

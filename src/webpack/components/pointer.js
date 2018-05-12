@@ -4,8 +4,8 @@ import React from 'react'
 // Main Component
 /******************************************************************************/
 
-const Pointer = props =>
-  <svg height={16} width={24} {...props}>
+const Pointer = ({ className, style }) =>
+  <svg height={16} width={24} className={className} style={style}>
     <g>
       <path
         d='m-0.01851,15.99311c0,0 24.0242,0.01282 24.0242,0.01282c0,0 -12.0121,-15.9734 -12.01923,-15.98029'

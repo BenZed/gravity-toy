@@ -195,7 +195,7 @@ function drawGrid (ctx, renderer) {
   const opacityFactor = clamp(1 - (zoom - levelPrev) / (levelCurrent - levelPrev))
 
   const canvasHalfWorldSize = new Vector(canvas.width, canvas.height).imult(zoom * 0.5)
-  const topLeftWorld = current.pos.sub(canvasHalfWorldSize)
+  const topLeftWorld = current.relPos.sub(canvasHalfWorldSize)
   const topLeftSnapped = new Vector(
     floor(topLeftWorld.x, canvas.width * increment),
     floor(topLeftWorld.y, canvas.height * increment)

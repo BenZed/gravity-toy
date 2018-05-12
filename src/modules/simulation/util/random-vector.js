@@ -6,7 +6,7 @@ import { random, sqrt, cos, sin, PI, Vector } from '@benzed/math'
 
 function randomVector (radius) {
 
-  const angle = random(2 * PI)
+  const angle = random(0, 2 * PI)
   const rRadiusSqr = random(radius ** 2)
   const rRadius = sqrt(rRadiusSqr)
 
