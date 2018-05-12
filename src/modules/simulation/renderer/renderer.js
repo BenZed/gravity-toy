@@ -18,18 +18,18 @@ const DEFAULT_RENDERING = Object.freeze({
   minZoom: 1,
   maxZoom: 1000000,
 
-  grid: true,
+  grid: false,
   relations: false,
 
   // length of trail showing where body has been, in ticks.
   // 0 - off
   // positive values for future trails, negative values for past trails
   trailLength: -250,
-  trailStep: 1,
+  trailStep: 3,
   trailColor: 'rgb(200, 91, 255)',
 
   // Color of detail elements, such as grids, relations, reference circle
-  detailsColor: 'rgba(81, 214, 83, 0.5)',
+  detailsColor: 'rgba(81, 214, 83, 1)',
   detailsDash: [3, 3],
   detailsPad: 5 // pixels
 
@@ -56,7 +56,7 @@ class Renderer {
 
     const ctx = this.canvas.getContext('2d')
 
-    this.camera.update(speed)
+    this.camera.update(speed, simulation)
 
     if (clear)
       clearCanvas(ctx, this)

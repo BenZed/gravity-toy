@@ -1,7 +1,7 @@
 import React from 'react'
 import styled, { ThemeProvider } from 'styled-components'
 
-import Timeline from './Timeline'
+import Timeline from './timeline'
 import Controls from './controls'
 
 import { Renderer, Simulation } from '../../modules/simulation'
@@ -33,9 +33,9 @@ function createDefaultBodies (sim) {
   const center = new Vector(innerWidth / 2, innerHeight / 2)
 
   const dist = 520
-  const speed = 3
+  const speed = 5
 
-  for (let i = 0; i < 512; i++) {
+  for (let i = 0; i < 1024; i++) {
 
     const pos = randomVector(dist).iadd(center)
     const vel = randomVector(speed)
@@ -359,7 +359,7 @@ class GravityToy extends React.Component {
         if (!camera.referenceFrame)
           this.selectBiggestBodyAsReferenceFrame()
         else {
-          target.pos.set(camera.referenceFrame.pos)
+          target.pos.set(Vector.zero)
           target.zoom = 1
         }
         break

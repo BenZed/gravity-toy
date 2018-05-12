@@ -57,17 +57,7 @@ function numDigits (n) {
 /******************************************************************************/
 
 function colorByMass (ctx, body) {
-  ctx.fillStyle = massColor(body.mass)
-}
-
-// I dont get why, but the Vector.dot function is not working.
-// It looks fine, when I print it to the console, but it doesnt
-// give negative numbers. No Idea why. TODO fix
-function dot (a, b) {
-  const an = a.normalize()
-  const bn = b.normalize()
-
-  return an.x * bn.x + an.y * bn.y
+  ctx.fillStyle = ctx.strokeStyle = massColor(body.mass)
 }
 
 function colorByDoppler (ctx, body, referencePos, relativeVel) {
@@ -76,12 +66,12 @@ function colorByDoppler (ctx, body, referencePos, relativeVel) {
   const dist = relativePos.magnitude
   const speed = relativeVel.magnitude
 
-  const direction = dot(relativePos, relativeVel)
+  const direction = Vector.dot(relativePos, relativeVel)
   const distanceFactor = clamp(dist / DOPPLER_MAX_DIST)
 
   const intensity = distanceFactor * DOPPLER_MAX_VEL + ((1 - distanceFactor) * speed)
 
-  ctx.fillStyle = dopplerColor(direction * intensity)
+  ctx.fillStyle = ctx.strokeStyle = dopplerColor(direction * intensity)
 
 }
 
@@ -126,7 +116,11 @@ function drawBody (ctx, renderer, body, speedOfPlayback) {
   // slightly fade bodies that would be too small to see
   const sizeFade = ((radius / camera.current.zoom) / RADIUS_MIN)
   ctx.globalAlpha = clamp(sizeFade, 0.5, 1)
-  ctx.fill()
+  if (options.bodyMode === 'fill')
+    ctx.fill()
+  else if (options.bodyMode === 'outline')
+    ctx.stroke()
+
   ctx.globalAlpha = 1
 
   // Draw reference ring

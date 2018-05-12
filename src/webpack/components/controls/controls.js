@@ -2,7 +2,7 @@ import React from 'react'
 import { string } from 'prop-types'
 import styled from 'styled-components'
 
-import SpeedButton from './SpeedButton'
+import SpeedButton from './speed-button'
 
 /******************************************************************************/
 // Styled Components

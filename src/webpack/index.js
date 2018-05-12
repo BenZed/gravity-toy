@@ -5,7 +5,7 @@ import addEventListener from 'add-event-listener'
 import React from 'react'
 import { render } from 'react-dom'
 
-import GravityToy from './components/GravityToy'
+import GravityToy from './components/gravity-toy'
 
 /******************************************************************************/
 // Setup Touch

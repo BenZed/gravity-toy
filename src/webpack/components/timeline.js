@@ -1,6 +1,6 @@
 import React from 'react'
 import styled from 'styled-components'
-import Pointer from './Pointer'
+import Pointer from './pointer'
 import { touchable } from '../modules/mutators'
 
 /******************************************************************************/

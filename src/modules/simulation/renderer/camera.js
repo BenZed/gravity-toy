@@ -6,7 +6,8 @@ import { TICK_DURATION } from '../constants'
 // Symbols
 /******************************************************************************/
 
-const REFERENCE_FRAME = Symbol('reference-frame')
+const REF = Symbol('reference-frame')
+const REF_LEP = Symbol('reference-frame-last-existing-position')
 const ZOOM = Symbol('zoom')
 
 /******************************************************************************/
@@ -16,7 +17,7 @@ const ZOOM = Symbol('zoom')
 function canvasCenter (canvas) {
   const { width, height } = canvas
 
-  return new Vector(width * 0.5, height * 0.5)
+  return new Vector(width, height).imult(0.5)
 }
 
 class Coords {
@@ -39,6 +40,14 @@ class Coords {
     this[ZOOM] = clamp(value, minZoom, maxZoom)
   }
 
+  get relPos () {
+    const { referenceFrame } = this.camera
+
+    return referenceFrame && referenceFrame.exists
+      ? this.pos.add(referenceFrame.pos)
+      : this.pos
+  }
+
 }
 
 /******************************************************************************/
@@ -54,12 +63,12 @@ class Camera {
       .enum.const('target', new Coords(this))
       .enum.const('current', new Coords(this))
       .enum.const('options', { ...options })
-      .enum.let(REFERENCE_FRAME, null)
+      .enum.let(REF, null)
   }
 
   worldToCanvas (point, canvas) {
     return point
-      .sub(this.current.pos)
+      .sub(this.current.relPos)
       .idiv(this.current.zoom)
       .iadd(canvasCenter(canvas))
   }
@@ -68,20 +77,46 @@ class Camera {
     return point
       .sub(canvasCenter(canvas))
       .imult(this.current.zoom)
-      .iadd(this.current.pos)
+      .iadd(this.current.relPos)
   }
 
-  update = (speed) => {
+  get referenceFrame () {
+    return this[REF]
+  }
 
-    const { target, current, referenceFrame, renderer: { cameraSpeed = 5 } } = this
+  set referenceFrame (value) {
 
-    if (referenceFrame && referenceFrame.exists) {
-      const vel = referenceFrame.vel.mult(speed)
-      target.pos.iadd(vel)
-      current.pos.iadd(vel)
+    const prev = this[REF]
+
+    this[REF] = value
+
+    const { target, current } = this
+
+    if (prev) {
+      target.pos.iadd(this[REF_LEP])
+      current.pos.iadd(this[REF_LEP])
     }
 
+    if (value) {
+      this[REF_LEP] = value.pos.copy()
+      target.pos.isub(value.pos)
+      current.pos.isub(value.pos)
+    }
+
+  }
+
+  update = (speed, sim) => {
+
+    const { target, current, renderer } = this
+    const { cameraSpeed = 5 } = renderer
+
     const delta = TICK_DURATION * cameraSpeed
+
+    while (this.referenceFrame && !this.referenceFrame.exists)
+      this.referenceFrame = sim.body(this.referenceFrame.mergeId)
+
+    if (this.referenceFrame)
+      this[REF_LEP].set(this.referenceFrame.pos)
 
     current.zoom = lerp(current.zoom, target.zoom, delta)
     current.pos.ilerp(target.pos, delta)
