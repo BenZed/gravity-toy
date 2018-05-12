@@ -213,16 +213,16 @@ class Simulation extends EventEmitter {
     return !!this[INTEGRATOR].worker
   }
 
+  get usedCacheMemory () {
+    return this[BODIES].usedBytes / ONE_MB
+  }
+
   get firstTick () {
     return this[TICK].first
   }
 
   get lastTick () {
     return this[TICK].last
-  }
-
-  get usedCacheMemory () {
-    return this[BODIES].usedBytes / ONE_MB
   }
 
   get currentTick () {

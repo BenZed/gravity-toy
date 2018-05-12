@@ -26,7 +26,7 @@ const SAVE_MAX_SIZE = 1024 * 1024 // 1 mb
 const DEFAULT_BODIES = {
 
   count: 256,
-  speed: 1,
+  speed: 2,
   radius: 800,
 
   MASS: {
@@ -238,8 +238,8 @@ class GravityToy extends React.Component {
 
       json.camera = {
         referenceFrameIndex,
-        x: camera.target.pos.x,
-        y: camera.target.pos.y,
+        x: camera.target.relPos.x,
+        y: camera.target.relPos.y,
         zoom: camera.target.zoom
       }
 
