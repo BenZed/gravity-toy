@@ -62,9 +62,10 @@ class Simulation extends EventEmitter {
       physicsSteps,
       realMassThreshold,
       realBodiesMin,
-      maxCacheMemory = DEFAULT_MAX_MB} = { ...DEFAULT_PHYSICS, ...props }
+      maxCacheMemory = DEFAULT_MAX_MB
+    } = { ...DEFAULT_PHYSICS, ...props }
 
-    if (!is(maxCacheMemory, Number) || maxCacheMemory <= 0)
+    if (!is.number(maxCacheMemory) || maxCacheMemory <= 0)
       throw new Error('maxCacheMemory must be above zero')
 
     const integrator = new Integrator({
@@ -155,7 +156,7 @@ class Simulation extends EventEmitter {
   runUntil (condition, startTick = this.currentTick, description = 'until condition met') {
     this::assertTick(startTick)
 
-    if (!is(condition, Function))
+    if (!is.func(condition))
       throw new Error('condition must be a function.')
 
     let resolver, rejecter
@@ -187,7 +188,7 @@ class Simulation extends EventEmitter {
   }
 
   runForNumTicks (totalTicks, startTick = this.currentTick) {
-    if (!is(totalTicks, Number) || totalTicks <= 0)
+    if (!is.number(totalTicks) || totalTicks <= 0)
       throw new Error('totalTicks must be a number above zero.')
 
     let ticks = 0
@@ -250,7 +251,7 @@ class Simulation extends EventEmitter {
 
   createBodies (props, tick = this.currentTick) {
 
-    if (!is(props, Array))
+    if (!is.array(props))
       props = [ props ]
 
     const bodies = this[BODIES]
@@ -345,7 +346,7 @@ class Simulation extends EventEmitter {
 
   * bodies (ids = []) {
 
-    if (is(ids) && !is(ids, Array))
+    if (is.defined(ids) && !is.array(ids))
       ids = [ ids ]
 
     ids = [ ...ids ] // idArrayCheck mutates the array, so we'll prevent side effects
@@ -479,7 +480,7 @@ function assertTick (tick) {
 
   const { firstTick, lastTick } = simulation
 
-  if (!is(tick, Number))
+  if (!is.number(tick))
     throw new TypeError('tick should be a number.')
 
   if (tick < firstTick || tick > lastTick)

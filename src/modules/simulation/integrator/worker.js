@@ -91,8 +91,8 @@ function sendStream () {
 
   const data = {
     nextAssignId,
-    destroyed: destroyed.map(destroyedIds),
-    created: created.map(idOfBody),
+    destroyed: [ ...destroyed.map(destroyedIds) ],
+    created: [ ...created.map(idOfBody) ],
     stream: []
   }
 

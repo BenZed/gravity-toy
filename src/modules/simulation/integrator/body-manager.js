@@ -1,7 +1,8 @@
 import { min, sqrt, Vector } from '@benzed/math'
-import { SortedArray, radiusFromMass, closestPointOnLine } from '../util'
-import { TICK_DURATION } from '../constants'
+import { SortedArray } from '@benzed/array'
 
+import { radiusFromMass, closestPointOnLine } from '../util'
+import { TICK_DURATION } from '../constants'
 /******************************************************************************/
 // Constants
 /******************************************************************************/

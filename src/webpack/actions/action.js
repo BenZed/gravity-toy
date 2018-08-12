@@ -1,4 +1,4 @@
-import { Vector, abs } from '@benzed/math'
+import { Vector } from '@benzed/math'
 
 /******************************************************************************/
 // Helper

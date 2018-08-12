@@ -267,9 +267,9 @@ function drawTrails (ctx, renderer, body, simulation) {
   if (body === rBody)
     return
 
-  const zoomRoot = sqrt(camera.current.zoom)
-  const length = options.trailLength * zoomRoot
-  const step = floor(options.trailStep * zoomRoot)
+  const zoomF = sqrt(camera.current.zoom)
+  const length = options.trailLength * zoomF
+  const step = floor(options.trailStep * zoomF)
   const absLength = abs(length)
   const delta = sign(length)
 

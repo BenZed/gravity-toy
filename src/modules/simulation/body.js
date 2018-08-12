@@ -46,7 +46,7 @@ class Body {
   }
 
   get exists () {
-    return is(this.mass, Number) && this.mass > 0
+    return is.number(this.mass) && this.mass > 0
   }
 
   valueOf () {
@@ -78,13 +78,13 @@ function validateProps (props) {
 
   let { mass, vel, pos } = props
 
-  if (is(pos) && !is(pos, Vector))
+  if (is.defined(pos) && !is(pos, Vector))
     throw new Error('props.pos, if defined, is expected to be a Vector.')
 
-  if (is(vel) && !is(vel, Vector))
+  if (is.defined(vel) && !is(vel, Vector))
     throw new Error('props.vel, if defined, is expected to be a Vector.')
 
-  if (!is(mass) || mass < MASS_MIN)
+  if (is.defined(mass) && mass < MASS_MIN)
     throw new Error(`props.mass, if defined, must be a number above or equal to ${MASS_MIN}`)
 
   pos = pos || Vector.zero
@@ -96,7 +96,7 @@ function validateProps (props) {
 
 function validateTick (tick) {
 
-  if (!is(tick, Number) && tick >= 0 && isFinite(tick))
+  if (!is.number(tick) && tick >= 0 && isFinite(tick))
     throw new Error('Tick is expected to be a positive finite number.')
 
 }

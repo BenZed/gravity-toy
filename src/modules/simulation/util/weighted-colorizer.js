@@ -9,7 +9,7 @@ import is from 'is-explicit'
 
 function isOrderedFiniteArray (values) {
 
-  if (!is(values, Array))
+  if (!is.array(values))
     return false
 
   let previous = -Infinity
@@ -34,7 +34,7 @@ function WeightedColorizer (colors, values) {
     // it doesn't actually, but fuck it. I'm enforcing self documenting code. Sue me.
     throw new Error('WeightedColorizer must be instanced.')
 
-  if (!is(colors, Array) || !is(values, Array))
+  if (!is.array(colors) || !is.array(values))
     throw new Error('WeightedColorizer requires an array of colors and an array of values.')
 
   if (!isOrderedFiniteArray(values))

@@ -24,7 +24,8 @@ const names = fs.readdirSync(BENZED_PKG)
 // Create Webpack Config From Dev
 const { WebpackConfig } = require(path.join(BENZED_PKG, 'dev'))
 const webpackConfig = new WebpackConfig({
-  output: path.resolve(__dirname, '../example')
+  output: path.resolve(__dirname, '../example'),
+  html: path.resolve(__dirname, 'src', 'webpack', 'index.html')
 })
 
 // Resolve BenZed node_modules

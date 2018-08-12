@@ -9,7 +9,7 @@ import { Renderer, Simulation } from '../../modules/simulation'
 import { CameraMove } from '../actions'
 
 import addEventListener, { removeEventListener } from 'add-event-listener'
-import { Vector, random, round, min, max, floor } from '@benzed/math'
+import { Vector, random, round, clamp, abs, min, max, floor } from '@benzed/math'
 
 import { randomVector } from '../../modules/simulation/util'
 
@@ -23,16 +23,18 @@ const SAVE_INTERVAL = 2500
 const SAVE_KEY = 'simulation-saved'
 const SAVE_MAX_SIZE = 1024 * 1024 // 1 mb
 
+const MAX_SPEED = 2 ** 10
+
 const DEFAULT_BODIES = {
 
-  count: 256,
+  count: 512,
   speed: 2,
-  radius: 800,
+  radius: 400,
 
   MASS: {
     min: 1,
-    max: 100,
-    chanceOfSuperMax: 0.1,
+    max: 10,
+    chanceOfSuperMax: 0.01,
     superMaxMultiplier: 20
   }
 
@@ -109,11 +111,12 @@ function setupSimulation () {
 
   } catch (err) {
     // Just create the default if there is any error
-    console.error(err) // TODO remove this
+    console.error(err)
 
     toy.simulation = new Simulation({
       minRealBodies: 256,
-      realMassThreshold: 10
+      realMassThreshold: 10,
+      g: 32
     })
 
     const center = new Vector(innerWidth / 2, innerHeight / 2)
@@ -197,7 +200,33 @@ class GravityToy extends React.Component {
   }
 
   setSpeed = speed => {
-    this.setState({ speed: round(speed) })
+
+    speed = speed
+      ::clamp(-MAX_SPEED, MAX_SPEED)
+      ::round()
+
+    this.setState({ speed })
+  }
+
+  incrementSpeed = (reverse = false) => {
+
+    let { speed } = this.state
+    const { currentTime } = this.state
+
+    const double = reverse === (speed < 0)
+
+    // if you're moving fast at the end of the simulation, we dont want to have
+    // to press the reverse key a bunch of times
+    if ((reverse && currentTime === 100) || (reverse && currentTime === 0))
+      speed = reverse ? -1 : 1
+    else
+      speed = double
+        ? speed * 2
+        : abs(speed) === 1
+          ? speed * -1
+          : speed / 2
+
+    this.setSpeed(speed)
   }
 
   setPause = (pause = !this.state.pause) => {
@@ -229,7 +258,7 @@ class GravityToy extends React.Component {
       const referenceFrameIndex = frame && frame.exists
         ? json.bodies.reduce((index, body, i) =>
           body.id === frame.id ? i : index
-          , -1)
+        , -1)
         : -1
 
       for (const body of json.bodies)
@@ -353,7 +382,7 @@ class GravityToy extends React.Component {
 
       case 'j':
       case 'ArrowLeft':
-        this.setSpeed(this.state.speed - 1)
+        this.incrementSpeed(true)
         break
 
       case 'k':
@@ -363,7 +392,7 @@ class GravityToy extends React.Component {
 
       case 'l':
       case 'ArrowRight':
-        this.setSpeed(this.state.speed + 1)
+        this.incrementSpeed()
         break
 
       case '=':

@@ -49,22 +49,22 @@ const createWorker = (() => {
 
 function validateProps (props) {
 
-  if (!is(props.onTick, Function))
+  if (!is.func(props.onTick))
     throw new Error('props.onTick must be a function')
 
-  if (!is(props.g, Number) || props.g <= 0)
+  if (!is.number(props.g) || props.g <= 0)
     throw new Error('props.g must be above zero')
 
   if (props.realBodiesMin === null)
     props.realBodiesMin = Infinity // Infinity cant be saved to json
 
-  if (!is(props.realBodiesMin, Number) || props.realBodiesMin < 0)
+  if (!is.number(props.realBodiesMin) || props.realBodiesMin < 0)
     throw new Error('props.realBodiesMin must not be negative')
 
-  if (!is(props.realMassThreshold, Number) || props.realMassThreshold < 0)
+  if (!is.number(props.realMassThreshold) || props.realMassThreshold < 0)
     throw new Error('props.realMassThreshold must not be negative')
 
-  if (!is(props.physicsSteps, Number) || props.physicsSteps <= 0)
+  if (!is.number(props.physicsSteps) || props.physicsSteps <= 0)
     throw new Error('props.physicsSteps must be above zero')
 }
 
@@ -88,7 +88,7 @@ class Integrator {
   start (stream) {
     this.stop()
 
-    if (!is(stream, Array) || stream.length <= 1)
+    if (!is.array(stream) || stream.length <= 1)
       return
 
     const { onTick, init } = this
