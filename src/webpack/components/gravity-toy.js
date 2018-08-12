@@ -34,8 +34,8 @@ const DEFAULT_BODIES = {
   MASS: {
     min: 1,
     max: 10,
-    chanceOfSuperMax: 0.01,
-    superMaxMultiplier: 20
+    superMaxProbability: 0.01,
+    superMaxMassMultiplier: 20
   }
 
 }
@@ -56,8 +56,8 @@ function createDefaultBodies (sim) {
     const pos = randomVector(radius).iadd(center)
     const vel = randomVector(speed)
     let mass = random(MASS.min, MASS.max)
-    if (random() < MASS.chanceOfSuperMax)
-      mass *= random(1, MASS.superMaxMultiplier)
+    if (random() < MASS.superMaxProbability)
+      mass *= random(1, MASS.superMaxMassMultiplier)
 
     props.push({
       mass,
@@ -111,7 +111,7 @@ function setupSimulation () {
 
   } catch (err) {
     // Just create the default if there is any error
-    console.error(err)
+    console.error(err.message)
 
     toy.simulation = new Simulation({
       minRealBodies: 256,

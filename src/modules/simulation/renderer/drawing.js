@@ -1,8 +1,9 @@
 import { Vector, PI, log10, max, clamp, floor, sign, abs, sqrt } from '@benzed/math'
+import { SortedArray } from '@benzed/array'
+
 import { WeightedColorizer } from '../util'
 import { RADIUS_MIN } from '../constants'
 import { CACHE } from '../body'
-import SortedArray from '../util/sorted-array'
 
 /******************************************************************************/
 // Helpers
