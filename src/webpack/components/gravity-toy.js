@@ -27,9 +27,9 @@ const MAX_SPEED = 2 ** 10
 
 const DEFAULT_BODIES = {
 
-  count: 512,
-  speed: 2,
-  radius: 400,
+  count: 1024,
+  speed: 0.5,
+  radius: 1200,
 
   MASS: {
     min: 1,
@@ -94,8 +94,6 @@ function setupSimulation () {
     const json = JSON.parse(saved)
     if (!json)
       throw new Error('No saved simulation.')
-
-    console.log(`loading`, json.bodies.length, `bodies`)
 
     toy.simulation = Simulation.fromJSON(json)
     const { x, y, zoom, referenceFrameIndex } = json.camera
