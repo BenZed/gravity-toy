@@ -1,4 +1,5 @@
-import './global'
+import 'normalize.css'
+import './assets/gravity-toy.css'
 
 import TouchEmulator from 'hammer-touchemulator'
 import addEventListener from 'add-event-listener'

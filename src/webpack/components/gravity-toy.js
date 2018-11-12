@@ -4,38 +4,38 @@ import styled, { ThemeProvider } from 'styled-components'
 import Timeline from './timeline'
 import Controls from './controls'
 
-import { Renderer, Simulation } from '../../modules/simulation'
+import { Renderer, Simulation } from '../../simulation'
+import { randomVector } from '../../simulation/util'
+
 // import CameraController from '../modules/camera-controller'
 import { CameraMove } from '../actions'
 
 import addEventListener, { removeEventListener } from 'add-event-listener'
-import { Vector, random, round, clamp, abs, min, max, floor } from '@benzed/math'
+import { Vector, random, round, clamp, abs, min, max } from '@benzed/math'
 
-import { randomVector } from '../../modules/simulation/util'
-
-import defaultTheme from '../modules/theme'
+import defaultTheme from '../util/theme'
 
 /******************************************************************************/
 // Constants
 /******************************************************************************/
 
-const SAVE_INTERVAL = 2500
 const SAVE_KEY = 'simulation-saved'
+const SAVE_INTERVAL = 5 * 1000 // 5 seconds
 const SAVE_MAX_SIZE = 1024 * 1024 // 1 mb
 
 const MAX_SPEED = 2 ** 10
 
 const DEFAULT_BODIES = {
 
-  count: 1024,
+  count: 512,
   speed: 0.5,
-  radius: 1200,
+  radius: 600,
 
   MASS: {
     min: 1,
     max: 10,
-    superMaxProbability: 0.01,
-    superMaxMassMultiplier: 20
+    superSizeProbability: 0.01,
+    superSizeMassMultiplier: 20
   }
 
 }
@@ -56,8 +56,8 @@ function createDefaultBodies (sim) {
     const pos = randomVector(radius).iadd(center)
     const vel = randomVector(speed)
     let mass = random(MASS.min, MASS.max)
-    if (random() < MASS.superMaxProbability)
-      mass *= random(1, MASS.superMaxMassMultiplier)
+    if (random() < MASS.superSizeProbability)
+      mass *= MASS.superSizeMassMultiplier
 
     props.push({
       mass,
@@ -148,9 +148,15 @@ class GravityToy extends React.Component {
   state = {
     speed: 1,
     pause: false,
-    currentTime: 0,
+    scrubbing: false,
+
     zoom: 1,
-    maxTime: Infinity,
+
+    currentTick: null,
+    lastTick: null,
+    firstTick: null,
+    cacheSize: null,
+
     action: null
   }
 
@@ -189,12 +195,19 @@ class GravityToy extends React.Component {
     this.cameraController.destroy()
   }
 
-  setCurrentTime = time => {
+  setCurrentTick = tick => {
+    const { simulation } = this
+    simulation.setCurrentTick(tick)
+  }
+
+  setScrubbing = scrubbing => {
+    this.setState({ scrubbing })
+  }
+
+  clearBeforeTick = tick => {
     const { simulation } = this
 
-    const tick = floor(time / 100 * simulation.lastTick)
-
-    simulation.setCurrentTick(tick)
+    simulation.clearBeforeTick(tick)
   }
 
   setSpeed = speed => {
@@ -203,28 +216,40 @@ class GravityToy extends React.Component {
       ::clamp(-MAX_SPEED, MAX_SPEED)
       ::round()
 
-    this.setState({ speed })
+    // setting the speed should unpause the simulation
+    this.setState({ speed, pause: false })
   }
 
   incrementSpeed = (reverse = false) => {
 
     let { speed } = this.state
-    const { currentTime } = this.state
+    const { currentTick, firstTick, lastTick, pause } = this.state
 
-    const double = reverse === (speed < 0)
+    const isSameDir = reverse === (speed < 0)
+    const isAtOne = abs(speed) === 1
 
     // if you're moving fast at the end of the simulation, we dont want to have
     // to press the reverse key a bunch of times
-    if ((reverse && currentTime === 100) || (reverse && currentTime === 0))
+    if ((reverse && currentTick === lastTick) || (!reverse && currentTick === firstTick))
       speed = reverse ? -1 : 1
+
+    // if we're incrementing speed while paused, we don't want to change the magnitude
+    // only the direction
+
     else
-      speed = double
-        ? speed * 2
-        : abs(speed) === 1
+      speed = isSameDir
+        ? pause
+          ? speed
+          : speed * 2
+        : isAtOne
           ? speed * -1
           : speed / 2
 
     this.setSpeed(speed)
+  }
+
+  decrementSpeed () {
+    return this.incrementSpeed(true)
   }
 
   setPause = (pause = !this.state.pause) => {
@@ -286,18 +311,28 @@ class GravityToy extends React.Component {
   updateSimulation = timeStamp => {
 
     const { simulation, renderer } = this
-    const { action, pause } = this.state
+    const { action, pause, scrubbing } = this.state
 
-    const speed = pause ? 0 : this.state.speed
+    const speed = pause || scrubbing ? 0 : this.state.speed
 
     simulation.setCurrentTick(simulation.currentTick + speed)
 
-    const zoom = renderer.camera.target.zoom
-    if (simulation.lastTick > 0) {
-      const maxTime = simulation.usedCacheMemory / simulation.maxCacheMemory * 100
-      const currentTime = simulation.currentTick / simulation.lastTick * 100
-      this.setState({ maxTime, currentTime, zoom })
-    } else
+    const { zoom } = renderer.camera.target
+    const { currentTick, lastTick, firstTick } = simulation
+
+    const atLeastOneFrameCached = lastTick > 0
+
+    const cacheSize = simulation.usedCacheMemory / simulation.maxCacheMemory
+
+    if (atLeastOneFrameCached)
+      this.setState({
+        cacheSize,
+        currentTick,
+        lastTick: scrubbing ? this.state.lastTick : lastTick,
+        firstTick,
+        zoom
+      })
+    else
       this.setState({ zoom })
 
     if (action && action.active && action.startTime === null)
@@ -316,7 +351,7 @@ class GravityToy extends React.Component {
     requestAnimationFrame(this.updateSimulation)
   }
 
-  innerRef = ref => {
+  ref = ref => {
     this.canvas = ref
   }
 
@@ -362,32 +397,39 @@ class GravityToy extends React.Component {
         setTimeout(() => location.reload(), 100)
         break
 
+      // Move up
       case 'w':
         target.pos.y -= zoomInc
         break
 
+      // Move left
       case 'a':
         target.pos.x -= zoomInc
         break
 
+      // Move down
       case 's':
         target.pos.y += zoomInc
         break
 
+      // Move right
       case 'd':
         target.pos.x += zoomInc
         break
 
+      // time speed negative
       case 'j':
       case 'ArrowLeft':
-        this.incrementSpeed(true)
+        this.decrementSpeed()
         break
 
+      // pause
       case 'k':
       case ' ':
         this.setPause()
         break
 
+      // time speed positive
       case 'l':
       case 'ArrowRight':
         this.incrementSpeed()
@@ -398,11 +440,19 @@ class GravityToy extends React.Component {
         this.addZoom(-INC)
         break
 
+      // Zoom Out
+      case '-':
+      case 'ArrowDown':
+        this.addZoom(INC)
+        break
+
       case 'Home':
       case 'Enter':
       case 'h':
+        // Set Focus to Largest Body
         if (!camera.referenceFrame)
           this.selectBiggestBodyAsReferenceFrame()
+        // Or if a body is already focused, center it
         else {
           target.pos.set(Vector.zero)
           target.zoom = 1
@@ -410,16 +460,14 @@ class GravityToy extends React.Component {
         break
 
       case 'Backspace':
+        // Clear Focus
         if (camera.referenceFrame)
           camera.referenceFrame = null
+        // Or if focus is already cleared, zoom out to everything
         else
           this.viewAllBodies()
         break
 
-      case '-':
-      case 'ArrowDown':
-        this.addZoom(INC)
-        break
     }
   }
 
@@ -464,16 +512,22 @@ class GravityToy extends React.Component {
 
   render () {
 
-    const { innerRef, onWheel, setCurrentTime, setSpeed, addZoom, state } = this
+    const {
+      state, ref, onWheel,
+      setCurrentTick, clearBeforeTick,
+      setSpeed, addZoom, setScrubbing
+    } = this
 
-    const { action, zoom, speed, ...time } = state
+    const {
+      action, zoom, speed, pause, ...tick
+    } = state
 
     const onTouchStart = action && action.start
     const onTouchMove = action && action.update
     const onTouchEnd = action && action.end
 
-    const timeline = { ...time, setCurrentTime }
-    const canvas = { innerRef, onWheel, onTouchStart, onTouchMove, onTouchEnd }
+    const timeline = { ...tick, setCurrentTick, clearBeforeTick, setScrubbing }
+    const canvas = { ref, onWheel, onTouchStart, onTouchMove, onTouchEnd }
     const controls = { zoom, speed, setSpeed, addZoom }
 
     return [
@@ -487,7 +541,7 @@ class GravityToy extends React.Component {
 
 const GravityToyThemed = ({ theme = defaultTheme, ...props }) =>
   <ThemeProvider theme={theme}>
-    <GravityToy {...props} />
+    <GravityToy {...props}/>
   </ThemeProvider>
 
 /******************************************************************************/

@@ -32,6 +32,9 @@ const webpackConfig = new WebpackConfig({
 webpackConfig.resolve.modules = [ 'node_modules', BENZED_NM ]
 webpackConfig.resolve.alias = {}
 
+webpackConfig.devServer = webpackConfig.devServer || {}
+webpackConfig.devServer.port = 7000
+
 // Alias BenZed Packages
 for (const name of names)
   webpackConfig.resolve.alias[`@benzed/${name}`] = path.join(BENZED_PKG, name)

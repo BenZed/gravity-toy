@@ -25,6 +25,8 @@ class Touch extends React.Component {
 
   onTouchStart = e => {
 
+    e.stopPropagation()
+
     this.startX = e.touches[0].clientX
     this.startY = e.touches[0].clientY
     this.deltaX = 0
@@ -41,6 +43,8 @@ class Touch extends React.Component {
   }
 
   onTouchMove = e => {
+
+    e.stopPropagation()
 
     const lastCurrentX = this.currentX
     const lastCurrentY = this.currentY
@@ -59,6 +63,9 @@ class Touch extends React.Component {
   }
 
   onTouchEnd = e => {
+
+    e.stopPropagation()
+
     this.deltaX = 0
     this.deltaY = 0
 
@@ -71,7 +78,7 @@ class Touch extends React.Component {
   }
 
   render () {
-    const { children, ...props } = this.props
+    const { children, onPanStart, onPan, onPanEnd, ...props } = this.props
     const { onTouchStart, onTouchMove, onTouchEnd } = this
     const child = Children.only(children)
 
@@ -83,9 +90,9 @@ class Touch extends React.Component {
 // Mutator
 /******************************************************************************/
 
-function touchable () {
+function touchable (Component) {
 
-  const Component = this
+  Component = this || Component
 
   return ({ onPanStart, onPan, onPanEnd, ...props }) =>
     <Touch

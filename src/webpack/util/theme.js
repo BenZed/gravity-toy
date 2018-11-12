@@ -4,7 +4,7 @@
 /******************************************************************************/
 
 const PURPLE = `#c96af2`
-
+const ORANGE = `#ff9900`
 const BLACK = `black`
 
 /******************************************************************************/
@@ -14,6 +14,7 @@ const BLACK = `black`
 const theme = {
   fg: PURPLE,
   bg: BLACK,
+  error: ORANGE,
   fontvw: 3
 }
 
