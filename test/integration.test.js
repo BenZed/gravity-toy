@@ -5,7 +5,7 @@ import Simulation from '../lib'
 // import { Body, CACHE } from '../lib/body'
 import PhysicsBody from '../lib/integrator/body'
 
-import { Vector } from 'math-plus'
+import { Vector } from '@benzed/math'
 import * as worker from '../lib/integrator/worker'
 import { MASS_MIN, DEFAULT_PHYSICS } from '../lib/constants'
 

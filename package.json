@@ -3,8 +3,9 @@
   "version": "0.0.1",
   "main": "index.js",
   "scripts": {
-    "test": "mocha --opts .mocha.opts",
-    "babel": "rm -rf lib; mkdir lib; babel src/modules/simulation --out-dir lib --copy-files --verbose",
+    "test": "npm run babel; mocha --opts .mocha.opts",
+    "test:dev": "npx watch 'npm run test' src test",
+    "babel": "rm -rf lib; mkdir lib; babel src/simulation --out-dir lib --copy-files --verbose",
     "babel:dev": "npm run babel -- --watch",
     "webpack": "rm -rf example; mkdir example; webpack",
     "webpack:dev": "webpack-dev-server",

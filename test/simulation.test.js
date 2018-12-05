@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import Simulation, { Simulation as Simulation2 } from '../lib'
 import { Body, CACHE } from '../lib/body'
-import { Vector } from 'math-plus'
+import { Vector } from '@benzed/math'
 
 // eslint-disable-next-line no-unused-vars
 /* global describe it before after beforeEach afterEach */
@@ -132,15 +132,16 @@ describe('Simulation', function () {
         expect(body.pos.x).to.be.below(1000)
       })
 
-      it('throws if cache memory is full', async () => {
+      it('throws if cache memory is full', async function () {
+
+        this.timeout(10000)
         const sim = new Simulation({
           maxCacheMemory: 0.1
         })
         sim.createBodies(bodies(100))
         sim.run()
-        await new Promise(resolve => {
-          sim.on('cache-full', resolve)
-        })
+        await new Promise(resolve => sim.on('cache-full', resolve))
+
         expect(() => sim.run(sim.lastTick)).to.throw('Cannot start simulation. Cache memory')
 
         // Once cache is cleared, start should work again
@@ -173,7 +174,8 @@ describe('Simulation', function () {
         return expect(sim.runForNumTicks(1) instanceof Promise).to.be.true
       })
 
-      it('rejects if cache fills up before all ticks executed', async () => {
+      it('rejects if cache fills up before all ticks executed', async function () {
+        this.timeout(10000)
         const sim = new Simulation({ maxCacheMemory: 0.1 })
         sim.createBodies(bodies(100))
 
@@ -575,7 +577,8 @@ describe('Simulation', function () {
 
     describe('cache-full', () => {
 
-      it('emits when cache memory is used up', async () => {
+      it('emits when cache memory is used up', async function () {
+        this.timeout(10000)
 
         const sim = new Simulation({
           maxCacheMemory: 0.1
@@ -590,9 +593,7 @@ describe('Simulation', function () {
 
         expect(sim.usedCacheMemory).to.equal(0.1)
       })
-
     })
-
   })
 
   describe('Iterators', () => {
