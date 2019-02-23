@@ -1,3 +1,4 @@
+import { Color, Styler } from '@benzed/react'
 
 /******************************************************************************/
 // Constants
@@ -12,14 +13,20 @@ const BLACK = `black`
 /******************************************************************************/
 
 const theme = {
-  fg: PURPLE,
-  bg: BLACK,
-  error: ORANGE,
+  fg: new Color(PURPLE),
+  bg: new Color(BLACK),
+  error: new Color(ORANGE),
   fontvw: 3
 }
+
+const $ = Styler.createInterface(theme)
 
 /******************************************************************************/
 // Export
 /******************************************************************************/
 
-export default theme
+export default $
+
+export {
+  theme, $
+}

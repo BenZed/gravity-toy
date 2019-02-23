@@ -16,20 +16,20 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@benzed/dev": "^0.11.1",
-    "@benzed/react": "0.7.1",
+    "@benzed/dev": "^0.12.12",
+    "@benzed/react": "0.10.3",
     "hammer-touchemulator": "0.0.2",
-    "module-alias": "^2.1.0",
-    "react": "^16.6.1",
-    "react-dom": "^16.6.1",
-    "styled-components": "^4.0.3",
+    "module-alias": "^2.2.0",
+    "react": "^16.8.2",
+    "react-dom": "^16.8.2",
+    "styled-components": "^4.1.3",
     "worker-loader": "^2.0.0"
   },
   "dependencies": {
-    "@benzed/array": "^1.5.1",
-    "@benzed/math": "^1.2.1",
+    "@benzed/array": "^1.6.3",
+    "@benzed/math": "^1.3.3",
     "color-interpolate": "^1.0.4",
     "define-utility": "^2.0.2",
-    "is-explicit": "^2.1.0"
+    "is-explicit": "^3.0.1"
   }
 }

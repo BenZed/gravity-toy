@@ -3,7 +3,7 @@ import { SortedArray } from '@benzed/array'
 
 import { WeightedColorizer } from '../util'
 import { RADIUS_MIN } from '../constants'
-import { CACHE } from '../body'
+import { $$cache } from '../body'
 
 /******************************************************************************/
 // Helpers
@@ -245,7 +245,7 @@ function drawGridLine (ctx, renderer, start, horizontal, opac = 0.25) {
 }
 
 function getTrailWorldPositionAtTick (body, tick) {
-  const bCache = body[CACHE]
+  const bCache = body[$$cache]
 
   const index = bCache.getTickDataIndex(tick)
   const mass = bCache.data[index]

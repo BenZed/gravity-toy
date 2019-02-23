@@ -15,7 +15,7 @@ import { MASS_MIN, NO_LINK, CACHED_VALUES_PER_TICK } from './constants'
 // Symbols
 /******************************************************************************/
 
-const CACHE = Symbol('cache')
+const $$cache = Symbol('cache')
 
 /******************************************************************************/
 // Body Class
@@ -37,7 +37,7 @@ class Body {
       .let('linkId', NO_LINK)
       .let('mergeId', NO_LINK)
       .const('id', id)
-      .const(CACHE, {
+      .const($$cache, {
         birthTick: tick,
         deathTick: null,
         getTickDataIndex,
@@ -59,7 +59,7 @@ class Body {
 // Private Danglers
 /******************************************************************************/
 
-// The CACHE.data is just a long array of numbers. This function returns what
+// The $$cache.data is just a long array of numbers. This function returns what
 // index in that array represents a given tick.
 
 function getTickDataIndex (tick) {
@@ -107,4 +107,4 @@ function validateTick (tick) {
 
 export default Body
 
-export { Body, CACHE }
+export { Body, $$cache }

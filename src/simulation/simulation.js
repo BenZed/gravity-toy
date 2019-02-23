@@ -5,7 +5,7 @@ import { min, clamp, Vector } from '@benzed/math'
 import EventEmitter from 'events'
 import Integrator from './integrator'
 
-import { Body, CACHE } from './body'
+import { Body, $$cache } from './body'
 import {
   CACHED_VALUES_PER_TICK,
   DEFAULT_PHYSICS,
@@ -18,9 +18,9 @@ import {
 // Symbols
 /******************************************************************************/
 
-const TICK = Symbol('tick')
-const BODIES = Symbol('bodies')
-const INTEGRATOR = Symbol('integrator')
+const $$tick = Symbol('tick')
+const $$bodies = Symbol('bodies')
+const $$integrator = Symbol('integrator')
 
 /******************************************************************************/
 // Class
@@ -79,15 +79,15 @@ class Simulation extends EventEmitter {
     this::define()
       .enum.const('g', g)
       .enum.const('maxCacheMemory', maxCacheMemory)
-      .const(INTEGRATOR, integrator)
-      .const(BODIES, {
+      .const($$integrator, integrator)
+      .const($$bodies, {
         usedBytes: 0,
         maxBytes: maxCacheMemory * ONE_MB,
         updateUsedBytes,
         nextAssignId: 0,
         map: new Map()
       })
-      .const(TICK, {
+      .const($$tick, {
         current: 0,
         first: 0,
         last: 0
@@ -102,7 +102,7 @@ class Simulation extends EventEmitter {
     if (tick < this.lastTick)
       this.clearAfterTick(tick)
 
-    const bodies = this[BODIES]
+    const bodies = this[$$bodies]
 
     const stream = [
       // The integrator expects the first value in the stream array to last id
@@ -111,7 +111,7 @@ class Simulation extends EventEmitter {
     ]
 
     for (const body of bodies.map.values()) {
-      const cache = body[CACHE]
+      const cache = body[$$cache]
       if (tick < cache.birthTick || (cache.deathTick !== null && tick > cache.deathTick))
         continue
 
@@ -150,7 +150,7 @@ class Simulation extends EventEmitter {
     if (bodies.usedBytes === bodies.maxBytes)
       throw new Error(`Cannot start simulation. Cache memory (${this.maxCacheMemory}mb) is full.`)
 
-    this[INTEGRATOR].start(stream)
+    this[$$integrator].start(stream)
   }
 
   runUntil (condition, startTick = this.currentTick, description = 'until condition met') {
@@ -207,27 +207,27 @@ class Simulation extends EventEmitter {
   }
 
   stop () {
-    this[INTEGRATOR].stop()
+    this[$$integrator].stop()
   }
 
   get running () {
-    return !!this[INTEGRATOR].worker
+    return !!this[$$integrator].worker
   }
 
   get usedCacheMemory () {
-    return this[BODIES].usedBytes / ONE_MB
+    return this[$$bodies].usedBytes / ONE_MB
   }
 
   get firstTick () {
-    return this[TICK].first
+    return this[$$tick].first
   }
 
   get lastTick () {
-    return this[TICK].last
+    return this[$$tick].last
   }
 
   get currentTick () {
-    return this[TICK].current
+    return this[$$tick].current
   }
 
   set currentTick (value) {
@@ -241,12 +241,12 @@ class Simulation extends EventEmitter {
 
     this::assertTick(tick)
 
-    const bodies = this[BODIES]
+    const bodies = this[$$bodies]
 
     for (const body of bodies.map.values())
       setBodyValuesFromCache(body, tick)
 
-    this[TICK].current = tick
+    this[$$tick].current = tick
   }
 
   createBodies (props, tick = this.currentTick) {
@@ -254,7 +254,7 @@ class Simulation extends EventEmitter {
     if (!is.array(props))
       props = [ props ]
 
-    const bodies = this[BODIES]
+    const bodies = this[$$bodies]
     const created = []
 
     for (const prop of props) {
@@ -285,11 +285,11 @@ class Simulation extends EventEmitter {
     if (tick < this.currentTick)
       this.setCurrentTick(tick)
 
-    this[TICK].last = tick
+    this[$$tick].last = tick
 
-    const bodies = this[BODIES]
+    const bodies = this[$$bodies]
     for (const body of bodies.map.values()) {
-      const cache = body[CACHE]
+      const cache = body[$$cache]
 
       if (tick < cache.birthTick) {
         bodies.map.delete(body.id)
@@ -314,11 +314,11 @@ class Simulation extends EventEmitter {
     if (tick > this.currentTick)
       this.setCurrentTick(tick)
 
-    this[TICK].first = tick
+    this[$$tick].first = tick
 
-    const bodies = this[BODIES]
+    const bodies = this[$$bodies]
     for (const body of bodies.map.values()) {
-      const cache = body[CACHE]
+      const cache = body[$$cache]
 
       if (cache.deathTick !== null && tick >= cache.deathTick) {
         bodies.map.delete(body.id)
@@ -337,11 +337,11 @@ class Simulation extends EventEmitter {
   }
 
   body (id) {
-    return this[BODIES].map.get(id)
+    return this[$$bodies].map.get(id)
   }
 
   [Symbol.iterator] () {
-    return this[BODIES].map.values()
+    return this[$$bodies].map.values()
   }
 
   * bodies (ids = []) {
@@ -357,7 +357,7 @@ class Simulation extends EventEmitter {
   }
 
   get numBodies () {
-    return this[BODIES].map.size
+    return this[$$bodies].map.size
   }
 
   * livingBodies () {
@@ -387,7 +387,7 @@ class Simulation extends EventEmitter {
 
     const {
       physicsSteps, realMassThreshold, realBodiesMin
-    } = this[INTEGRATOR].init
+    } = this[$$integrator].init
 
     const bodies = []
     for (const body of this.livingBodies()) {
@@ -424,8 +424,8 @@ function writeTick (data) {
   if (!simulation.running)
     return
 
-  const bodies = simulation[BODIES]
-  const tick = simulation[TICK]
+  const bodies = simulation[$$bodies]
+  const tick = simulation[$$tick]
 
   tick.last++
 
@@ -435,7 +435,7 @@ function writeTick (data) {
     const body = bodies.map.get(id)
     body.mergeId = mergeId
 
-    const cache = body[CACHE]
+    const cache = body[$$cache]
     cache.deathTick = tick.last
   }
 
@@ -443,7 +443,7 @@ function writeTick (data) {
     const body = new Body({}, tick.last, id)
 
     // ignore initial values as they will be defined by the stream
-    body[CACHE].data.length = 0
+    body[$$cache].data.length = 0
 
     bodies.map.set(id, body)
   }
@@ -454,7 +454,7 @@ function writeTick (data) {
     const id = stream[i++]
     const body = bodies.map.get(id)
 
-    const cache = body[CACHE]
+    const cache = body[$$cache]
     cache.data.push(
       stream[i++], // mass
       stream[i++], // posX
@@ -493,7 +493,7 @@ function updateUsedBytes () {
 
   let allocations = 0
   for (const body of bodies.map.values())
-    allocations += body[CACHE].data.length
+    allocations += body[$$cache].data.length
 
   bodies.usedBytes = min(bodies.maxBytes, allocations * NUMBER_SIZE)
 }
@@ -510,7 +510,7 @@ function oneTick () {
 
 function setBodyValuesFromCache (body, tick) {
 
-  const cache = body[CACHE]
+  const cache = body[$$cache]
   const { data } = cache
 
   let index = cache.getTickDataIndex(tick)

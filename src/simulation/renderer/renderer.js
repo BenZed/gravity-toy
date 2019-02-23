@@ -31,7 +31,11 @@ const DEFAULT_RENDERING = Object.freeze({
   // Color of detail elements, such as grids, relations, reference circle
   detailsColor: 'rgba(81, 214, 83, 0.5)',
   detailsDash: [3, 3],
-  detailsPad: 5 // pixels
+  detailsPad: 5, // pixels
+
+  speed: 1, // ticks per second
+
+  clear: true // clear the canvas before rendering
 
 })
 
@@ -41,7 +45,7 @@ const DEFAULT_RENDERING = Object.freeze({
 
 class Renderer {
 
-  constructor (canvas, options = {}) {
+  constructor (options = {}, canvas) {
 
     if (!is.plainObject(options))
       throw new TypeError('options argument must be a plain object')
@@ -52,16 +56,16 @@ class Renderer {
       .enum.const('options', { ...DEFAULT_RENDERING, ...options })
   }
 
-  render (simulation, speed = 1, clear = true) {
+  render (simulation) {
 
     const ctx = this.canvas.getContext('2d')
 
-    this.camera.update(speed, simulation)
+    this.camera.update(simulation)
 
-    if (clear)
+    if (this.options.clear)
       clearCanvas(ctx, this)
 
-    drawBodies(ctx, this, simulation, speed)
+    drawBodies(ctx, this, simulation)
   }
 
 }

@@ -6,9 +6,9 @@ import { TICK_DURATION } from '../constants'
 // Symbols
 /******************************************************************************/
 
-const REF = Symbol('reference-frame')
-const REF_LEP = Symbol('reference-frame-last-existing-position')
-const ZOOM = Symbol('zoom')
+const $$ref = Symbol('reference-frame')
+const $$lastRef = Symbol('reference-frame-last-existing-position')
+const $$zoom = Symbol('zoom')
 
 /******************************************************************************/
 // Helper
@@ -28,16 +28,16 @@ class Coords {
       .const('camera', camera)
   }
 
-  [ZOOM] = 1
+  [$$zoom] = 1
 
   get zoom () {
-    return this[ZOOM]
+    return this[$$zoom]
   }
 
   set zoom (value) {
     const { minZoom = 1, maxZoom = 1000 } = this.camera.renderer.options
 
-    this[ZOOM] = clamp(value, minZoom, maxZoom)
+    this[$$zoom] = clamp(value, minZoom, maxZoom)
   }
 
   get relPos () {
@@ -63,7 +63,7 @@ class Camera {
       .enum.const('target', new Coords(this))
       .enum.const('current', new Coords(this))
       .enum.const('options', { ...options })
-      .enum.let(REF, null)
+      .enum.let($$ref, null)
   }
 
   worldToCanvas (point, canvas) {
@@ -81,31 +81,31 @@ class Camera {
   }
 
   get referenceFrame () {
-    return this[REF]
+    return this[$$ref]
   }
 
   set referenceFrame (value) {
 
-    const prev = this[REF]
+    const prev = this[$$ref]
 
-    this[REF] = value
+    this[$$ref] = value
 
     const { target, current } = this
 
     if (prev) {
-      target.pos.iadd(this[REF_LEP])
-      current.pos.iadd(this[REF_LEP])
+      target.pos.iadd(this[$$lastRef])
+      current.pos.iadd(this[$$lastRef])
     }
 
     if (value) {
-      this[REF_LEP] = value.pos.copy()
+      this[$$lastRef] = value.pos.copy()
       target.pos.isub(value.pos)
       current.pos.isub(value.pos)
     }
 
   }
 
-  update = (speed, sim) => {
+  update = sim => {
 
     const { target, current, renderer } = this
     const { cameraSpeed = 5 } = renderer
@@ -116,7 +116,7 @@ class Camera {
       this.referenceFrame = sim.body(this.referenceFrame.mergeId)
 
     if (this.referenceFrame)
-      this[REF_LEP].set(this.referenceFrame.pos)
+      this[$$lastRef].set(this.referenceFrame.pos)
 
     current.zoom = lerp(current.zoom, target.zoom, delta)
     current.pos.ilerp(target.pos, delta)
