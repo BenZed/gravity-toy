@@ -11,7 +11,7 @@ export const DEFAULT_PHYSICS = Object.freeze({
 
   // Gravitational Constant, completely arbitrary value. This number was chosen
   // because it makes bodies move quickly at zoom x1
-  g: 24,
+  g: 512,
 
   // Higher steps mean more calculation time, but more precision
   physicsSteps: 1,
@@ -52,10 +52,10 @@ export const CACHED_VALUES_PER_TICK = 6
 export const MASS_MIN = 1
 
 // If the min radius of a body is 1, then the min diameter would be 2, so 2 pixels
-export const RADIUS_MIN = 1
+export const RADIUS_MIN = 0.5
 
 // Arbitrary scaler for increase in radius in relationship to mass
-export const RADIUS_FACTOR = 0.625
+export const RADIUS_FACTOR = 1.25
 
 // 60 ticks equals one second
 export const TICK_DURATION = 1 / 60

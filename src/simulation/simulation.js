@@ -218,6 +218,10 @@ class Simulation extends EventEmitter {
     return this[$$bodies].usedBytes / ONE_MB
   }
 
+  get maxCacheMemory () {
+    return this[$$bodies].maxBytes / ONE_MB
+  }
+
   get firstTick () {
     return this[$$tick].first
   }

@@ -17,6 +17,7 @@ const fs = require('fs')
 
 const BENZED = path.resolve(__dirname, '../benzed-mono')
 const BENZED_NM = path.resolve(BENZED, 'node_modules')
+const BENZED_BNM = path.resolve(BENZED, 'bootstrap', 'node_modules')
 const BENZED_PKG = path.resolve(BENZED, 'packages')
 
 const names = fs.readdirSync(BENZED_PKG)
@@ -29,7 +30,7 @@ const webpackConfig = new WebpackConfig({
 })
 
 // Resolve BenZed node_modules
-webpackConfig.resolve.modules = [ 'node_modules', BENZED_NM ]
+webpackConfig.resolve.modules = [ BENZED_BNM, BENZED_NM, 'node_modules' ]
 webpackConfig.resolve.alias = {}
 
 webpackConfig.devServer = webpackConfig.devServer || {}

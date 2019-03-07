@@ -7,13 +7,10 @@ import is from 'is-explicit'
 // Defaults
 /******************************************************************************/
 
-const DEFAULT_RENDERING = Object.freeze({
+const DEFAULT_RENDERING_OPTIONS = Object.freeze({
 
   // could be 'doppler' 'mass'
-  bodyColorBy: 'mass',
-
-  // could be 'fill' 'outline' or ''
-  bodyMode: 'fill',
+  bodyColorBy: 'doppler',
 
   minZoom: 1,
   maxZoom: 1000000,
@@ -24,18 +21,14 @@ const DEFAULT_RENDERING = Object.freeze({
   // length of trail showing where body has been, in ticks.
   // 0 - off
   // positive values for future trails, negative values for past trails
-  trailLength: -400,
-  trailStep: 3,
-  trailColor: 'rgb(200, 91, 255)',
+  trailLength: -300,
+  trailStep: 5,
+  trailColor: '#c96af2',
 
   // Color of detail elements, such as grids, relations, reference circle
   detailsColor: 'rgba(81, 214, 83, 0.5)',
   detailsDash: [3, 3],
-  detailsPad: 5, // pixels
-
-  speed: 1, // ticks per second
-
-  clear: true // clear the canvas before rendering
+  detailsPad: 5 // pixels
 
 })
 
@@ -45,6 +38,8 @@ const DEFAULT_RENDERING = Object.freeze({
 
 class Renderer {
 
+  speed = 1
+
   constructor (options = {}, canvas) {
 
     if (!is.plainObject(options))
@@ -53,18 +48,15 @@ class Renderer {
     this::define()
       .enum.let('canvas', canvas)
       .enum.const('camera', new Camera(this))
-      .enum.const('options', { ...DEFAULT_RENDERING, ...options })
+      .enum.const('options', { ...DEFAULT_RENDERING_OPTIONS, ...options })
   }
 
-  render (simulation) {
+  render (simulation, speed = this.speed) {
 
     const ctx = this.canvas.getContext('2d')
-
     this.camera.update(simulation)
 
-    if (this.options.clear)
-      clearCanvas(ctx, this)
-
+    clearCanvas(ctx, this)
     drawBodies(ctx, this, simulation)
   }
 
@@ -75,3 +67,5 @@ class Renderer {
 /******************************************************************************/
 
 export default Renderer
+
+export { DEFAULT_RENDERING_OPTIONS }

@@ -1,4 +1,4 @@
-import { Vector, PI, log10, max, clamp, floor, sign, abs, sqrt } from '@benzed/math'
+import { Vector, PI, log10, max, clamp, floor, sign, abs, sqrt, lerp } from '@benzed/math'
 import { SortedArray } from '@benzed/array'
 
 import { WeightedColorizer } from '../util'
@@ -14,6 +14,7 @@ import { $$cache } from '../body'
 
 const DOPPLER_MAX_VEL = 30
 const DOPPLER_MAX_DIST = 400000
+const MAX_SPEED_DISTORTION = 6
 const GRID_OPACITY_MAX = 0.5
 const NO_DASH = []
 
@@ -88,10 +89,10 @@ function createCirclePath (ctx, pos, r1, r2 = r1, angle = 0) {
   ctx.closePath()
 }
 
-function drawBody (ctx, renderer, body, speedOfPlayback) {
+function drawBody (ctx, renderer, body) {
 
   const { radius, pos, vel } = body
-  const { camera, canvas, options } = renderer
+  const { camera, canvas, options, speed } = renderer
   const frame = camera.referenceFrame
 
   const relativeVel = frame
@@ -102,8 +103,7 @@ function drawBody (ctx, renderer, body, speedOfPlayback) {
   const viewRadius = max(radius / camera.current.zoom, RADIUS_MIN)
   const viewPos = camera.worldToCanvas(pos, canvas)
 
-  // Clamped so that there is no speed distortion on paused simulations
-  const speedOfBody = viewVel.magnitude * clamp(speedOfPlayback)
+  const speedOfBody = viewVel.magnitude * clamp(abs(speed), 0, MAX_SPEED_DISTORTION)
   const speedDistortionRadius = max(speedOfBody, viewRadius)
   const speedDistortionAngle = viewVel.angle * PI / 180
 
@@ -117,11 +117,7 @@ function drawBody (ctx, renderer, body, speedOfPlayback) {
   // slightly fade bodies that would be too small to see
   const sizeFade = ((radius / camera.current.zoom) / RADIUS_MIN)
   ctx.globalAlpha = clamp(sizeFade, 0.5, 1)
-  if (options.bodyMode === 'fill')
-    ctx.fill()
-  else if (options.bodyMode === 'outline')
-    ctx.stroke()
-
+  ctx.fill()
   ctx.globalAlpha = 1
 
   // Draw reference ring
@@ -334,7 +330,7 @@ export function clearCanvas (ctx, renderer) {
 
 }
 
-export function drawBodies (ctx, renderer, simulation, speed) {
+export function drawBodies (ctx, renderer, simulation) {
 
   const bodiesByMass = new SortedArray(...simulation.livingBodies())
 
@@ -343,16 +339,16 @@ export function drawBodies (ctx, renderer, simulation, speed) {
   if (renderer.options.grid)
     drawGrid(ctx, renderer)
 
-  // if (renderer.options.relations) for (const body of bodiesByMass) if (body.exists)
-  if (renderer.camera.referenceFrame) {
+  if (renderer.camera.referenceFrame && renderer.options.relations) {
     const body = renderer.camera.referenceFrame
     drawBodyParentLine(ctx, renderer, body, simulation)
   }
 
-  if (renderer.options.trailLength !== 0) for (const body of simulation)
-    drawTrails(ctx, renderer, body, simulation)
+  if (renderer.options.trailLength !== 0)
+    for (const body of simulation)
+      drawTrails(ctx, renderer, body, simulation)
 
   for (const body of bodiesByMass) if (body.exists)
-    drawBody(ctx, renderer, body, speed)
+    drawBody(ctx, renderer, body)
 
 }
