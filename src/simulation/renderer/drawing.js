@@ -14,7 +14,7 @@ import { $$cache } from '../body'
 
 const DOPPLER_MAX_VEL = 30
 const DOPPLER_MAX_DIST = 400000
-const MAX_SPEED_DISTORTION = 6
+const MAX_SPEED_DISTORTION = 6 // from renderer speed specifically, not body velocity
 const GRID_OPACITY_MAX = 0.5
 const NO_DASH = []
 

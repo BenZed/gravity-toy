@@ -22,7 +22,7 @@ const Timeline = styled(props => {
       {targetSpeed}x</span>
 
     <span data-match={actualSpeed !== targetSpeed}>
-      {actualSpeed.toFixed(1)}x
+      {actualSpeed.toFixed(2)}x
     </span>
   </div>
 })`

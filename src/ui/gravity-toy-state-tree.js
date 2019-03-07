@@ -14,7 +14,7 @@ import { MAX_SPEED, DEFAULT_BODIES } from './constants'
 
 const CONTEXT_INTERVAL = 150 // ms
 
-const NUM_DELTA_TICKS = 12
+const NUM_DELTA_TICKS = 30
 
 const $$mrs = Symbol('mutable-runtime-state')
 
@@ -192,6 +192,7 @@ class GravityToyStateTree extends StateTree {
     this._deltaTicks.push(deltaTick)
     while (this._deltaTicks.length > NUM_DELTA_TICKS)
       this._deltaTicks.shift()
+    const averageDeltaTick = average(this._deltaTicks)
 
     // update mutable runtime state
     mrs.time.delta = timeTotal - mrs.time.total
@@ -199,18 +200,26 @@ class GravityToyStateTree extends StateTree {
     for (const key in mrs.simulationState)
       mrs.simulationState[key] = simulation[key]
 
-    // set renderer speed, pretty much only effects body speed distortion. I
-    // realize this is applying the render speed of the previous frame to the next
-    // but at 60 frames per second, the error isn't noticable
-    this.renderer.speed = deltaTick
-
     // if deltaTick === this.targetSpeed, playback is most likely normalized.
     // it's more accurate to return the targetSpeed rather than calculating
     // the average of all past deltaTicks, this way there will not be a lag
     // in the ui as the _deltaTicks array fills up.
-    mrs.actualSpeed = deltaTick === this.targetSpeed
+    mrs.actualSpeed = deltaTick === this.targetSpeed && abs(this.targetSpeed) !== 1
       ? deltaTick
-      : average(this._deltaTicks)
+      : averageDeltaTick
+
+    // set renderer speed, pretty much only effects body speed distortion. I
+    // realize this is applying the render speed of the previous frame to the next
+    // but at 60 frames per second, the error isn't noticable.
+    const isStrugglingWithLargeSimulation = !this.paused &&
+      this.targetSpeed > 0 &&
+      averageDeltaTick < 1 &&
+      averageDeltaTick > 0
+
+    // setting to 1 looks nicer if the integrator is going slow
+    this.renderer.speed = isStrugglingWithLargeSimulation
+      ? 1
+      : deltaTick
 
     // queue next frame
     requestAnimationFrame(this.updateRender)
