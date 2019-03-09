@@ -1,62 +1,12 @@
 
-import React, { useRef, useEffect } from 'react'
-
+import React from 'react'
 import styled from 'styled-components'
 
-import { on, off, StateTreeContext, GlobalStyle, Write } from '@benzed/react'
+import { StateTreeContext, GlobalStyle, Write } from '@benzed/react'
 
 import $, { theme } from './theme'
-
-import { Speed, Timeline, Zoom } from './controls'
-
-/******************************************************************************/
-// Helper
-/******************************************************************************/
-
-function resize () {
-
-  const canvas = this
-
-  // setting a canvas dimension clears its content, even if it's the same value.
-  // so we check that it's necessary first
-  if (canvas.width !== innerWidth || canvas.height !== innerHeight) {
-    canvas.width = innerWidth
-    canvas.height = innerHeight
-  }
-
-}
-
-/******************************************************************************/
-//
-/******************************************************************************/
-
-const useCanvas = (gravity, theme) => {
-
-  const canvasRef = useRef()
-
-  useEffect(() => {
-
-    const canvas = canvasRef.current
-
-    const resizeCanvas = canvas::resize
-    resizeCanvas()
-
-    window::on('resize', resizeCanvas)
-    window::on('deviceorientation', resizeCanvas)
-
-    gravity.renderer.canvas = canvas
-    gravity.start()
-
-    return () => {
-      window::off('resize', resizeCanvas)
-      window::off('deviceorientation', resizeCanvas)
-    }
-
-  }, [])
-
-  return canvasRef
-
-}
+import { Speed, Timeline, Zoom, Move } from './controls'
+import { useCanvas } from './util'
 
 /******************************************************************************/
 // Styled
@@ -77,6 +27,9 @@ const Controls = styled.div`
   right: 0.5em;
 
   display: flex;
+  &:focus {
+    outline: none;
+  }
 
 `
 
@@ -98,13 +51,15 @@ const TopRow = styled(Row)`
 const Column = styled.div`
   display: flex;
   flex-direction: column;
+  &:first-child {
+    flex-grow: 1;
+  }
+  height: 100%;
 `
 
 const Title = styled.h1.attrs({ children: <Write start=''>Gravity Toy</Write> })`
-
   text-transform: uppercase;
   font-size: ${$.theme.titleSize}vw;
-
 `
 
 /******************************************************************************/
@@ -123,16 +78,22 @@ const GravityToy = ({ children, gravity, ...props }) => {
       <Controls>
 
         <TopRow>
+
           <Column>
             <Title />
             <div>Body Controls</div>
           </Column>
-          <Zoom />
+
+          <Column>
+            <Move gravity={gravity} />
+            <Zoom gravity={gravity} />
+          </Column>
+
         </TopRow>
 
         <BottomRow>
           <Speed gravity={gravity} reverse />
-          <Speed gravity={gravity} forward />
+          <Speed gravity={gravity} />
           <Timeline gravity={gravity}/>
         </BottomRow>
 

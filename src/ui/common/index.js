@@ -1,15 +1,9 @@
-import Speed from './speed'
-import Timeline from './timeline'
-import Zoom from './zoom'
-import Move from './move'
+import KeyButton from './key-button'
 
 /******************************************************************************/
 // Exports
 /******************************************************************************/
 
 export {
-  Speed,
-  Timeline,
-  Zoom,
-  Move
+  KeyButton
 }

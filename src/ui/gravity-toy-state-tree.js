@@ -1,11 +1,11 @@
 import { StateTree, state, action } from '@benzed/state-tree'
 import { Simulation, Renderer } from '../simulation'
 import { randomVector } from '../simulation/util'
-import { DEFAULT_RENDERING_OPTIONS } from '../simulation/renderer/renderer'
 
 import { Vector, abs, round, clamp, random } from '@benzed/math'
 import { copy, set, get } from '@benzed/immutable'
 
+import { DEFAULT_RENDERING_OPTIONS } from '../simulation/renderer/renderer'
 import { MAX_SPEED, DEFAULT_BODIES } from './constants'
 
 /******************************************************************************/
@@ -20,6 +20,20 @@ const $$mrs = Symbol('mutable-runtime-state')
 
 /******************************************************************************/
 // Helper
+/******************************************************************************/
+
+// I know this is such a specific application of the reduce method, but
+// I feel like I write this function a LOT. TODO add to @benzed/array?
+const average = array => {
+  let total = 0
+  for (const value of array)
+    total += value
+
+  return total / array.length
+}
+
+/******************************************************************************/
+// Setup
 /******************************************************************************/
 
 class DefaultSimulation extends Simulation {
@@ -54,20 +68,6 @@ class DefaultSimulation extends Simulation {
     this.createBodies(bodies)
 
   }
-}
-
-/******************************************************************************/
-//
-/******************************************************************************/
-
-// I know this is such a specific application of the reduce method, but
-// I feel like I write this function a LOT. TODO add to @benzed/array?
-const average = array => {
-  let total = 0
-  for (const value of array)
-    total += value
-
-  return total / array.length
 }
 
 /******************************************************************************/
@@ -140,7 +140,8 @@ class GravityToyStateTree extends StateTree {
 
   _uiIntervalId = null
   _renderIntervalId = null
-  _deltaTicks = [];
+  _deltaTicks = []
+  _runOnUpdate = [];
 
   [$$mrs] = {
     time: {
@@ -177,7 +178,7 @@ class GravityToyStateTree extends StateTree {
     return { ...this.state, ...this[$$mrs] }
   }
 
-  // Update the render visible on the canvas
+  // update the render visible on the canvas
   updateRender = timeTotal => {
 
     const { renderer, simulation, [$$mrs]: mrs } = this
@@ -221,12 +222,19 @@ class GravityToyStateTree extends StateTree {
       ? 1
       : deltaTick
 
+    // run update actions
+    for (const onUpdate of this._runOnUpdate)
+      onUpdate(mrs, this)
+
     // queue next frame
     requestAnimationFrame(this.updateRender)
   }
 
   constructor (...args) {
     super(...args)
+
+    this.simulation = new DefaultSimulation()
+    this.renderer = new Renderer()
 
     // Sync options in renderer with options in state
     this.subscribe((toy, listenPath, changePath) => {
@@ -236,20 +244,13 @@ class GravityToyStateTree extends StateTree {
       set.mut(toy.renderer.options, equivalentChangePath, equivalentValue)
     }, 'renderOptions')
 
-    this.simulation = new DefaultSimulation()
-    this.renderer = new Renderer()
-
     // Center camera on largest body TODO this should go elsewhere
-    const largest = [ ...this.simulation.bodies() ].reduce((big, body) => big.mass > body.mass
-      ? big
-      : body, { mass: -Infinity })
+      const largest = [ ...this.simulation.bodies() ].reduce((big, body) => big.mass > body.mass
+        ? big
+        : body, { mass: -Infinity })
 
-    this.renderer.camera.referenceFrame = largest
-    this.renderer.camera.target.pos.set(Vector.zero)
-
-    setTimeout(() => {
-      this.setState(false, ['renderOptions', 'grid'], 'disableGrid')
-    }, 500)
+      this.renderer.camera.referenceFrame = largest
+      this.renderer.camera.target.pos.set(Vector.zero)
 
   }
 

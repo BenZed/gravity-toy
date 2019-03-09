@@ -1,15 +1,11 @@
-import Speed from './speed'
-import Timeline from './timeline'
-import Zoom from './zoom'
-import Move from './move'
+import useKeyCommand from './use-key-command'
+import useCanvas from './use-canvas'
 
 /******************************************************************************/
 // Exports
 /******************************************************************************/
 
 export {
-  Speed,
-  Timeline,
-  Zoom,
-  Move
+  useKeyCommand,
+  useCanvas
 }

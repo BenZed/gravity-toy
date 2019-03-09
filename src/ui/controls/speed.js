@@ -1,41 +1,27 @@
 import React from 'react'
-import styled from 'styled-components'
-
-import { IconButton, useStateTree } from '@benzed/react'
-
-import { MAX_SPEED } from '../constants'
+import { KeyButton } from '../common'
 
 /******************************************************************************/
 // Main Component
 /******************************************************************************/
 
-const Speed = styled(({ forward, reverse, gravity, ...props }) => {
+const Speed = ({ reverse, gravity, ...props }) =>
 
-  useStateTree.observe(gravity, 'targetSpeed', 'simulationState')
-
-  const { targetSpeed } = gravity
-  const { currentTick, firstTick, lastTick } = gravity.simulationState
-
-  const disabled = forward
-    ? targetSpeed === MAX_SPEED || currentTick === lastTick
-    : targetSpeed === -MAX_SPEED || currentTick === firstTick
-
-  return <IconButton
-    $size={1}
+  <KeyButton
     {...props}
-    onClick={e => gravity.incrementTargetSpeed(reverse)}
-    disabled={disabled}
+    down={e => gravity.incrementTargetSpeed(reverse)}
+    keys={reverse ? 'j' : 'l'}
   >
-    { forward ? '▶' : '◀' }
-  </IconButton>
-})`
-  &:hover {
-    opacity: 1;
-    transform: scale(1.5, 1.5);
-  }
+    { reverse ? '◀' : '▶' }
+  </KeyButton>
 
-  transition: transform 250ms, opacity 250ms;
-`
+/******************************************************************************/
+// Defaults
+/******************************************************************************/
+
+Speed.defaultProps = {
+  $size: 1
+}
 
 /******************************************************************************/
 // Exports
