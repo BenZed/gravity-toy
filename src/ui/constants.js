@@ -1,13 +1,13 @@
 
 export const DEFAULT_BODIES = {
 
-  count: 700,
+  count: 1000,
   speed: 5,
   radius: 1200,
 
   MASS: {
     min: 1,
-    max: 2,
+    max: 10,
     superSizeProbability: 0.01,
     superSizeMassMultiplier: 50
   }

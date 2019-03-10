@@ -39,9 +39,9 @@ const Move = styled(props => {
 
   const { camera } = gravity.renderer
 
-  for (const { key, axis, sign } of WASD)
+  for (const { keys, axis, sign } of WASD)
     useKeyCommand({
-      key,
+      keys,
       hold () {
         camera.target.pos[axis] += camera.current.zoom * KEYBOARD_MOVE_SPEED * sign
       }
