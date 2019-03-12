@@ -21,14 +21,14 @@ const DEFAULT_RENDERING_OPTIONS = Object.freeze({
   // length of trail showing where body has been, in ticks.
   // 0 - off
   // positive values for future trails, negative values for past trails
-  trailLength: -300,
-  trailStep: 5,
+  trailLength: -200,
+  trailStep: 3,
   trailColor: '#c96af2',
 
   // Color of detail elements, such as grids, relations, reference circle
   detailsColor: 'rgba(81, 214, 83, 0.5)',
   detailsDash: [3, 3],
-  detailsPad: 5 // pixels
+  detailsPad: 3 // pixels
 
 })
 

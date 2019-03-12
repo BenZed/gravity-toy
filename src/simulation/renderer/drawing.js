@@ -1,4 +1,4 @@
-import { Vector, PI, log10, max, clamp, floor, sign, abs, sqrt, lerp } from '@benzed/math'
+import { Vector, PI, log10, max, clamp, floor, sign, abs, sqrt } from '@benzed/math'
 import { SortedArray } from '@benzed/array'
 
 import { WeightedColorizer } from '../util'

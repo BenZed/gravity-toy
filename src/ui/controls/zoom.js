@@ -33,14 +33,16 @@ const ZoomMarkers = styled(({ gravity, className, ...rest }) => {
 
   const markers = []
 
-  for (let i = 1; i <= maxZoom; i *= 10) {
+  for (let i = 1, powers = 0; i <= maxZoom; i *= 10, powers++) {
     const marker = <span
       key={i}
       className={className}
       style={{
         top: `calc(${getZoomFactor(i, maxZoom) * 100}% - 0.6em)`
       }}>
-      {i}x
+      {powers === 0 ? 1 : 10}
+      {powers > 1 ? <sup>{powers}</sup> : null}
+      <em>x</em>
     </span>
 
     markers.push(marker)

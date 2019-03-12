@@ -3,9 +3,11 @@ import React, { useState } from 'react'
 import styled from 'styled-components'
 import { useKeyCommand } from '../util'
 import { IconButton, useStateTree } from '@benzed/react'
-import { ensure, remove } from '@benzed/array'
+import { ensure, remove, wrap, first } from '@benzed/array'
 
 import is from 'is-explicit'
+
+import { $ } from '../theme'
 
 /******************************************************************************/
 // Main
@@ -65,6 +67,10 @@ const KeyButton = styled(props => {
   &[data-down=true] {
     transform: scale(1.75, 1.75);
   }
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
 
   &:active {
     opacity: 1;

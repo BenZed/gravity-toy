@@ -52,10 +52,10 @@ export const CACHED_VALUES_PER_TICK = 6
 export const MASS_MIN = 1
 
 // If the min radius of a body is 1, then the min diameter would be 2, so 2 pixels
-export const RADIUS_MIN = 0.5
+export const RADIUS_MIN = 1
 
 // Arbitrary scaler for increase in radius in relationship to mass
-export const RADIUS_FACTOR = 1.25
+export const RADIUS_FACTOR = 1
 
 // 60 ticks equals one second
 export const TICK_DURATION = 1 / 60
