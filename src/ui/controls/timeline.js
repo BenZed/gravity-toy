@@ -10,7 +10,7 @@ import { clamp, round } from '@benzed/math'
 // Data
 /******************************************************************************/
 
-const ERASER_PROGRESS_THRESHOLD = 0.5 // * 100%
+const ERASER_PROGRESS_THRESHOLD = 0.33 // * 100%
 const CURRENT_PROGRESS_THRESHOLD = 0.01 // * 100%
 
 /******************************************************************************/
@@ -113,7 +113,7 @@ const Timeline = styled(props => {
 
   const progress = ((used / max) || 0)
 
-  const currentTick = (current - first) / (last - first)
+  const currentProgress = (current - first) / (last - first)
 
   const containerRef = useRef()
   const [ eraseProgress, setEraseProgress ] = useState(0)
@@ -146,9 +146,9 @@ const Timeline = styled(props => {
     <div className='timeline'>
 
       <div className='current-handle'
-        data-show={progress > CURRENT_PROGRESS_THRESHOLD && currentTick < 1 - CURRENT_PROGRESS_THRESHOLD}
+        data-show={progress > CURRENT_PROGRESS_THRESHOLD && currentProgress < 1}
         style={{
-          left: `calc(${currentTick * progress * 100}% - 0.5em)`
+          left: `calc(${currentProgress * progress * 100}% - 0.5em)`
         }}>︱</div>
 
       <div className='bar-container' ref={containerRef}>
