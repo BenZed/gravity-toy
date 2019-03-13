@@ -91,6 +91,9 @@ class GravityToyStateTree extends StateTree {
   @state
   paused = false
 
+  @action('paused')
+  setPaused = value => !!value
+
   @action('targetSpeed')
   setTargetSpeed = targetSpeed => targetSpeed::round()::clamp(-MAX_SPEED, MAX_SPEED)
 
@@ -181,11 +184,13 @@ class GravityToyStateTree extends StateTree {
   // update the render visible on the canvas
   updateRender = timeTotal => {
 
-    const { renderer, simulation, [$$mrs]: mrs } = this
+    const { renderer, simulation, paused, [$$mrs]: mrs } = this
 
     const initialTick = simulation.currentTick
 
-    simulation.setCurrentTick(initialTick + this.targetSpeed)
+    const nextTick = initialTick + (paused ? 0 : this.targetSpeed)
+
+    simulation.setCurrentTick(nextTick)
     renderer.render(simulation)
 
     // fill deltatick array
@@ -212,7 +217,7 @@ class GravityToyStateTree extends StateTree {
     // set renderer speed, pretty much only effects body speed distortion. I
     // realize this is applying the render speed of the previous frame to the next
     // but at 60 frames per second, the error isn't noticable.
-    const isStrugglingWithLargeSimulation = !this.paused &&
+    const isStrugglingWithLargeSimulation = !paused &&
       this.targetSpeed > 0 &&
       averageDeltaTick < 1 &&
       averageDeltaTick > 0

@@ -93,6 +93,60 @@ const EraserButton = styled(props => {
 
 `
 
+const CurrentTickSlider = styled(props => {
+
+  const { show, progress, currentProgress, containerRef, gravity, ...rest } = props
+
+  const startRef = useRef()
+
+  return <div
+    draggable
+    onDragStart={e => {
+      startRef.current = {
+        x: e.clientX,
+        progress,
+        simulationState: gravity.simulationState
+      }
+      gravity.setPaused(true)
+    }}
+    onDrag={e => {
+      if (e.clientX <= 0)
+        return
+
+      const bounds = containerRef.current.getBoundingClientRect()
+      const sim = startRef.current.simulationState
+      const progress = startRef.current.progress
+
+      const lastPossibleTick = round((sim.lastTick - sim.firstTick) / progress)
+
+      const deltaX = e.clientX - startRef.current.x
+      const deltaP = deltaX / bounds.width
+      const deltaTicks = round(deltaP * lastPossibleTick)
+
+      const targetTick = sim.currentTick + round(deltaTicks)
+
+      gravity.simulation.setCurrentTick(targetTick)
+    }}
+    onDragEnd={e => {
+      startRef.current = null
+      gravity.setPaused(false)
+    }}
+    style={{
+      left: `calc(${currentProgress * progress * 100}% - 0.5em)`
+    }}
+    {...rest}>︱</div>
+})`
+  position: absolute;
+  top: -0.75em;
+  left: -0.5em;
+
+  opacity: ${$.ifProp('show').set(1).else.set(0)};
+
+  transition: opacity 500ms;
+  cursor: grab;
+
+`
+
 /******************************************************************************/
 // Main Components
 /******************************************************************************/
@@ -123,8 +177,8 @@ const Timeline = styled(props => {
     if (eraseProgress <= 0)
       return
 
-    const lastPossibleTick = round(last / progress)
-    const eraseTick = round(eraseProgress * lastPossibleTick)
+    const lastPossibleTick = round((last - first) / progress)
+    const eraseTick = first + round(eraseProgress * lastPossibleTick)
 
     gravity.simulation.clearBeforeTick(eraseTick)
     setEraseProgress(0)
@@ -145,15 +199,29 @@ const Timeline = styled(props => {
 
     <div className='timeline'>
 
-      <div className='current-handle'
-        data-show={progress > CURRENT_PROGRESS_THRESHOLD && currentProgress < 1}
-        style={{
-          left: `calc(${currentProgress * progress * 100}% - 0.5em)`
-        }}>︱</div>
+      <CurrentTickSlider
+        gravity={gravity}
+        show={progress > CURRENT_PROGRESS_THRESHOLD && currentProgress < 1}
+        currentProgress={currentProgress}
+        progress={progress}
+        containerRef={containerRef}
+      />
 
-      <div className='bar-container' ref={containerRef}>
+      <div className='bar-container'
+        ref={containerRef}
+        onClick={e => {
+          const bounds = containerRef.current.getBoundingClientRect()
+          const lastPossibleTick = round((last - first) / progress)
+
+          const deltaP = (e.clientX - bounds.left) / bounds.width
+          const targetTick = first + round(deltaP * lastPossibleTick)
+
+          gravity.simulation.setCurrentTick(targetTick)
+        }}
+      >
 
         <div
+
           className='progress-bar'
           style={{ width: `${progress * 100}%` }}
         />
@@ -181,19 +249,6 @@ const Timeline = styled(props => {
     position: relative;
     margin-right: 1em;
 
-    > div.current-handle {
-      position: absolute;
-      top: -0.75em;
-      left: -0.5em;
-
-      opacity: 0;
-      transition: opacity 500ms;
-
-      &[data-show=true] {
-        opacity: 1;
-      }
-    }
-
     > div.bar-container {
       background-color: ${$.theme.fg.fade(0.75).desaturate(0.5)};
       border-radius: 0.25em;
@@ -201,6 +256,7 @@ const Timeline = styled(props => {
       overflow: hidden;
       position: relative;
       flex-grow: 1;
+      cursor: pointer;
 
       > div {
         height: 100%;
