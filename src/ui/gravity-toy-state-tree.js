@@ -41,7 +41,8 @@ class DefaultSimulation extends Simulation {
   constructor () {
 
     super({
-      minRealBodies: 256
+      minRealBodies: 256,
+      maxCacheMemory: 128
     })
 
     const bodies = []

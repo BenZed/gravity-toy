@@ -112,7 +112,7 @@ class Simulation extends EventEmitter {
 
     for (const body of bodies.map.values()) {
       const cache = body[$$cache]
-      if (tick < cache.birthTick || (cache.deathTick !== null && tick > cache.deathTick))
+      if (tick < cache.birthTick || (cache.deathTick !== null && tick >= cache.deathTick))
         continue
 
       stream.push(body.id)

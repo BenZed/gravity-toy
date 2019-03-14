@@ -14,34 +14,8 @@ const ERASER_PROGRESS_THRESHOLD = 0.33 // * 100%
 const CURRENT_PROGRESS_THRESHOLD = 0.01 // * 100%
 
 /******************************************************************************/
-//
+// Components
 /******************************************************************************/
-
-const Speedometer = styled(props => {
-
-  const { gravity, ...rest } = props
-
-  useStateTree.observe(gravity, 'targetSpeed', 'actualSpeed')
-  const { targetSpeed, actualSpeed } = gravity
-
-  return <div {...rest} >
-    <span>{targetSpeed}x</span>
-
-    <span data-match={actualSpeed !== targetSpeed}>
-      {actualSpeed.toFixed(2)}x
-    </span>
-  </div>
-})`
-  span:nth-child(2) {
-    margin-left: 0.25em;
-    color: ${$.theme.brand.danger};
-    opacity: 0;
-    transition: opacity 1000ms;
-    &[data-match=true] {
-      opacity: 1;
-    }
-  }
-`
 
 const EraserButton = styled(props => {
 
@@ -162,7 +136,8 @@ const Timeline = styled(props => {
     firstTick: first,
     lastTick: last,
     usedCacheMemory: used,
-    maxCacheMemory: max
+    maxCacheMemory: max,
+    running
   } = gravity.simulationState
 
   const progress = ((used / max) || 0)
@@ -182,6 +157,8 @@ const Timeline = styled(props => {
 
     gravity.simulation.clearBeforeTick(eraseTick)
     setEraseProgress(0)
+    if (!running)
+      gravity.simulation.run()
   }
 
   // console.log((current - first) / (last - first))
