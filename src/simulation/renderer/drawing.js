@@ -49,10 +49,9 @@ function baryCenter (a, b) {
     .iadd(small.pos)
 }
 
-function numDigits (n) {
+const numDigits = n =>
   // No fucking idea. Found it on the internet
-  return (log10((n ^ (n >> 31)) - (n >> 31)) | 0) + 1
-}
+  (log10((n ^ (n >> 31)) - (n >> 31)) | 0) + 1
 
 /******************************************************************************/
 // Colors
@@ -174,15 +173,7 @@ function drawBodyParentLine (ctx, renderer, child, simulation) {
   ctx.stroke()
 }
 
-function drawGrid (ctx, renderer) {
-
-  const { camera, canvas, options } = renderer
-  const { current } = camera
-  const { zoom } = current
-
-  ctx.strokeStyle = options.detailsColor
-  ctx.setLineDash(NO_DASH)
-  ctx.lineWidth = 1
+const getGridZoomData = zoom => {
 
   const levels = numDigits(zoom)
   const levelCurrent = 10 ** levels
@@ -191,33 +182,64 @@ function drawGrid (ctx, renderer) {
   const increment = max(levelPrev / 10, 1)
   const opacityFactor = clamp(1 - (zoom - levelPrev) / (levelCurrent - levelPrev))
 
-  const canvasHalfWorldSize = new Vector(canvas.width, canvas.height).imult(zoom * 0.5)
-  const topLeftWorld = current.relPos.sub(canvasHalfWorldSize)
-  const topLeftSnapped = new Vector(
-    floor(topLeftWorld.x, canvas.width * increment),
-    floor(topLeftWorld.y, canvas.height * increment)
+  return {
+    levelCurrent,
+    levelPrev,
+    opacityFactor,
+    increment
+  }
+}
+
+function drawGrid (ctx, renderer) {
+
+  const { camera, canvas, options } = renderer
+  const { current } = camera
+  const { zoom } = current
+  const { width, height } = canvas
+
+  ctx.strokeStyle = options.detailsColor
+  ctx.setLineDash(NO_DASH)
+  ctx.lineWidth = 1
+
+  const data = getGridZoomData(zoom)
+
+  const canvasHalfWorldSize = new Vector(width, height).imult(zoom * 0.5)
+  const worldTL = current.pos.sub(canvasHalfWorldSize)
+  const worldBR = current.pos.add(canvasHalfWorldSize)
+  const worldSnapTL = new Vector(
+    floor(worldTL.x, canvas.width * data.increment),
+    floor(worldTL.y, canvas.height * data.increment)
   )
 
-  const snapped = topLeftSnapped.copy()
-  while (snapped.x < topLeftSnapped.x + canvas.width * zoom &&
-      snapped.y < topLeftSnapped.y + canvas.height * zoom) {
-    snapped.x += canvas.width * increment
-    snapped.y += canvas.height * increment
+  drawGridLines(ctx, renderer, worldSnapTL, worldBR, true, data)
+  drawGridLines(ctx, renderer, worldSnapTL, worldBR, false, data)
+}
 
-    let opacityX = GRID_OPACITY_MAX
-    const indexX = snapped.x / canvas.width
-    if (indexX % levelCurrent !== 0 && indexX % levelPrev !== 0)
-      opacityX *= opacityFactor
+const drawGridLines = (ctx, rend, from, to, horizontal, data) => {
+  const current = from.copy()
 
-    // TODO DRY
-    let opacityY = GRID_OPACITY_MAX
-    const indexY = snapped.y / canvas.height
-    if (indexY % levelCurrent !== 0 && indexY % levelPrev !== 0)
-      opacityY *= opacityFactor
+  const axis = horizontal ? 'x' : 'y'
+  const dimension = rend.canvas[horizontal ? 'width' : 'height']
 
-    const canvasPoint = camera.worldToCanvas(snapped, canvas)
-    drawGridLine(ctx, renderer, canvasPoint.x, true, opacityX)
-    drawGridLine(ctx, renderer, canvasPoint.y, false, opacityY)
+  const delta = dimension * data.increment
+
+  while (current[axis] <= to[axis]) {
+
+    let opacity = GRID_OPACITY_MAX
+
+    const index = current[axis] / dimension
+    if (index % data.levelCurrent !== 0 && index % data.levelPrev !== 0)
+      opacity *= data.opacityFactor
+
+    const world = rend.camera.referenceFrame
+      ? current
+        .add(rend.camera.referenceFrame.pos)
+      : current
+
+    const canvasPoint = rend.camera.worldToCanvas(world, rend.canvas)
+    drawGridLine(ctx, rend, canvasPoint[axis], horizontal, opacity)
+
+    current[axis] += delta
   }
 }
 
