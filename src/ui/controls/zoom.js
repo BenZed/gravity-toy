@@ -5,7 +5,7 @@ import $ from '../theme'
 import { KeyButton } from '../common'
 
 import { IconButton, useStateTree } from '@benzed/react'
-import { pow, clamp, log, exp } from '@benzed/math'
+import { pow, clamp, log } from '@benzed/math'
 import is from 'is-explicit'
 
 /******************************************************************************/

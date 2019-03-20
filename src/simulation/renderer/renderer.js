@@ -13,7 +13,7 @@ const DEFAULT_RENDERING_OPTIONS = Object.freeze({
   bodyColorBy: 'doppler',
 
   minZoom: 1,
-  maxZoom: 1000000,
+  maxZoom: 100000,
 
   grid: true,
   relations: false,
@@ -21,8 +21,8 @@ const DEFAULT_RENDERING_OPTIONS = Object.freeze({
   // length of trail showing where body has been, in ticks.
   // 0 - off
   // positive values for future trails, negative values for past trails
-  trailLength: -200,
-  trailStep: 3,
+  trailLength: -400,
+  trailStep: 4,
   trailColor: '#c96af2',
 
   // Color of detail elements, such as grids, relations, reference circle

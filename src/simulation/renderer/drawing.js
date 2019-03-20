@@ -1,4 +1,4 @@
-import { Vector, PI, log10, max, clamp, floor, sign, abs, sqrt } from '@benzed/math'
+import { Vector, PI, log10, max, min, clamp, floor, sign, abs, cbrt } from '@benzed/math'
 import { SortedArray } from '@benzed/array'
 
 import { WeightedColorizer } from '../util'
@@ -9,6 +9,13 @@ import { $$cache } from '../body'
 // Helpers
 /******************************************************************************/
 
+// TODO Right now this is for drawing the grid only.
+// It should come from the simulation.
+const LARGEST_SAFE_AXIS = 99999999.999999999
+
+const MAX_TOP_LEFT = new Vector(-LARGEST_SAFE_AXIS, -LARGEST_SAFE_AXIS)
+const MAX_BOT_RIGHT = new Vector(LARGEST_SAFE_AXIS, LARGEST_SAFE_AXIS)
+
 // This contains a whole bunch of draw helpers so they don't have to be placed
 // renderer class page
 
@@ -16,6 +23,8 @@ const DOPPLER_MAX_VEL = 30
 const DOPPLER_MAX_DIST = 400000
 const MAX_SPEED_DISTORTION = 6 // from renderer speed specifically, not body velocity
 const GRID_OPACITY_MAX = 0.5
+const TRAIL_OPACITY_MAX = 0.5
+const TRAIL_FADE_FACTOR = 0.33 // %, the last 33% of the trail will fade
 const NO_DASH = []
 
 const dopplerColor = new WeightedColorizer(
@@ -204,8 +213,8 @@ function drawGrid (ctx, renderer) {
   const data = getGridZoomData(zoom)
 
   const canvasHalfWorldSize = new Vector(width, height).imult(zoom * 0.5)
-  const worldTL = current.pos.sub(canvasHalfWorldSize)
-  const worldBR = current.pos.add(canvasHalfWorldSize)
+  const worldTL = current.pos.sub(canvasHalfWorldSize).imax(MAX_TOP_LEFT)
+  const worldBR = current.pos.add(canvasHalfWorldSize).imin(MAX_BOT_RIGHT)
   const worldSnapTL = new Vector(
     floor(worldTL.x, canvas.width * data.increment),
     floor(worldTL.y, canvas.height * data.increment)
@@ -222,6 +231,8 @@ const drawGridLines = (ctx, rend, from, to, horizontal, data) => {
   const dimension = rend.canvas[horizontal ? 'width' : 'height']
 
   const delta = dimension * data.increment
+  const limitTL = rend.camera.worldToCanvas(MAX_TOP_LEFT, rend.canvas)
+  const limitBR = rend.camera.worldToCanvas(MAX_BOT_RIGHT, rend.canvas)
 
   while (current[axis] <= to[axis]) {
 
@@ -237,24 +248,25 @@ const drawGridLines = (ctx, rend, from, to, horizontal, data) => {
       : current
 
     const canvasPoint = rend.camera.worldToCanvas(world, rend.canvas)
-    drawGridLine(ctx, rend, canvasPoint[axis], horizontal, opacity)
+
+    drawGridLine(ctx, rend, canvasPoint[axis], limitTL, limitBR, horizontal, opacity)
 
     current[axis] += delta
   }
 }
 
-function drawGridLine (ctx, renderer, start, horizontal, opac = 0.25) {
+function drawGridLine (ctx, renderer, start, limitTL, limitBR, horizontal, opac = 0.25) {
 
   const { canvas } = renderer
 
-  const x = horizontal ? start : 0
-  const y = horizontal ? 0 : start
+  const x = max(horizontal ? start : 0, limitTL.x)
+  const y = max(horizontal ? 0 : start, limitTL.y)
 
   ctx.beginPath()
   ctx.moveTo(x, y)
   ctx.lineTo(
-    horizontal ? x : x + canvas.width,
-    horizontal ? y + canvas.height : y
+    min(horizontal ? x : x + canvas.width, limitBR.x),
+    min(horizontal ? y + canvas.height : y, limitBR.y)
   )
 
   ctx.globalAlpha = opac
@@ -262,7 +274,7 @@ function drawGridLine (ctx, renderer, start, horizontal, opac = 0.25) {
 
 }
 
-function getTrailWorldPositionAtTick (body, tick) {
+const getTrailWorldPositionAtTick = (body, tick) => {
   const bCache = body[$$cache]
 
   const index = bCache.getTickDataIndex(tick)
@@ -286,30 +298,39 @@ function drawTrails (ctx, renderer, body, simulation) {
   if (body === rBody)
     return
 
-  const zoomF = sqrt(camera.current.zoom)
-  const length = options.trailLength * zoomF
+  const bCache = rBody[$$cache]
+
+  const zoomF = cbrt(camera.current.zoom)
+
+  let numTicks = abs(options.trailLength * zoomF)
   const step = floor(options.trailStep * zoomF)
-  const absLength = abs(length)
-  const delta = sign(length)
+  const direction = sign(options.trailLength)
 
   ctx.lineWidth = 1
   ctx.globalAlpha = 1
-  ctx.setLineDash(delta > 0 ? options.detailsDash : [])
-  ctx.strokeStyle = options.trailColor
+  ctx.setLineDash(direction > 0 ? options.detailsDash : [])
+  ctx.fillStyle = ctx.strokeStyle = options.trailColor
 
-  let lastPoint = null
   let tick = simulation.currentTick
   // prevents jittering caused by step
-  tick -= simulation.currentTick % step
 
-  ctx.beginPath()
+  // clamp numTicks
+  if (direction > 0 && bCache.deathTick !== null && bCache.deathTick - tick < numTicks)
+    numTicks = bCache.deathTick - tick
+  else if (direction < 0 && tick - bCache.birthTick < numTicks)
+    numTicks = tick - bCache.birthTick
 
-  let firstMove = false
-  for (let i = 0; i < absLength; i += step) {
-    tick += delta * step
+  tick -= tick % step
+
+  let lastPoint = null
+  for (let i = 0; i < numTicks; i += step, tick += direction * step) {
+
     const worldPoint = getTrailWorldPositionAtTick(body, tick)
     if (!worldPoint)
-      continue
+      if (lastPoint)
+        break
+      else
+        continue
 
     const rWorldPoint = rBody && getTrailWorldPositionAtTick(rBody, tick)
     if (rWorldPoint)
@@ -319,19 +340,30 @@ function drawTrails (ctx, renderer, body, simulation) {
 
     const canvasPoint = camera.worldToCanvas(worldPoint, canvas)
 
-    if (lastPoint && !firstMove) {
-      firstMove = true
+    if (lastPoint) {
+      ctx.beginPath()
       ctx.moveTo(lastPoint.x, lastPoint.y)
-
-    } else if (firstMove) {
       ctx.lineTo(canvasPoint.x, canvasPoint.y)
-      ctx.globalAlpha = 0.25
+      ctx.globalAlpha = direction < 0
+        ? getTrailOpacity(i, numTicks)
+        : TRAIL_OPACITY_MAX
+      ctx.stroke()
     }
 
     lastPoint = canvasPoint
-  }
-  ctx.stroke()
 
+  }
+
+}
+
+const getTrailOpacity = (index, length) => {
+
+  const fadeMultiplier = 1 / TRAIL_FADE_FACTOR
+  const maxIndex = length - 1
+
+  const progress = index / maxIndex
+
+  return min((1 - progress) * fadeMultiplier, 1) * TRAIL_OPACITY_MAX
 }
 
 function ensureLivingReferenceFrame ({ camera }, simulation) {
