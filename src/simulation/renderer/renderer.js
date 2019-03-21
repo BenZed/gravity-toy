@@ -21,8 +21,8 @@ const DEFAULT_RENDERING_OPTIONS = Object.freeze({
   // length of trail showing where body has been, in ticks.
   // 0 - off
   // positive values for future trails, negative values for past trails
-  trailLength: -400,
-  trailStep: 4,
+  trailLength: -800,
+  trailStep: 2,
   trailColor: '#c96af2',
 
   // Color of detail elements, such as grids, relations, reference circle
@@ -51,7 +51,7 @@ class Renderer {
       .enum.const('options', { ...DEFAULT_RENDERING_OPTIONS, ...options })
   }
 
-  render (simulation, speed = this.speed) {
+  render (simulation) {
 
     const ctx = this.canvas.getContext('2d')
     this.camera.update(simulation)

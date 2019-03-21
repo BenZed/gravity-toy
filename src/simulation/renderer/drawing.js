@@ -85,6 +85,12 @@ function colorByDoppler (ctx, body, referencePos, relativeVel) {
 
 }
 
+const pointIsVisible = (point, radius = 1, canvas) =>
+  point.x + radius > 0 &&
+    point.x - radius < canvas.width &&
+    point.y + radius > 0 &&
+    point.y - radius < canvas.height
+
 /******************************************************************************/
 // Drawing
 /******************************************************************************/
@@ -110,6 +116,9 @@ function drawBody (ctx, renderer, body) {
   const viewVel = relativeVel.div(camera.current.zoom)
   const viewRadius = max(radius / camera.current.zoom, RADIUS_MIN)
   const viewPos = camera.worldToCanvas(pos, canvas)
+
+  if (!pointIsVisible(viewPos, viewRadius, canvas))
+    return
 
   const speedOfBody = viewVel.magnitude * clamp(abs(speed), 0, MAX_SPEED_DISTORTION)
   const speedDistortionRadius = max(speedOfBody, viewRadius)
@@ -323,6 +332,7 @@ function drawTrails (ctx, renderer, body, simulation) {
   tick -= tick % step
 
   let lastPoint = null
+
   for (let i = 0; i < numTicks; i += step, tick += direction * step) {
 
     const worldPoint = getTrailWorldPositionAtTick(body, tick)
@@ -340,7 +350,7 @@ function drawTrails (ctx, renderer, body, simulation) {
 
     const canvasPoint = camera.worldToCanvas(worldPoint, canvas)
 
-    if (lastPoint) {
+    if (lastPoint && (pointIsVisible(lastPoint, 1, canvas) || pointIsVisible(canvasPoint, 1, canvas))) {
       ctx.beginPath()
       ctx.moveTo(lastPoint.x, lastPoint.y)
       ctx.lineTo(canvasPoint.x, canvasPoint.y)
@@ -386,8 +396,6 @@ export function clearCanvas (ctx, renderer) {
 
 export function drawBodies (ctx, renderer, simulation) {
 
-  const bodiesByMass = new SortedArray(...simulation.livingBodies())
-
   ensureLivingReferenceFrame(renderer, simulation)
 
   if (renderer.options.grid)
@@ -402,7 +410,8 @@ export function drawBodies (ctx, renderer, simulation) {
     for (const body of simulation)
       drawTrails(ctx, renderer, body, simulation)
 
-  for (const body of bodiesByMass) if (body.exists)
+  // const bodiesByMass = new SortedArray(...simulation.livingBodies())
+  for (const body of simulation.livingBodies())
     drawBody(ctx, renderer, body)
 
 }

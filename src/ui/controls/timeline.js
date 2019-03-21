@@ -10,7 +10,7 @@ import { clamp, round } from '@benzed/math'
 // Data
 /******************************************************************************/
 
-const ERASER_PROGRESS_THRESHOLD = 0.33 // * 100%
+const ERASER_PROGRESS_THRESHOLD = 0.25 // * 100%
 const CURRENT_PROGRESS_THRESHOLD = 0.01 // * 100%
 
 /******************************************************************************/
