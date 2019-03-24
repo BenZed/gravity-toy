@@ -1,20 +1,15 @@
-
 /******************************************************************************/
-// Seperated Constants Module
+// Simulation Constnats
 /******************************************************************************/
-
-// I typically export constants from modules that they are cheifly related.
-// In this case, however, worker.js is running in a different process, and I
-// Don't want it to have to run a bunch of code it doesn't need.
 
 export const DEFAULT_PHYSICS = Object.freeze({
 
   // Gravitational Constant, completely arbitrary value. This number was chosen
   // because it makes bodies move quickly at zoom x1
-  g: 512,
+  g: 256,
 
   // Higher steps mean more calculation time, but more precision
-  physicsSteps: 1,
+  physicsSteps: 3,
 
   // As a lossy optimization, bodies below a certain mass threshold can be considered
   // pseudo bodies and excluded from the primary integration loop. This speeds
@@ -59,3 +54,31 @@ export const RADIUS_FACTOR = 1
 
 // 60 ticks equals one second
 export const TICK_DURATION = 1 / 60
+
+/******************************************************************************/
+// Rendering Constnats
+/******************************************************************************/
+
+export const DEFAULT_RENDERING = Object.freeze({
+
+  bodyColorBy: 'doppler', // or 'mass'
+
+  minZoom: 1,
+  maxZoom: 100000,
+
+  grid: true,
+  relations: false,
+
+  // length of trail showing where body has been, in ticks.
+  // 0 - off
+  // positive values for future trails, negative values for past trails
+  trailLength: -600,
+  trailStep: 2,
+  trailColor: '#c96af2',
+
+  // Color of detail elements, such as grids, relations, reference circle
+  detailsColor: 'rgba(81, 214, 83, 0.5)',
+  detailsDash: [3, 3],
+  detailsPad: 3 // pixels
+
+})

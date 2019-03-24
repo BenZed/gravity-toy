@@ -1,9 +1,9 @@
 
 export const DEFAULT_BODIES = {
 
-  count: 2048,
-  speed: 5,
-  radius: 2000,
+  count: 1024,
+  speed: 4,
+  radius: 800,
 
   MASS: {
     min: 1,

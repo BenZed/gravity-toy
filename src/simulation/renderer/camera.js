@@ -66,14 +66,14 @@ class Camera {
       .enum.let($$ref, null)
   }
 
-  worldToCanvas (point, canvas) {
+  worldToCanvas (point, canvas = this.renderer.canvas) {
     return point
       .sub(this.current.relPos)
       .idiv(this.current.zoom)
       .iadd(canvasCenter(canvas))
   }
 
-  canvasToWorld (point, canvas) {
+  canvasToWorld (point, canvas = this.renderer.canvas) {
     return point
       .sub(canvasCenter(canvas))
       .imult(this.current.zoom)

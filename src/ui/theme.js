@@ -1,11 +1,11 @@
 import { Color, Styler, themes } from '@benzed/react'
-import { DEFAULT_RENDERING_OPTIONS } from '../simulation/renderer/renderer'
+import { DEFAULT_RENDERING } from '../simulation/constants'
 /******************************************************************************/
 // Constants
 /******************************************************************************/
 
-const PURPLE = DEFAULT_RENDERING_OPTIONS.trailColor
-const GREEN = DEFAULT_RENDERING_OPTIONS.detailsColor
+const PURPLE = DEFAULT_RENDERING.trailColor
+const GREEN = DEFAULT_RENDERING.detailsColor
 const ORANGE = `#ff9900`
 const BLACK = `black`
 

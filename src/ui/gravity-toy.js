@@ -6,18 +6,12 @@ import { StateTreeContext, GlobalStyle, Write } from '@benzed/react'
 
 import $, { theme } from './theme'
 import { Speed, Speedometer, Timeline, Zoom, Move } from './controls'
-import { useCanvas } from './util'
+
+import Canvas from './canvas'
 
 /******************************************************************************/
 // Styled
 /******************************************************************************/
-
-const Canvas = styled.canvas`
-  position: fixed;
-  background-color: ${$.prop('theme', 'bg')};
-  top: 0;
-  left: 0;
-`
 
 const Controls = styled.div`
   position: fixed;
@@ -30,7 +24,6 @@ const Controls = styled.div`
   &:focus {
     outline: none;
   }
-
 `
 
 const Row = styled.div`
@@ -66,14 +59,12 @@ const Title = styled.h1.attrs({ children: <Write start=''>Gravity Toy</Write> })
 // Main Component
 /******************************************************************************/
 
-const GravityToy = ({ children, gravity, ...props }) => {
+const GravityToy = ({ children, gravity, ...props }) =>
 
-  const canvasRef = useCanvas(gravity)
-
-  return <StateTreeContext.Provider value={gravity}>
+  <StateTreeContext.Provider value={gravity}>
     <GlobalStyle theme={theme}>
 
-      <Canvas ref={canvasRef} />
+      <Canvas gravity={gravity}/>
 
       <Controls>
 
@@ -102,7 +93,7 @@ const GravityToy = ({ children, gravity, ...props }) => {
 
     </GlobalStyle>
   </StateTreeContext.Provider>
-}
+
 /******************************************************************************/
 // Exports
 /******************************************************************************/

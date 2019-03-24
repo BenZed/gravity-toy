@@ -126,7 +126,7 @@ class BodyManager {
       force.imult(TICK_DURATION).idiv(physics.physicsSteps)
 
       vel.iadd(vel.add(force)).imult(0.5)
-      pos.iadd(vel)
+      pos.iadd(vel.div(physics.physicsSteps))
     }
   }
 

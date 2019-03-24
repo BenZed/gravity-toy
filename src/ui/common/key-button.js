@@ -3,11 +3,9 @@ import React, { useState } from 'react'
 import styled from 'styled-components'
 import { useKeyCommand } from '../util'
 import { IconButton, useStateTree } from '@benzed/react'
-import { ensure, remove, wrap, first } from '@benzed/array'
+import { ensure, remove } from '@benzed/array'
 
 import is from 'is-explicit'
-
-import { $ } from '../theme'
 
 /******************************************************************************/
 // Main
@@ -27,6 +25,7 @@ const KeyButton = styled(props => {
   const gravity = useStateTree()
 
   const onMouseDown = e => {
+    e.stopPropagation()
     if (is.func(down))
       down(e)
 
@@ -37,6 +36,7 @@ const KeyButton = styled(props => {
   }
 
   const onMouseUp = e => {
+    e.stopPropagation()
     if (!mouseDown)
       return
 

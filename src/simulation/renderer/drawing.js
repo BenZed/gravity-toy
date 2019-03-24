@@ -1,5 +1,4 @@
-import { Vector, PI, log10, max, min, clamp, floor, sign, abs, cbrt } from '@benzed/math'
-import { SortedArray } from '@benzed/array'
+import { Vector, PI, log10, max, min, clamp, floor, sign, abs } from '@benzed/math'
 
 import { WeightedColorizer } from '../util'
 import { RADIUS_MIN } from '../constants'
@@ -309,7 +308,7 @@ function drawTrails (ctx, renderer, body, simulation) {
 
   const bCache = rBody[$$cache]
 
-  const zoomF = cbrt(camera.current.zoom)
+  const zoomF = camera.current.zoom
 
   let numTicks = abs(options.trailLength * zoomF)
   const step = floor(options.trailStep * zoomF)
@@ -322,6 +321,7 @@ function drawTrails (ctx, renderer, body, simulation) {
 
   let tick = simulation.currentTick
   // prevents jittering caused by step
+  tick -= tick % step
 
   // clamp numTicks
   if (direction > 0 && bCache.deathTick !== null && bCache.deathTick - tick < numTicks)
@@ -329,20 +329,25 @@ function drawTrails (ctx, renderer, body, simulation) {
   else if (direction < 0 && tick - bCache.birthTick < numTicks)
     numTicks = tick - bCache.birthTick
 
-  tick -= tick % step
-
   let lastPoint = null
 
   for (let i = 0; i < numTicks; i += step, tick += direction * step) {
 
-    const worldPoint = getTrailWorldPositionAtTick(body, tick)
+    const firstDrawnTickForExistingBody = i === 0 && body.exists
+    const worldPoint = firstDrawnTickForExistingBody
+    // ensures trail starts at body, as a result of correcting for jitter
+      ? body.pos.copy()
+      : getTrailWorldPositionAtTick(body, tick)
+
     if (!worldPoint)
       if (lastPoint)
         break
       else
         continue
 
-    const rWorldPoint = rBody && getTrailWorldPositionAtTick(rBody, tick)
+    const rWorldPoint = firstDrawnTickForExistingBody
+      ? null
+      : rBody && getTrailWorldPositionAtTick(rBody, tick)
     if (rWorldPoint)
       worldPoint
         .isub(rWorldPoint)

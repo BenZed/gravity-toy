@@ -5,7 +5,7 @@ import { randomVector } from '../simulation/util'
 import { Vector, abs, round, clamp, random } from '@benzed/math'
 import { copy, set, get } from '@benzed/immutable'
 
-import { DEFAULT_RENDERING_OPTIONS } from '../simulation/renderer/renderer'
+import { DEFAULT_RENDERING } from '../simulation/constants'
 import { MAX_SPEED, DEFAULT_BODIES } from './constants'
 
 /******************************************************************************/
@@ -13,7 +13,6 @@ import { MAX_SPEED, DEFAULT_BODIES } from './constants'
 /******************************************************************************/
 
 const CONTEXT_INTERVAL = 150 // ms
-
 const NUM_DELTA_TICKS = 30
 
 const $$mrs = Symbol('mutable-runtime-state')
@@ -22,9 +21,9 @@ const $$mrs = Symbol('mutable-runtime-state')
 // Helper
 /******************************************************************************/
 
-// I know this is such a specific application of the reduce method, but
 // I feel like I write this function a LOT. TODO add to @benzed/array?
 const average = array => {
+
   let total = 0
   for (const value of array)
     total += value
@@ -40,13 +39,10 @@ class DefaultSimulation extends Simulation {
 
   constructor () {
 
-    super({
-      minRealBodies: 256,
-      maxCacheMemory: 128
-    })
+    super({ minRealBodies: 256 })
 
-    const bodies = []
     const center = new Vector(innerWidth / 2, innerHeight / 2)
+    const bodies = []
 
     const { radius, speed, count, MASS } = DEFAULT_BODIES
 
@@ -128,7 +124,7 @@ class GravityToyStateTree extends StateTree {
   }
 
   @state
-  renderOptions = copy(DEFAULT_RENDERING_OPTIONS)
+  renderOptions = copy(DEFAULT_RENDERING)
 
   @state
   simulationState = {
@@ -188,7 +184,6 @@ class GravityToyStateTree extends StateTree {
     const { renderer, simulation, paused, [$$mrs]: mrs } = this
 
     const initialTick = simulation.currentTick
-
     const nextTick = initialTick + (paused ? 0 : this.targetSpeed)
 
     simulation.setCurrentTick(nextTick)
@@ -251,15 +246,13 @@ class GravityToyStateTree extends StateTree {
     }, 'renderOptions')
 
     // Center camera on largest body TODO this should go elsewhere
-      const largest = [ ...this.simulation.bodies() ].reduce((big, body) => big.mass > body.mass
-        ? big
-        : body, { mass: -Infinity })
+    const largest = [ ...this.simulation.bodies() ].reduce((big, body) => big.mass > body.mass
+      ? big
+      : body, { mass: -Infinity })
 
-      this.renderer.camera.referenceFrame = largest
-      this.renderer.camera.target.pos.set(Vector.zero)
-
+    this.renderer.camera.referenceFrame = largest
+    this.renderer.camera.target.pos.set(Vector.zero)
   }
-
 }
 
 /******************************************************************************/
