@@ -3,4 +3,5 @@ node_modules
 lib
 example
 *.temp*
-old
+packages/_template*
+*old*

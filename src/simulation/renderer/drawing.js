@@ -1,4 +1,4 @@
-import { Vector, PI, log10, max, min, clamp, floor, sign, abs } from '@benzed/math'
+import { Vector, PI, log10, max, min, clamp, floor, sign, abs, sqrt } from '@benzed/math'
 
 import { WeightedColorizer } from '../util'
 import { RADIUS_MIN } from '../constants'
@@ -308,7 +308,7 @@ function drawTrails (ctx, renderer, body, simulation) {
 
   const bCache = rBody[$$cache]
 
-  const zoomF = camera.current.zoom
+  const zoomF = sqrt(camera.current.zoom)
 
   let numTicks = abs(options.trailLength * zoomF)
   const step = floor(options.trailStep * zoomF)

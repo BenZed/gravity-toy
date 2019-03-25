@@ -6,14 +6,14 @@ export const DEFAULT_PHYSICS = Object.freeze({
 
   // Gravitational Constant, completely arbitrary value. This number was chosen
   // because it makes bodies move quickly at zoom x1
-  g: 256,
+  g: 100,
 
   // Higher steps mean more calculation time, but more precision
-  physicsSteps: 3,
+  physicsSteps: 1,
 
   // As a lossy optimization, bodies below a certain mass threshold can be considered
   // pseudo bodies and excluded from the primary integration loop. This speeds
-  // up the simulation at a cost of realism.
+  // up the simulation at a cost of accuracy.
   realMassThreshold: 10,
 
   // There must be at least this many real bodies before bodies under the aforementioned
@@ -22,11 +22,9 @@ export const DEFAULT_PHYSICS = Object.freeze({
 
 })
 
-// megabytes
-export const DEFAULT_MAX_MB = 256
+export const DEFAULT_MAX_MB = 256 // mb
 
-// bytes
-export const ONE_MB = 1024 ** 2
+export const ONE_MB = 1024 ** 2 // bytes
 
 // size of a javascript number value, in bytes
 export const NUMBER_SIZE = 8
@@ -38,9 +36,9 @@ export const NUMBER_SIZE = 8
 // It gets this value as it's "linkId"
 export const NO_LINK = -1
 
-// Each body stores 6 numbers per tick: posX, posY, velX, velY, mass, parentIndex.
-// Mass may be able to be optimized in the future, because it doesn't change
-// every tick.
+// Each body stores 6 numbers per tick: posX, posY, velX, velY, mass, linkId.
+// Mass and linkId may be able to be optimized in the future, because they
+// don't change every tick
 export const CACHED_VALUES_PER_TICK = 6
 
 // Arbitrary minimum mass for a body
@@ -72,8 +70,8 @@ export const DEFAULT_RENDERING = Object.freeze({
   // length of trail showing where body has been, in ticks.
   // 0 - off
   // positive values for future trails, negative values for past trails
-  trailLength: -600,
-  trailStep: 2,
+  trailLength: -200,
+  trailStep: 3,
   trailColor: '#c96af2',
 
   // Color of detail elements, such as grids, relations, reference circle

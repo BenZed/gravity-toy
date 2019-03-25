@@ -45,7 +45,7 @@ function onMouseUp (e) {
 
     const bodyCanvasPoint = camera.worldToCanvas(body.pos)
     const distance = canvasPoint.sub(bodyCanvasPoint).magnitude
-    if (distance < body.radius + CLICK_RADIUS) {
+    if (distance < body.radius / camera.current.zoom + CLICK_RADIUS) {
       camera.referenceFrame = body
       break
     }

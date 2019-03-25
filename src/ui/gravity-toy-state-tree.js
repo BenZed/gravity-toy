@@ -1,6 +1,6 @@
 import { StateTree, state, action } from '@benzed/state-tree'
 import { Simulation, Renderer } from '../simulation'
-import { randomVector } from '../simulation/util'
+import { randomVector, orbitalVelocity } from '../simulation/util'
 
 import { Vector, abs, round, clamp, random } from '@benzed/math'
 import { copy, set, get } from '@benzed/immutable'
@@ -14,6 +14,8 @@ import { MAX_SPEED, DEFAULT_BODIES } from './constants'
 
 const CONTEXT_INTERVAL = 150 // ms
 const NUM_DELTA_TICKS = 30
+
+const STAR_MASS = 1000000000
 
 const $$mrs = Symbol('mutable-runtime-state')
 
@@ -39,27 +41,43 @@ class DefaultSimulation extends Simulation {
 
   constructor () {
 
-    super({ minRealBodies: 256 })
+    super({ realBodiesMin: 256 })
 
     const center = new Vector(innerWidth / 2, innerHeight / 2)
     const bodies = []
 
-    const { radius, speed, count, MASS } = DEFAULT_BODIES
+    const { radius, speed, count, groups, MASS } = DEFAULT_BODIES
 
-    for (let i = 0; i < count; i++) {
+    const star = {
+      mass: STAR_MASS,
+      pos: new Vector(2000 * 200, 0),
+      vel: new Vector(0, 0)
+    }
 
-      const pos = randomVector(radius).iadd(center)
-      const vel = randomVector(speed)
+    bodies.push(star)
 
-      let mass = random(MASS.min, MASS.max)
-      if (random() < MASS.superSizeProbability)
-        mass *= MASS.superSizeMassMultiplier
+    const orbit = orbitalVelocity(center, star)
 
-      bodies.push({
-        mass,
-        pos,
-        vel
-      })
+    for (let g = 0; g < groups; g++) {
+
+      const groupCenter = center.add(randomVector(radius))
+      const groupVel = randomVector(speed).add(orbit)
+
+      for (let i = 0; i < count / groups; i++) {
+
+        const pos = randomVector(radius * 0.5).iadd(groupCenter)
+        const vel = randomVector(speed * 0.5).iadd(groupVel)
+
+        let mass = random(MASS.min, MASS.max)
+        if (random() < MASS.superSizeProbability)
+          mass *= MASS.superSizeMassMultiplier
+
+        bodies.push({
+          mass,
+          pos,
+          vel: vel
+        })
+      }
     }
 
     this.createBodies(bodies)
@@ -246,7 +264,7 @@ class GravityToyStateTree extends StateTree {
     }, 'renderOptions')
 
     // Center camera on largest body TODO this should go elsewhere
-    const largest = [ ...this.simulation.bodies() ].reduce((big, body) => big.mass > body.mass
+    const largest = [ ...this.simulation.bodies() ].reduce((big, body) => big.mass > body.mass && big.mass !== STAR_MASS
       ? big
       : body, { mass: -Infinity })
 

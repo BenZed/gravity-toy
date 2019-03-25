@@ -1,15 +1,16 @@
 
 export const DEFAULT_BODIES = {
 
-  count: 1024,
-  speed: 4,
-  radius: 800,
+  count: 512,
+  groups: 7,
+  speed: 2,
+  radius: 1000,
 
   MASS: {
     min: 1,
-    max: 10,
-    superSizeProbability: 0.01,
-    superSizeMassMultiplier: 50
+    max: 9,
+    superSizeProbability: 0.1,
+    superSizeMassMultiplier: 25
   }
 
 }
