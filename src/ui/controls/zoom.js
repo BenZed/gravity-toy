@@ -1,21 +1,52 @@
-import React, { useRef } from 'react'
+import React, { useRef, useEffect } from 'react'
 import styled from 'styled-components'
 
 import $ from '../theme'
 import { KeyButton } from '../common'
 
-import { IconButton, useStateTree } from '@benzed/react'
+import { IconButton, useStateTree, on, off } from '@benzed/react'
 import { pow, clamp, log } from '@benzed/math'
-import is from 'is-explicit'
 
 /******************************************************************************/
 // Directions
 /******************************************************************************/
 
-const KEYBOARD_ZOOM_SPEED = 0.5
+const ZOOM_BUTTON_SPEED = 0.005 // percentage zoom changes per tick zoom key is held down
+const WHEEL_ZOOM_MAX = 20000
+// wheel zoom delta is measured in pixels. This measurement is how many pixels
+// the wheel would have to spin in order to zoom all the way out.
 
 /******************************************************************************/
 // Hooks
+/******************************************************************************/
+
+const useWheelZoom = (gravity) => {
+  useEffect(() => {
+
+    const onWheel = e => {
+
+      const { deltaY } = e
+
+      const { maxZoom } = gravity.renderer.options
+      const { camera } = gravity.renderer
+      const { zoom } = camera.target
+
+      const factor = getZoomFactor(zoom, maxZoom) +
+        clamp(deltaY / WHEEL_ZOOM_MAX, -1, 1)
+
+      camera.target.zoom = getZoomTarget(factor, maxZoom)
+    }
+
+    window::on('wheel', onWheel)
+
+    return () => {
+      window::off('wheel', onWheel)
+    }
+  }, [gravity])
+}
+
+/******************************************************************************/
+// Helper
 /******************************************************************************/
 
 const getZoomFactor = (zoom, maxZoom) => log(zoom) / log(maxZoom)
@@ -104,8 +135,6 @@ const ZoomSliderContainer = styled(props => {
   const { maxZoom } = gravity.renderer.options
   const { camera } = gravity.renderer
 
-  // const { zoom } = camera.target
-
   return <div
     {...rest}
     ref={zoomRef}
@@ -137,14 +166,11 @@ const ZoomButton = ({ gravity, out }) =>
       const { zoom } = camera.target
 
       const sign = out ? 1 : -1
-      const keyDelta = KEYBOARD_ZOOM_SPEED * sign
-      const zoomDelta = maxZoom - getZoomFactor(maxZoom - (zoom + keyDelta), maxZoom) * maxZoom
+      const zoomFactorDelta = ZOOM_BUTTON_SPEED * sign
 
-      const nextZoom = is.nan(zoomDelta)
-        ? maxZoom
-        : zoom + zoomDelta * sign
+      const factor = clamp(getZoomFactor(zoom, maxZoom) + zoomFactorDelta, 0, 1)
 
-      camera.target.zoom = clamp(nextZoom, 1, maxZoom - 1)
+      camera.target.zoom = getZoomTarget(factor, maxZoom)
     }}
   >{out ? '▼' : '▲'}</KeyButton>
 
@@ -156,6 +182,7 @@ const Zoom = styled(props => {
 
   const { gravity, ...rest } = props
   const zoomRef = useRef()
+  useWheelZoom(gravity)
 
   return <div {...rest}>
     <ZoomButton gravity={gravity} />
@@ -176,7 +203,6 @@ const Zoom = styled(props => {
   ${KeyButton} {
     margin-left: auto;
   }
-
 `
 
 /******************************************************************************/

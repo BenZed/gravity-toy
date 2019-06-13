@@ -5,7 +5,14 @@ import styled from 'styled-components'
 import { StateTreeContext, GlobalStyle, Write } from '@benzed/react'
 
 import $, { theme } from './theme'
-import { Speed, Speedometer, Timeline, Zoom, Move } from './controls'
+import {
+  Speed,
+  Speedometer,
+  Timeline,
+  Zoom,
+  Move,
+  RenderOptions
+} from './controls'
 
 import Canvas from './canvas'
 
@@ -73,6 +80,7 @@ const GravityToy = ({ children, gravity, ...props }) =>
           <Column>
             <Title />
             <div>Body Controls</div>
+            <RenderOptions gravity={gravity} />
             <Speedometer gravity={gravity} />
           </Column>
 
