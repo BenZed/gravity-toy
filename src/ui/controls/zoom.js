@@ -25,7 +25,12 @@ const useWheelZoom = (gravity) => {
 
     const onWheel = e => {
 
-      const { deltaY } = e
+      const { deltaY, shiftKey } = e
+      if (shiftKey)
+        return
+
+      e.stopPropagation()
+      e.preventDefault()
 
       const { maxZoom } = gravity.renderer.options
       const { camera } = gravity.renderer
@@ -37,10 +42,10 @@ const useWheelZoom = (gravity) => {
       camera.target.zoom = getZoomTarget(factor, maxZoom)
     }
 
-    window::on('wheel', onWheel)
+    on(window, 'wheel', onWheel)
 
     return () => {
-      window::off('wheel', onWheel)
+      off(window, 'wheel', onWheel)
     }
   }, [gravity])
 }
@@ -188,7 +193,7 @@ const Zoom = styled(props => {
     <ZoomButton gravity={gravity} />
     <ZoomSliderContainer gravity={gravity} zoomRef={zoomRef} >
       <ZoomMarkers gravity={gravity} />
-      <ZoomSlider gravity={gravity} zoomRef={zoomRef}/>
+      <ZoomSlider gravity={gravity} zoomRef={zoomRef} />
     </ZoomSliderContainer>
     <ZoomButton gravity={gravity} out />
   </div>

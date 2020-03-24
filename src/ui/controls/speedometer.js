@@ -13,6 +13,7 @@ const Speedometer = styled(props => {
   const { gravity, ...rest } = props
 
   useStateTree.observe(gravity, 'targetSpeed', 'actualSpeed')
+
   const { targetSpeed, actualSpeed } = gravity
 
   return <div {...rest} >
