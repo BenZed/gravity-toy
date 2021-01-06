@@ -1,8 +1,6 @@
 
 use std::collections::HashMap;
 
-mod memo;
-
 mod vector;
 use vector::V2;
 
