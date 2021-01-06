@@ -1,85 +1,154 @@
-use crate::{ vector::V2 };
+use crate::{vector::V2};
 
 // Aliases 
+pub type BodyID = u16;
+pub type BodyMass = f32;
 pub type Tick = usize;
 
-pub type BodyMass = f32;
-pub type BodyID = u16;
+// Constants 
+pub const MASS_MIN: f32 = 1.0;
+const RADIUS_FACTOR: f32 = 0.125; 
+const RADIUS_MIN: f32 = 1.0; 
+
+// Body Tick Data
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub struct BodyTransform {
+    pub position: V2,
+    pub velocity: V2,
+    pub mass: BodyMass,
+    pub parent_id: Option<BodyID>
+}
+
+impl BodyTransform {
+    pub fn radius (&self) -> BodyMass {
+        RADIUS_MIN + self.mass.cbrt() - MASS_MIN * RADIUS_FACTOR
+    }
+}
 
 // Constants 
-const RADIUS_MIN: f32 = 1.0; 
-const RADIUS_FACTOR: f32 = 0.125; 
-const MASS_MIN: f32 = 1.0;
-const DESTROYED_BODY_Data: BodyData = BodyData {
+const DESTROYED_BODY_TRANSFORM: BodyTransform = BodyTransform {
     position: V2 { x: 0.0, y: 0.0 },
     velocity: V2 { x: 0.0, y: 0.0 },
     mass: 0.0,
     parent_id: None
 };
 
-// Body Tick Data
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub struct BodyData {
-    pub position: V2,
-    pub velocity: V2,
-    pub mass: BodyMass,
-    pub parent_id: Option<BodyID>,
-}
-
 // Body 
 #[derive(Debug)]
 pub struct Body {
 
+    pub transform: BodyTransform,
+
     id: BodyID,
     start_tick: Tick,
-
-    cache: Vec<BodyData>
+    cache: Vec<BodyTransform>
 }
 
 impl Body {
 
-    pub fn new (id: BodyID, data: BodyData) -> Body {
-        Body::new_at_tick(id, 0, data)
+    pub fn new (id: BodyID, transform: BodyTransform) -> Body {
+        Body::new_at_tick(id, 0, transform)
     }
 
-    pub fn new_at_tick (id: BodyID, tick: Tick, data: BodyData) -> Body {
+    pub fn new_at_tick (id: BodyID, tick: Tick, transform: BodyTransform) -> Body {
+
+        if transform.mass < MASS_MIN {
+            panic!("Mass of new bodies cannot be below {}", MASS_MIN)
+        }
 
         let mut body = Body {
             id,
+            
             start_tick: tick,
-            cache: Vec::new()
+            cache: Vec::new(),
+            transform: transform,
         };
 
-        body.record_tick(&tick, data);
+        body.write_transform_to_next_tick();
         body
+    }
+
+    pub fn exists (&self) -> bool {
+        self.transform.mass >= MASS_MIN
     }
 
     pub fn id (&self) -> &BodyID {
         &self.id
     }
 
-    pub fn get_start_tick (&self) -> &Tick {
+    pub fn start_tick (&self) -> &Tick {
         &self.start_tick
     }
 
-    pub fn record_tick (&mut self, tick: &Tick, data: BodyData) {
+    pub fn read_tick(&mut self, tick: &Tick) -> &BodyTransform {
+
+        let transform_at_tick= self.get_cache_data(tick); 
+        
+        if &self.transform != transform_at_tick {
+            self.transform = *transform_at_tick
+        }
+        
+        &self.transform
+    }
+
+    pub fn write_tick(&mut self, tick: &Tick, transform: BodyTransform) {
 
         let cache_index = self.get_cache_index(tick);
-        if cache_index > self.cache.len() {
-            let max_tick = self.start_tick + cache_index;
+
+        let cache_length = self.cache.len();
+        if cache_index > cache_length {
+            let max_tick = cache_length + self.start_tick;
             panic!(
-                "Ticks must be recorded continoglously. Tick {} cannot be recorded until {} has.", 
-                tick, 
-                max_tick
+                "Ticks must be written in consecutive order, {} must be written before {}",
+                max_tick,
+                tick
             )
+        }
+
+        self.cache[cache_index] = transform
+    }
+
+    pub fn write_transform_to_next_tick(&mut self) {
+        let next_tick = self.cache.len() + self.start_tick;
+        self.write_tick(&next_tick, self.transform);
+    }
+
+    pub fn invalidate_before (&mut self, tick: &Tick) -> bool {
+
+        if tick < &self.start_tick {
+            self.start_tick -= tick;
+
+        } else {
+            self.start_tick = 0;
+            
+            let mut num_ticks_to_remove = tick - self.start_tick;
+            while num_ticks_to_remove > 0 && self.cache.len() > 0 {
+                self.cache.remove(0);
+                num_ticks_to_remove -= 1;
+            }
         };
 
-        self.cache[cache_index] = data;
+        let erased_by_invalidation = self.cache.len() == 0;
+        erased_by_invalidation
+    }
+
+    pub fn invalidate_after (&mut self, tick: &Tick) -> bool {
+
+        if tick <= &self.start_tick {
+            self.cache.clear();
+        
+        } else {
+            let final_index = self.get_cache_index(tick);
+            self.cache.truncate(final_index);
+        }
+
+        let erased_by_invalidation = self.cache.len() == 0;
+        erased_by_invalidation
     }
 
     fn get_cache_index (&self, tick: &Tick) -> usize {
 
-        if self.start_tick > *tick {
+        if tick < &self.start_tick {
             // ^ index would be below zero
             panic!("Body {} did not yet exist at tick {}", self.id, tick)
         }
@@ -88,38 +157,18 @@ impl Body {
         cache_index
     }
 
-    fn get_cache_data (&self, tick: &Tick) -> &BodyData {
+    fn get_cache_data (&self, tick: &Tick) -> &BodyTransform {
+
+        if tick < &self.start_tick {
+            return &DESTROYED_BODY_TRANSFORM
+        }
 
         let cache_index = self.get_cache_index(tick);
         if cache_index < self.cache.len() {
             &self.cache[cache_index]
         } else {
-            &DESTROYED_BODY_Data
+            &DESTROYED_BODY_TRANSFORM
         }
-    }
-
-    pub fn mass (&self, tick: &Tick) -> &BodyMass {
-        &self.get_cache_data(tick).mass
-    }
-
-    pub fn position (&self, tick: &Tick) -> &V2 {
-        &self.get_cache_data(tick).position
-    }
-
-    pub fn velocity (&self, tick: &Tick) -> &V2 {
-        &self.get_cache_data(tick).velocity
-    }
-
-    pub fn parent_id (&self, tick: &Tick) -> &Option<BodyID> {
-        &self.get_cache_data(tick).parent_id
-    }
-
-    pub fn radius (&self, tick: &Tick) -> BodyMass {
-        RADIUS_MIN + self.mass(tick).cbrt() - MASS_MIN * RADIUS_FACTOR
-    }
-
-    pub fn destroyed (&self, tick: &Tick) -> bool {
-        *self.mass(tick) <= 0.0
     }
 }
 
@@ -131,5 +180,4 @@ impl PartialEq for Body {
 
 #[cfg(test)]
 mod test {
-
 }
