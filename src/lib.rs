@@ -7,10 +7,14 @@ use vector::V2;
 mod body;
 use body::{Body, BodyTransform, BodyID, Tick};
 
+/****************************************************/
+// Simulation
+/****************************************************/
+
 #[derive(Debug)]
 pub struct Simulation {
 
-    next_body_id: BodyID,
+    next_body_id: body::BodyID,
     bodies: HashMap<BodyID, Body>,
     g: f32,
 
@@ -33,18 +37,17 @@ impl Simulation {
         }
     }
 
-    pub fn create_body(&mut self, mass: f32, position: V2, velocity: V2) {
+    pub fn create_body(&mut self, mass: f32, position: V2, velocity: V2) -> &Body {
 
         let id = self.next_body_id;
 
         let body = Body::new(
             id,
-            BodyTransform {
+            BodyTransform::new(
                 mass,
                 position,
-                velocity,
-                parent_id: None
-            }
+                velocity
+            )
         );
 
         self.bodies.insert(
@@ -53,6 +56,8 @@ impl Simulation {
         );
 
         self.next_body_id += 1;
+
+        &self.bodies[&id]
     }
 
     pub fn get_tick(&self) -> &Tick {
@@ -106,6 +111,10 @@ impl Simulation {
     }
 }
 
+/****************************************************/
+// Tests
+/****************************************************/
+
 #[cfg(test)]
 mod test {
 
@@ -116,13 +125,15 @@ mod test {
 
         let mut sim = Simulation::new(1.0);
 
-        sim.create_body(
+        let body = sim.create_body(
             70.0, 
             V2::zero(), 
             V2::zero()
         );
 
-        println!("{:?}", sim);
+        let body_id = *body.id();
+
+        assert!(sim.bodies.contains_key(&body_id));
         assert!(sim.bodies.len() == 1);
     }
 

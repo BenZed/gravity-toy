@@ -1,60 +1,36 @@
-use crate::{vector::V2};
+mod transform;
+use transform::{Transform};
 
-// Aliases 
+pub use transform::Transform as BodyTransform;
+
+/****************************************************/
+// Aliases
+/****************************************************/
+
 pub type BodyID = u16;
-pub type BodyMass = f32;
 pub type Tick = usize;
 
-// Constants 
-pub const MASS_MIN: f32 = 1.0;
-const RADIUS_FACTOR: f32 = 0.125; 
-const RADIUS_MIN: f32 = 1.0; 
+/****************************************************/
+// Body
+/****************************************************/
 
-// Body Tick Data
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub struct BodyTransform {
-    pub position: V2,
-    pub velocity: V2,
-    pub mass: BodyMass,
-    pub parent_id: Option<BodyID>
-}
-
-impl BodyTransform {
-    pub fn radius (&self) -> BodyMass {
-        RADIUS_MIN + self.mass.cbrt() - MASS_MIN * RADIUS_FACTOR
-    }
-}
-
-// Constants 
-const DESTROYED_BODY_TRANSFORM: BodyTransform = BodyTransform {
-    position: V2 { x: 0.0, y: 0.0 },
-    velocity: V2 { x: 0.0, y: 0.0 },
-    mass: 0.0,
-    parent_id: None
-};
-
-// Body 
 #[derive(Debug)]
 pub struct Body {
 
-    pub transform: BodyTransform,
+    pub transform: Transform,
 
     id: BodyID,
     start_tick: Tick,
-    cache: Vec<BodyTransform>
+    cache: Vec<Transform>
 }
 
 impl Body {
 
-    pub fn new (id: BodyID, transform: BodyTransform) -> Body {
+    pub fn new (id: BodyID, transform: Transform) -> Body {
         Body::new_at_tick(id, 0, transform)
     }
 
-    pub fn new_at_tick (id: BodyID, tick: Tick, transform: BodyTransform) -> Body {
-
-        if transform.mass < MASS_MIN {
-            panic!("Mass of new bodies cannot be below {}", MASS_MIN)
-        }
+    pub fn new_at_tick (id: BodyID, tick: Tick, transform: Transform) -> Body {
 
         let mut body = Body {
             id,
@@ -68,8 +44,8 @@ impl Body {
         body
     }
 
-    pub fn exists (&self) -> bool {
-        self.transform.mass >= MASS_MIN
+    pub fn destroyed (&self) -> bool {
+        self.transform.is_destroyed()
     }
 
     pub fn id (&self) -> &BodyID {
@@ -80,7 +56,7 @@ impl Body {
         &self.start_tick
     }
 
-    pub fn read_tick(&mut self, tick: &Tick) -> &BodyTransform {
+    pub fn read_tick(&mut self, tick: &Tick) -> &Transform {
 
         let transform_at_tick= self.get_cache_data(tick); 
         
@@ -91,7 +67,7 @@ impl Body {
         &self.transform
     }
 
-    pub fn write_tick(&mut self, tick: &Tick, transform: BodyTransform) {
+    pub fn write_tick(&mut self, tick: &Tick, transform: Transform) {
 
         let cache_index = self.get_cache_index(tick);
 
@@ -108,7 +84,7 @@ impl Body {
         self.cache[cache_index] = transform
     }
 
-    pub fn write_transform_to_next_tick(&mut self) {
+    pub fn write_transform_to_next_tick (&mut self) {
         let next_tick = self.cache.len() + self.start_tick;
         self.write_tick(&next_tick, self.transform);
     }
@@ -157,26 +133,32 @@ impl Body {
         cache_index
     }
 
-    fn get_cache_data (&self, tick: &Tick) -> &BodyTransform {
+    fn get_cache_data (&self, tick: &Tick) -> &Transform {
 
         if tick < &self.start_tick {
-            return &DESTROYED_BODY_TRANSFORM
+            return Transform::destroyed()
         }
 
         let cache_index = self.get_cache_index(tick);
         if cache_index < self.cache.len() {
             &self.cache[cache_index]
         } else {
-            &DESTROYED_BODY_TRANSFORM
+            Transform::destroyed()
         }
     }
 }
 
 impl PartialEq for Body {
+
     fn eq (&self, other: &Body) -> bool {
         self.id == other.id        
     }
+
 }
+
+/****************************************************/
+// Tests
+/****************************************************/
 
 #[cfg(test)]
 mod test {

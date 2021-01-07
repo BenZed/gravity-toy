@@ -7,6 +7,10 @@ use std::ops::{
 use std::fmt::{Display, Formatter, Result};
 use std::f64::consts::PI;
 
+/****************************************************/
+// Vector 2
+/****************************************************/
+
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct V2 {
     pub x: f64,
@@ -85,7 +89,9 @@ impl V2 {
     
 }
 
-// Display
+/****************************************************/
+// Display Implementation
+/****************************************************/
 
 impl Display for V2 {
     fn fmt(&self, v2: &mut Formatter<'_>) -> Result {
@@ -93,7 +99,9 @@ impl Display for V2 {
     }
 }
 
+/****************************************************/
 // Operator Overloading
+/****************************************************/
 
 impl Add<V2> for V2 {
 
