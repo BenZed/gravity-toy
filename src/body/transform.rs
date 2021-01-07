@@ -81,7 +81,6 @@ mod test {
     #[test]
     #[should_panic]
     fn new() {
-
         Transform::new(
             0.0, 
             V2::zero(), 

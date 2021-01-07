@@ -40,7 +40,7 @@ impl Body {
             transform: transform,
         };
 
-        body.write_transform_to_next_tick();
+        body.record_tick(&tick, transform);
         body
     }
 
@@ -56,7 +56,7 @@ impl Body {
         &self.start_tick
     }
 
-    pub fn read_tick(&mut self, tick: &Tick) -> &Transform {
+    pub fn apply_tick(&mut self, tick: &Tick) -> &Transform {
 
         let transform_at_tick= self.get_cache_data(tick); 
         
@@ -67,11 +67,11 @@ impl Body {
         &self.transform
     }
 
-    pub fn write_tick(&mut self, tick: &Tick, transform: Transform) {
-
-        let cache_index = self.get_cache_index(tick);
+    pub fn record_tick(&mut self, tick: &Tick, transform: Transform) {
 
         let cache_length = self.cache.len();
+
+        let cache_index = self.get_cache_index(tick);
         if cache_index > cache_length {
             let max_tick = cache_length + self.start_tick;
             panic!(
@@ -81,12 +81,16 @@ impl Body {
             )
         }
 
-        self.cache[cache_index] = transform
+        if cache_length == 0 || cache_index == cache_length - 1 {
+            self.cache.push(transform)
+        } else {
+            self.cache[cache_index] = transform
+        }
     }
 
-    pub fn write_transform_to_next_tick (&mut self) {
+    pub fn record_next_tick (&mut self) {
         let next_tick = self.cache.len() + self.start_tick;
-        self.write_tick(&next_tick, self.transform);
+        self.record_tick(&next_tick, self.transform);
     }
 
     pub fn invalidate_before (&mut self, tick: &Tick) -> bool {
