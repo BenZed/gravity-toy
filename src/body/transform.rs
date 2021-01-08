@@ -30,7 +30,7 @@ const DESTROYED_BODY_TRANSFORM: Transform = Transform {
 pub struct Transform {
     pub position: V2,
     pub velocity: V2,
-    pub mass: Mass,
+    pub mass: Mass
 }
 
 impl Transform {
@@ -82,7 +82,7 @@ mod test {
     #[should_panic]
     fn new() {
         Transform::new(
-            0.0, 
+            0.0, // <- mass must be above 0
             V2::zero(), 
             V2::zero()
         );

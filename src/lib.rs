@@ -5,7 +5,7 @@ mod vector;
 use vector::V2;
 
 mod body;
-use body::{Body, BodyTransform, BodyID, Tick};
+use body::{Body, BodyTransform, BodyID};
 
 /****************************************************/
 // Constants
@@ -14,13 +14,18 @@ use body::{Body, BodyTransform, BodyID, Tick};
 const DEFAULT_GRAVITY: f32 = 9.8;
 
 /****************************************************/
+// Aliases
+/****************************************************/
+
+pub type Tick = usize;
+/****************************************************/
 // Simulation
 /****************************************************/
 
 #[derive(Debug)]
 pub struct Simulation {
 
-    next_body_id: body::BodyID,
+    next_body_id: BodyID,
     bodies: HashMap<BodyID, Body>,
     g: f32,
 

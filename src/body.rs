@@ -3,13 +3,14 @@ use transform::{Transform};
 
 pub use transform::Transform as BodyTransform;
 
+use crate::Tick;
+
 /****************************************************/
 // Aliases
 /****************************************************/
 
-pub type BodyID = u16;
-pub type Tick = usize;
-
+type ID = u16;
+pub type BodyID = ID;
 /****************************************************/
 // Body
 /****************************************************/
@@ -19,18 +20,18 @@ pub struct Body {
 
     pub transform: Transform,
 
-    id: BodyID,
+    id: ID,
     start_tick: Tick,
     cache: Vec<Transform>
 }
 
 impl Body {
 
-    pub fn new (id: BodyID, transform: Transform) -> Body {
+    pub fn new (id: ID, transform: Transform) -> Body {
         Body::new_at_tick(id, 0, transform)
     }
 
-    pub fn new_at_tick (id: BodyID, tick: Tick, transform: Transform) -> Body {
+    pub fn new_at_tick (id: ID, tick: Tick, transform: Transform) -> Body {
 
         let mut body = Body {
             id,
@@ -48,7 +49,7 @@ impl Body {
         self.transform.is_destroyed()
     }
 
-    pub fn id (&self) -> &BodyID {
+    pub fn id (&self) -> &ID {
         &self.id
     }
 
@@ -58,7 +59,7 @@ impl Body {
 
     pub fn apply_tick(&mut self, tick: &Tick) -> &Transform {
 
-        let transform_at_tick= self.get_cache_data(tick); 
+        let transform_at_tick = self.get_cache_data(tick); 
         
         if &self.transform != transform_at_tick {
             self.transform = *transform_at_tick
@@ -106,6 +107,7 @@ impl Body {
                 self.cache.remove(0);
                 num_ticks_to_remove -= 1;
             }
+
         };
 
         let erased_by_invalidation = self.cache.len() == 0;
