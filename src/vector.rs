@@ -1,11 +1,6 @@
-use std::ops::{
-    Add, AddAssign, 
-    Sub, SubAssign, 
-    Mul, MulAssign, 
-    Div, DivAssign
-};
-use std::fmt::{Display, Formatter, Result};
 use std::f64::consts::PI;
+use std::fmt::{Display, Formatter, Result};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 /****************************************************/
 // Vector 2
@@ -14,20 +9,19 @@ use std::f64::consts::PI;
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct V2 {
     pub x: f64,
-    pub y: f64
+    pub y: f64,
 }
 
 impl V2 {
-    
-    pub fn new (x: f64, y: f64) -> V2 {
+    pub fn new(x: f64, y: f64) -> V2 {
         V2 { x, y }
     }
-    
-    pub fn zero () -> V2 {
+
+    pub fn zero() -> V2 {
         V2 { x: 0.0, y: 0.0 }
     }
 
-    pub fn dist (left: &V2, right: &V2) -> f64 {
+    pub fn dist(left: &V2, right: &V2) -> f64 {
         (*left - *right).mag()
     }
 
@@ -35,11 +29,10 @@ impl V2 {
         (*left - *right).sqr_mag()
     }
 
-    pub fn dot (left: &V2, right: &V2) -> f64 {
-
+    pub fn dot(left: &V2, right: &V2) -> f64 {
         let left = left.normalize();
         let right = right.normalize();
-        
+
         left.x * right.x + left.y * right.y
     }
 
@@ -54,20 +47,17 @@ impl V2 {
     pub fn lerp(&self, target: &V2, delta: f64) -> V2 {
         V2::new(
             self.x + delta * (target.x - self.x),
-            self.y + delta * (target.y - self.y)
+            self.y + delta * (target.y - self.y),
         )
     }
 
     pub fn normalize(&self) -> V2 {
         let mag = self.mag();
 
-        if mag == 0.0 { 
-            V2::zero() 
+        if mag == 0.0 {
+            V2::zero()
         } else {
-            V2::new(
-                self.x / mag, 
-                self.y / mag
-            )
+            V2::new(self.x / mag, self.y / mag)
         }
     }
 
@@ -77,16 +67,12 @@ impl V2 {
         let cos = radians.cos();
         let sin = radians.sin();
 
-        V2::new(
-            self.x * cos - self.y * sin,
-            self.x * sin - self.y * cos
-        )
+        V2::new(self.x * cos - self.y * sin, self.x * sin - self.y * cos)
     }
 
     pub fn angle(&self) -> f64 {
         self.y.atan2(self.x) * 180.0 / PI
     }
-    
 }
 
 /****************************************************/
@@ -104,13 +90,11 @@ impl Display for V2 {
 /****************************************************/
 
 impl Add<V2> for V2 {
-
     type Output = V2;
 
     fn add(self, other: V2) -> V2 {
         V2::new(self.x + other.x, self.y + other.y)
     }
-
 }
 
 impl AddAssign<V2> for V2 {
@@ -121,7 +105,7 @@ impl AddAssign<V2> for V2 {
 }
 
 impl Sub<V2> for V2 {
-    type Output = V2; 
+    type Output = V2;
 
     fn sub(self, other: V2) -> V2 {
         V2::new(self.x - other.x, self.y - other.y)
@@ -136,7 +120,7 @@ impl SubAssign<V2> for V2 {
 }
 
 impl Mul<V2> for V2 {
-    type Output = V2; 
+    type Output = V2;
 
     fn mul(self, other: V2) -> V2 {
         V2::new(self.x * other.x, self.y * other.y)
@@ -147,10 +131,7 @@ impl Mul<f64> for V2 {
     type Output = V2;
 
     fn mul(self, other: f64) -> V2 {
-        V2::new(
-            self.x * other, 
-            self.y * other
-        )
+        V2::new(self.x * other, self.y * other)
     }
 }
 
@@ -172,10 +153,7 @@ impl Div<V2> for V2 {
     type Output = V2;
 
     fn div(self, other: V2) -> V2 {
-        V2::new(
-            self.x / other.x,
-            self.y / other.y
-        )
+        V2::new(self.x / other.x, self.y / other.y)
     }
 }
 
@@ -183,10 +161,7 @@ impl Div<f64> for V2 {
     type Output = V2;
 
     fn div(self, other: f64) -> V2 {
-        V2::new(
-            self.x / other,
-            self.y / other
-        )
+        V2::new(self.x / other, self.y / other)
     }
 }
 
@@ -204,7 +179,7 @@ impl DivAssign<f64> for V2 {
     }
 }
 
-// TESTS  
+// TESTS
 #[cfg(test)]
 mod test {
 
@@ -212,7 +187,7 @@ mod test {
 
     #[test]
     fn new() {
-        let v2 = V2::new(1.0,1.0);
+        let v2 = V2::new(1.0, 1.0);
 
         assert_eq!(v2.x, 1.0);
         assert_eq!(v2.y, 1.0);
@@ -239,7 +214,7 @@ mod test {
     }
 
     #[test]
-    fn dot () {
+    fn dot() {
         let left = V2::new(5.0, 0.0);
         let right = V2::new(0.0, 5.0);
 
@@ -252,17 +227,11 @@ mod test {
         let from = V2::new(1.0, 1.0);
         let to = V2::new(4.0, 4.0);
 
-        assert_eq!(
-            from.lerp(&to, 0.0), V2::new(1.0, 1.0)
-        );
+        assert_eq!(from.lerp(&to, 0.0), V2::new(1.0, 1.0));
 
-        assert_eq!(
-            from.lerp(&to, 0.5), V2::new(2.5, 2.5)
-        );
+        assert_eq!(from.lerp(&to, 0.5), V2::new(2.5, 2.5));
 
-        assert_eq!(
-            from.lerp(&to, 1.0), V2::new(4.0, 4.0)
-        )
+        assert_eq!(from.lerp(&to, 1.0), V2::new(4.0, 4.0))
     }
 
     #[test]
@@ -289,12 +258,12 @@ mod test {
         // can't do:
         //
         // assert_eq!(left.rotate(90.0), up)
-        // 
-        // because float point precision errors 
-        // result in an obscurely small x value. 
+        //
+        // because float point precision errors
+        // result in an obscurely small x value.
     }
 
-    #[test] 
+    #[test]
     fn angle() {
         let v2 = V2::new(0.0, 1.0);
         assert_eq!(v2.angle(), 90.0);
@@ -326,12 +295,11 @@ mod test {
 
     #[test]
     fn mul() {
-
         let left = V2::new(2.0, 2.0);
         let right = V2::new(2.0, 2.0);
 
         let mut mult = left * right;
-        assert_eq!(mult, V2::new(4.0,4.0));
+        assert_eq!(mult, V2::new(4.0, 4.0));
 
         mult *= V2::new(0.5, 0.5);
         assert_eq!(mult, V2::new(2.0, 2.0));
