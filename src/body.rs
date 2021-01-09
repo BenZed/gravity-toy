@@ -58,6 +58,17 @@ impl Body {
         &self.start_tick
     }
 
+    pub fn end_tick(&self) -> Tick {
+        let cache_length = self.cache.len();
+        let cache_offset = if cache_length == 0 {
+            0
+        } else {
+            cache_length - 1
+        };
+
+        self.start_tick + cache_offset
+    }
+
     pub fn apply_tick(&mut self, tick: &Tick) -> &Transform {
         let transform_at_tick = self.get_cache_data(tick);
 
@@ -218,7 +229,6 @@ mod test {
     #[test]
     fn invalidate_before() {
         const TEST_CACHE_SIZE: usize = 4;
-
         const FIRST_TICK: Tick = 10;
         const LAST_TICK: Tick = FIRST_TICK + TEST_CACHE_SIZE;
         const TICKS_TO_REMOVE: Tick = 2;
@@ -232,13 +242,13 @@ mod test {
             body.record_next_tick();
         }
 
+        let first_position_after_invalidate = body.cache[TICKS_TO_REMOVE].position;
+
         let before = FIRST_TICK + (TICKS_TO_REMOVE - 1); // -1 because invalidate_before is inclusive
         let mut was_deleted = body.invalidate_before(&before);
 
-        println!("Remove tick {:?} and earlier", before);
-
         // check that invalidated transforms are removed
-        assert_eq!(body.cache[0].position.x, TICKS_TO_REMOVE as f64); // proves that the first recorded transform was invalidated and removed
+        assert_eq!(body.cache[0].position, first_position_after_invalidate);
         assert_eq!(body.cache.len(), TEST_CACHE_SIZE - TICKS_TO_REMOVE);
         assert_eq!(was_deleted, false);
 
@@ -252,7 +262,6 @@ mod test {
     #[test]
     fn invalidate_after() {
         const TEST_CACHE_SIZE: usize = 4;
-
         const FIRST_TICK: Tick = 10;
         const LAST_TICK: Tick = FIRST_TICK + TEST_CACHE_SIZE;
         const TICKS_TO_REMOVE: Tick = 2;
@@ -265,10 +274,17 @@ mod test {
             body.record_next_tick();
         }
 
+        let last_position_after_invalidate =
+            body.cache[body.cache.len() - (TICKS_TO_REMOVE + 1)].position;
+
         // check that invalidated transforms are removed
         let after = LAST_TICK - TICKS_TO_REMOVE;
 
         let mut was_deleted = body.invalidate_after(&after);
+        assert_eq!(
+            body.cache[body.cache.len() - 1].position,
+            last_position_after_invalidate
+        );
         assert_eq!(body.cache.len(), TEST_CACHE_SIZE - TICKS_TO_REMOVE);
         assert_eq!(was_deleted, false);
 
