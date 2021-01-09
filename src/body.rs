@@ -1,4 +1,6 @@
 mod transform;
+use std::cmp::min;
+
 use transform::Transform;
 
 pub use transform::Transform as BodyTransform;
@@ -78,7 +80,7 @@ impl Body {
             )
         }
 
-        if cache_length == 0 || cache_index == cache_length - 1 {
+        if cache_length == 0 || cache_index == cache_length {
             self.cache.push(transform)
         } else {
             self.cache[cache_index] = transform
@@ -91,16 +93,16 @@ impl Body {
     }
 
     pub fn invalidate_before(&mut self, tick: &Tick) -> bool {
-        if tick < &self.start_tick {
-            self.start_tick -= tick;
-        } else {
-            self.start_tick = 0;
+        let inclusive_tick = *tick + 1;
 
-            let mut num_ticks_to_remove = tick - self.start_tick;
-            while num_ticks_to_remove > 0 && self.cache.len() > 0 {
-                self.cache.remove(0);
-                num_ticks_to_remove -= 1;
-            }
+        if inclusive_tick < self.start_tick {
+            self.start_tick -= inclusive_tick;
+        } else {
+            let cache_index: Tick = self.get_cache_index(&inclusive_tick);
+            let clamped_cache_index = min(cache_index, self.cache.len());
+
+            self.cache.drain(0..clamped_cache_index);
+            self.start_tick = 0;
         };
 
         let erased_by_invalidation = self.cache.len() == 0;
@@ -108,7 +110,7 @@ impl Body {
     }
 
     pub fn invalidate_after(&mut self, tick: &Tick) -> bool {
-        if tick <= &self.start_tick {
+        if tick < &self.start_tick {
             self.cache.clear();
         } else {
             let final_index = self.get_cache_index(tick);
@@ -160,16 +162,119 @@ mod test {
     use crate::vector::V2;
 
     #[test]
+    fn id() {
+        let id: BodyID = 10;
+        let body = Body::new(id, Transform::new(100.0, V2::zero(), V2::zero()));
+
+        assert_eq!(body.id(), &id);
+    }
+
+    #[test]
+    fn start_tick() {
+        let id: BodyID = 5;
+        let start_tick: Tick = 100;
+
+        let body = Body::new_at_tick(id, start_tick, Transform::new(50.0, V2::zero(), V2::zero()));
+
+        assert_eq!(body.start_tick(), &start_tick);
+    }
+
+    #[test]
+    fn destroyed() {
+        let mut body = Body::new(0, Transform::new(50.0, V2::zero(), V2::zero()));
+        assert_eq!(body.destroyed(), false);
+
+        body.transform.mass = 0.0;
+        assert_eq!(body.destroyed(), true);
+    }
+
+    #[test]
     fn new_at_tick() {
-        let id: ID = 0;
+        let id: ID = 10;
         let tick: Tick = 10;
 
-        let transform = Transform::new(0.0, V2::zero(), V2::zero());
-
+        let transform = Transform::new(10.0, V2::zero(), V2::zero());
         let body = Body::new_at_tick(id, tick, transform);
 
         assert_eq!(body.id(), &id);
         assert_eq!(body.start_tick(), &tick);
         assert_eq!(body.transform, transform);
+    }
+
+    #[test]
+    fn record_and_apply_tick() {
+        let t1 = Transform::new(10.0, V2::zero(), V2::zero());
+        let t2 = Transform::new(10.0, V2::new(0.0, 1.0), V2::zero());
+
+        let mut body = Body::new(0, t1);
+
+        body.record_tick(&1, t2);
+        assert_eq!(body.transform, t1);
+
+        body.apply_tick(&1);
+        assert_eq!(body.transform, t2);
+    }
+
+    #[test]
+    fn invalidate_before() {
+        const TEST_CACHE_SIZE: usize = 4;
+
+        const FIRST_TICK: Tick = 10;
+        const LAST_TICK: Tick = FIRST_TICK + TEST_CACHE_SIZE;
+        const TICKS_TO_REMOVE: Tick = 2;
+
+        // cache a bunch of transform
+        let mut body =
+            Body::new_at_tick(0, FIRST_TICK, Transform::new(10.0, V2::zero(), V2::zero()));
+
+        for _i in 1..TEST_CACHE_SIZE {
+            body.transform.position.x += 1.0;
+            body.record_next_tick();
+        }
+
+        let before = FIRST_TICK + (TICKS_TO_REMOVE - 1); // -1 because invalidate_before is inclusive
+        let mut was_deleted = body.invalidate_before(&before);
+
+        println!("Remove tick {:?} and earlier", before);
+
+        // check that invalidated transforms are removed
+        assert_eq!(body.cache[0].position.x, TICKS_TO_REMOVE as f64); // proves that the first recorded transform was invalidated and removed
+        assert_eq!(body.cache.len(), TEST_CACHE_SIZE - TICKS_TO_REMOVE);
+        assert_eq!(was_deleted, false);
+
+        // check that cache is cleared if invalidated out of range
+        was_deleted = body.invalidate_before(&LAST_TICK);
+
+        assert_eq!(body.cache.len(), 0);
+        assert_eq!(was_deleted, true);
+    }
+
+    #[test]
+    fn invalidate_after() {
+        const TEST_CACHE_SIZE: usize = 4;
+
+        const FIRST_TICK: Tick = 10;
+        const LAST_TICK: Tick = FIRST_TICK + TEST_CACHE_SIZE;
+        const TICKS_TO_REMOVE: Tick = 2;
+
+        // cache a bunch of transforms
+        let mut body =
+            Body::new_at_tick(0, FIRST_TICK, Transform::new(10.0, V2::zero(), V2::zero()));
+        for _i in 1..TEST_CACHE_SIZE {
+            body.transform.position.x += 1.0;
+            body.record_next_tick();
+        }
+
+        // check that invalidated transforms are removed
+        let after = LAST_TICK - TICKS_TO_REMOVE;
+
+        let mut was_deleted = body.invalidate_after(&after);
+        assert_eq!(body.cache.len(), TEST_CACHE_SIZE - TICKS_TO_REMOVE);
+        assert_eq!(was_deleted, false);
+
+        //
+        was_deleted = body.invalidate_after(&FIRST_TICK);
+        assert_eq!(body.cache.len(), 0);
+        assert_eq!(was_deleted, true);
     }
 }

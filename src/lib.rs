@@ -105,7 +105,7 @@ impl Simulation {
     pub fn invalidate_before(&mut self, tick: &Tick) {
         self.invalidate(tick, true);
 
-        if &self.tick < tick {
+        if &self.tick <= tick {
             self.set_tick(tick)
         }
     }
@@ -113,7 +113,7 @@ impl Simulation {
     pub fn invalidate_after(&mut self, tick: &Tick) {
         self.invalidate(tick, false);
 
-        if &self.tick >= tick {
+        if &self.tick > tick {
             self.set_tick(tick)
         }
     }
