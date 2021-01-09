@@ -17,6 +17,7 @@ const DEFAULT_GRAVITY: f32 = 9.8;
 /****************************************************/
 
 pub type Tick = usize;
+
 /****************************************************/
 // Simulation
 /****************************************************/
@@ -57,15 +58,30 @@ impl Simulation {
     // Body Interface
 
     pub fn create_body(&mut self, mass: f32, position: V2, velocity: V2) -> &Body {
-        let id = self.next_body_id;
+        let id = self.get_next_unused_body_id();
 
         let body = Body::new(id, BodyTransform::new(mass, position, velocity));
 
         self.bodies.insert(id, body);
-
-        self.next_body_id += 1;
-
         &self.bodies[&id]
+    }
+
+    fn get_next_unused_body_id(&mut self) -> BodyID {
+        const MAX_POSSIBLE_BODIES: usize = (BodyID::max_value() as usize) + 1;
+
+        if self.bodies.len() >= MAX_POSSIBLE_BODIES {
+            panic!("All possible BodyIDs are being used.")
+        }
+
+        while self.bodies.contains_key(&self.next_body_id) {
+            if self.next_body_id == BodyID::max_value() {
+                self.next_body_id = 0;
+            } else {
+                self.next_body_id += 1;
+            }
+        }
+
+        self.next_body_id
     }
 
     pub fn get_body(&self, id: &BodyID) -> Option<&Body> {
@@ -193,7 +209,7 @@ mod test {
         let body1_id = *sim.create_body(100.0, V2::zero(), V2::zero()).id();
         assert!(sim.has_body(&body1_id));
 
-        let bad_id: u16 = 1337;
+        let bad_id: BodyID = 1337;
         assert!(!sim.has_body(&bad_id));
     }
 
