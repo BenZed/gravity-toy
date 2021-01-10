@@ -2,7 +2,6 @@ mod transform;
 use std::cmp::min;
 
 use transform::Transform;
-
 pub use transform::Transform as BodyTransform;
 
 use crate::Tick;
@@ -121,10 +120,16 @@ impl Body {
     }
 
     pub fn invalidate_after(&mut self, tick: &Tick) -> bool {
-        if tick < &self.start_tick {
+        let exclusive_tick = *tick;
+        // ^ thought about having invalidate_before_inc, invalidate_before_exc, invalidate_after_inc
+        // abd invalidate_after_exc methods, but figured that might have been over-kill. Decided to
+        // make invalidate_before inclusive and invalidate_after exclusive, because that covers all
+        // cache-invalidation use cases.
+
+        if exclusive_tick < self.start_tick {
             self.cache.clear();
         } else {
-            let final_index = self.get_cache_index(tick);
+            let final_index = self.get_cache_index(&exclusive_tick);
             self.cache.truncate(final_index);
         }
 
@@ -134,7 +139,7 @@ impl Body {
 
     fn get_cache_index(&self, tick: &Tick) -> usize {
         if tick < &self.start_tick {
-            // ^ index would be below zero
+            //  ^ index would be below zero
             panic!("Body {} did not yet exist at tick {}", self.id, tick)
         }
 
