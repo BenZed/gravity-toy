@@ -28,7 +28,7 @@ impl Integrator {
     fn calculate_forces(&self, simulation: &mut Simulation) {}
 
     fn apply_forces(&self, simulation: &mut Simulation) {
-        for body in simulation.get_bodies_mut() {
+        for body in simulation.bodies_mut() {
             //
         }
     }

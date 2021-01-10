@@ -54,7 +54,7 @@ impl Simulation {
         }
     }
 
-    pub fn new_default() -> Simulation {
+    pub fn new_with_default_gravity() -> Simulation {
         Simulation::new(DEFAULT_GRAVITY)
     }
 
@@ -67,19 +67,23 @@ impl Simulation {
     // Body Interface
 
     pub fn create_body(&mut self, mass: f32, position: V2, velocity: V2) -> &Body {
-        let id = self.get_next_unused_body_id();
+        match self.get_next_unused_body_id() {
+            Ok(id) => {
+                let body = Body::new(id, BodyTransform::new(mass, position, velocity));
 
-        let body = Body::new(id, BodyTransform::new(mass, position, velocity));
+                self.bodies.insert(id, body);
+                &self.bodies[&id]
+            }
 
-        self.bodies.insert(id, body);
-        &self.bodies[&id]
+            Err(max_bodies) => panic!("Simulation cannot contain more than {} bodies", max_bodies),
+        }
     }
 
-    fn get_next_unused_body_id(&mut self) -> BodyID {
+    fn get_next_unused_body_id(&mut self) -> Result<BodyID, usize> {
         const MAX_POSSIBLE_BODIES: usize = (BodyID::max_value() as usize) + 1;
 
         if self.bodies.len() >= MAX_POSSIBLE_BODIES {
-            panic!("All possible BodyIDs are being used.")
+            return Err(MAX_POSSIBLE_BODIES);
         }
 
         while self.bodies.contains_key(&self.next_body_id) {
@@ -90,23 +94,15 @@ impl Simulation {
             }
         }
 
-        self.next_body_id
+        Ok(self.next_body_id)
     }
 
-    pub fn get_body(&self, id: &BodyID) -> Option<&Body> {
+    pub fn body(&self, id: &BodyID) -> Option<&Body> {
         self.bodies.get(id)
     }
 
-    pub fn get_body_mut(&mut self, id: &BodyID) -> Option<&mut Body> {
+    pub fn body_mut(&mut self, id: &BodyID) -> Option<&mut Body> {
         self.bodies.get_mut(id)
-    }
-
-    pub fn get_bodies(&self) -> Values<BodyID, Body> {
-        self.bodies.values()
-    }
-
-    pub fn get_bodies_mut(&mut self) -> ValuesMut<BodyID, Body> {
-        self.bodies.values_mut()
     }
 
     pub fn has_body(&self, id: &BodyID) -> bool {
@@ -115,6 +111,14 @@ impl Simulation {
         } else {
             true
         }
+    }
+
+    pub fn bodies(&self) -> Values<BodyID, Body> {
+        self.bodies.values()
+    }
+
+    pub fn bodies_mut(&mut self) -> ValuesMut<BodyID, Body> {
+        self.bodies.values_mut()
     }
 
     pub fn num_bodies(&self) -> usize {
@@ -128,7 +132,7 @@ impl Simulation {
     }
 
     pub fn set_tick(&mut self, tick: &Tick) {
-        for body in self.get_bodies_mut() {
+        for body in self.bodies_mut() {
             body.apply_tick(tick);
         }
 
@@ -154,7 +158,7 @@ impl Simulation {
     fn invalidate(&mut self, tick: &Tick, before: bool) {
         let mut erased_ids: Vec<BodyID> = Vec::new();
 
-        for body in self.get_bodies_mut() {
+        for body in self.bodies_mut() {
             let erased_by_invalidation = if before {
                 body.invalidate_before(tick)
             } else {
@@ -183,14 +187,14 @@ mod test {
 
     #[test]
     fn new_default() {
-        let sim = Simulation::new_default();
+        let sim = Simulation::new_with_default_gravity();
 
         assert_eq!(*sim.gravity(), DEFAULT_GRAVITY);
     }
 
     #[test]
     fn create_body() {
-        let mut sim = Simulation::new_default();
+        let mut sim = Simulation::new_with_default_gravity();
 
         let body_id1 = *sim.create_body(70.0, V2::zero(), V2::zero()).id();
 
@@ -206,11 +210,11 @@ mod test {
 
     #[test]
     fn get_body() {
-        let mut sim = Simulation::new_default();
+        let mut sim = Simulation::new_with_default_gravity();
 
         let body1_id = *sim.create_body(50.0, V2::zero(), V2::zero()).id();
 
-        if let Some(body1) = sim.get_body(&body1_id) {
+        if let Some(body1) = sim.body(&body1_id) {
             assert_eq!(*body1.id(), body1_id);
         } else {
             panic!("get_body did not get Body with id {}", body1_id)
@@ -219,7 +223,7 @@ mod test {
 
     #[test]
     fn has_body() {
-        let mut sim = Simulation::new_default();
+        let mut sim = Simulation::new_with_default_gravity();
 
         let body1_id = *sim.create_body(100.0, V2::zero(), V2::zero()).id();
         assert!(sim.has_body(&body1_id));
@@ -230,7 +234,7 @@ mod test {
 
     #[test]
     fn num_bodies() {
-        let mut sim = Simulation::new_default();
+        let mut sim = Simulation::new_with_default_gravity();
         assert_eq!(sim.num_bodies(), 0);
 
         sim.create_body(100.0, V2::zero(), V2::zero());

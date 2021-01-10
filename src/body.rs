@@ -27,6 +27,7 @@ pub struct Body {
 }
 
 impl Body {
+    //
     pub fn new(id: ID, transform: Transform) -> Body {
         Body::new_at_tick(id, 0, transform)
     }
