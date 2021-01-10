@@ -1,10 +1,16 @@
-use std::collections::HashMap;
+use std::collections::{
+    hash_map::{Values, ValuesMut},
+    HashMap,
+};
 
 mod vector;
 use vector::V2;
 
 mod body;
-use body::{Body, BodyID, BodyTransform};
+pub use body::{Body, BodyID, BodyTransform};
+
+mod integration;
+use integration::Integrator;
 
 /****************************************************/
 // Constants
@@ -26,9 +32,11 @@ pub type Tick = usize;
 pub struct Simulation {
     next_body_id: BodyID,
     bodies: HashMap<BodyID, Body>,
+
     g: f32,
 
     tick: Tick,
+    integrator: Integrator,
 }
 
 impl Simulation {
@@ -42,6 +50,7 @@ impl Simulation {
             next_body_id: 0,
             bodies: HashMap::new(),
             tick: 0,
+            integrator: Integrator::new(),
         }
     }
 
@@ -92,6 +101,14 @@ impl Simulation {
         self.bodies.get_mut(id)
     }
 
+    pub fn get_bodies(&self) -> Values<BodyID, Body> {
+        self.bodies.values()
+    }
+
+    pub fn get_bodies_mut(&mut self) -> ValuesMut<BodyID, Body> {
+        self.bodies.values_mut()
+    }
+
     pub fn has_body(&self, id: &BodyID) -> bool {
         if let None = self.bodies.get(id) {
             false
@@ -111,7 +128,7 @@ impl Simulation {
     }
 
     pub fn set_tick(&mut self, tick: &Tick) {
-        for body in self.bodies.values_mut() {
+        for body in self.get_bodies_mut() {
             body.apply_tick(tick);
         }
 
@@ -137,7 +154,7 @@ impl Simulation {
     fn invalidate(&mut self, tick: &Tick, before: bool) {
         let mut erased_ids: Vec<BodyID> = Vec::new();
 
-        for body in self.bodies.values_mut() {
+        for body in self.get_bodies_mut() {
             let erased_by_invalidation = if before {
                 body.invalidate_before(tick)
             } else {
@@ -153,8 +170,6 @@ impl Simulation {
             self.bodies.remove(&erased_id);
         }
     }
-
-    // Run Interface
 }
 
 /****************************************************/
