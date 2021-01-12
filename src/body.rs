@@ -1,8 +1,11 @@
-mod transform;
 use std::cmp::min;
 
+mod transform;
 use transform::Transform;
 pub use transform::Transform as BodyTransform;
+
+mod bounds;
+use bounds::Bounds;
 
 use crate::Tick;
 
@@ -20,6 +23,7 @@ pub type BodyID = ID;
 #[derive(Debug)]
 pub struct Body {
     pub transform: Transform,
+    bounds: Bounds,
 
     id: ID,
     start_tick: Tick,
@@ -32,6 +36,10 @@ impl Body {
         Body::new_at_tick(id, 0, transform)
     }
 
+    pub fn bounds_overlap(a: &Body, b: &Body) -> bool {
+        Bounds::overlap(&a.bounds, &b.bounds)
+    }
+
     pub fn new_at_tick(id: ID, tick: Tick, transform: Transform) -> Body {
         let mut body = Body {
             id,
@@ -39,6 +47,7 @@ impl Body {
             start_tick: tick,
             cache: Vec::new(),
             transform,
+            bounds: Bounds::new(),
         };
 
         body.record_tick(&tick, transform);

@@ -1,4 +1,15 @@
-use crate::{body::BodyID, Simulation};
+use std::collections::HashMap;
+
+use crate::body::{Body, BodyID};
+
+/****************************************************/
+// Alias
+/****************************************************/
+
+type Bodies = HashMap<BodyID, Body>;
+/****************************************************/
+// Main
+/****************************************************/
 
 //
 #[derive(Debug)]
@@ -16,19 +27,34 @@ impl Integrator {
         }
     }
 
-    pub fn tick(&mut self, simulation: &mut Simulation) {
+    pub fn tick(&mut self, bodies: &Bodies) {
         //
-        self.detect_collisions(simulation);
-        self.calculate_forces(simulation);
-        self.apply_forces(simulation);
+        self.refresh_bounds(bodies);
+        self.collision_detection(bodies);
+        self.calculate_forces(bodies);
+        self.apply_forces(bodies);
     }
 
-    fn detect_collisions(&self, simulation: &mut Simulation) {}
+    fn refresh_bounds(&self, bodies: &Bodies) {
+        for body in bodies {
+            //
+        }
+    }
 
-    fn calculate_forces(&self, simulation: &mut Simulation) {}
+    fn collision_detection(&self, bodies: &Bodies) {
+        for body in bodies {
+            //
+        }
+    }
 
-    fn apply_forces(&self, simulation: &mut Simulation) {
-        for body in simulation.bodies_mut() {
+    fn calculate_forces(&self, bodies: &Bodies) {
+        for body in bodies {
+            //
+        }
+    }
+
+    fn apply_forces(&self, bodies: &Bodies) {
+        for body in bodies {
             //
         }
     }

@@ -68,6 +68,7 @@ impl Simulation {
 
     pub fn create_body(&mut self, mass: f32, position: V2, velocity: V2) -> &Body {
         match self.get_next_unused_body_id() {
+            //
             Ok(id) => {
                 let body = Body::new(id, BodyTransform::new(mass, position, velocity));
 
@@ -127,6 +128,10 @@ impl Simulation {
 
     // Tick Interface
 
+    pub fn intergrate(&mut self) {
+        self.integrator.tick(&self.bodies)
+    }
+
     pub fn get_tick(&self) -> &Tick {
         &self.tick
     }
@@ -170,8 +175,8 @@ impl Simulation {
             }
         }
 
-        for erased_id in erased_ids {
-            self.bodies.remove(&erased_id);
+        for erased_id in erased_ids.iter() {
+            self.bodies.remove(erased_id);
         }
     }
 }
@@ -188,14 +193,12 @@ mod test {
     #[test]
     fn new_default() {
         let sim = Simulation::new_with_default_gravity();
-
         assert_eq!(*sim.gravity(), DEFAULT_GRAVITY);
     }
 
     #[test]
     fn create_body() {
         let mut sim = Simulation::new_with_default_gravity();
-
         let body_id1 = *sim.create_body(70.0, V2::zero(), V2::zero()).id();
 
         assert!(sim.bodies.contains_key(&body_id1));
@@ -240,4 +243,5 @@ mod test {
         sim.create_body(100.0, V2::zero(), V2::zero());
         assert_eq!(sim.num_bodies(), 1);
     }
+    //
 }
