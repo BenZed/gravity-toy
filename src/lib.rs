@@ -4,30 +4,21 @@ use std::collections::{
 };
 
 mod vector;
-use vector::V2;
+pub use vector::V2;
 
 mod body;
-pub use body::{Body, BodyID, BodyTransform};
+use body::{Body, BodyID, BodyTransform};
 
 mod integration;
 use integration::Integrator;
 
-/****************************************************/
-// Constants
-/****************************************************/
-
+/*** Constants ***/
 const DEFAULT_GRAVITY: f32 = 9.8;
 
-/****************************************************/
-// Aliases
-/****************************************************/
-
+/*** Aliases ***/
 pub type Tick = usize;
 
-/****************************************************/
-// Simulation
-/****************************************************/
-
+/*** Simulation ***/
 #[derive(Debug)]
 pub struct Simulation {
     next_body_id: BodyID,
@@ -40,7 +31,12 @@ pub struct Simulation {
 }
 
 impl Simulation {
-    pub fn new(g: f32) -> Simulation {
+    pub fn new() -> Simulation {
+        Simulation::new_with_gravity(DEFAULT_GRAVITY)
+    }
+
+    // Creates a new simulation with a custom gravity coefficient.
+    pub fn new_with_gravity(g: f32) -> Simulation {
         if g < 0.0 {
             panic!("g cannot be below zero.")
         }
@@ -54,17 +50,13 @@ impl Simulation {
         }
     }
 
-    pub fn new_with_default_gravity() -> Simulation {
-        Simulation::new(DEFAULT_GRAVITY)
-    }
-
-    // Gravity Interface
+    /*** Gravity Interface ***/
 
     pub fn gravity(&self) -> &f32 {
         &self.g
     }
 
-    // Body Interface
+    /*** Body Interface ***/
 
     pub fn create_body(&mut self, mass: f32, position: V2, velocity: V2) -> &Body {
         match self.get_next_unused_body_id() {
@@ -78,24 +70,6 @@ impl Simulation {
 
             Err(max_bodies) => panic!("Simulation cannot contain more than {} bodies", max_bodies),
         }
-    }
-
-    fn get_next_unused_body_id(&mut self) -> Result<BodyID, usize> {
-        const MAX_POSSIBLE_BODIES: usize = (BodyID::max_value() as usize) + 1;
-
-        if self.bodies.len() >= MAX_POSSIBLE_BODIES {
-            return Err(MAX_POSSIBLE_BODIES);
-        }
-
-        while self.bodies.contains_key(&self.next_body_id) {
-            if self.next_body_id == BodyID::max_value() {
-                self.next_body_id = 0;
-            } else {
-                self.next_body_id += 1;
-            }
-        }
-
-        Ok(self.next_body_id)
     }
 
     pub fn body(&self, id: &BodyID) -> Option<&Body> {
@@ -126,16 +100,34 @@ impl Simulation {
         self.bodies.len()
     }
 
-    // Tick Interface
+    fn get_next_unused_body_id(&mut self) -> Result<BodyID, usize> {
+        const MAX_POSSIBLE_BODIES: usize = (BodyID::max_value() as usize) + 1;
 
-    pub fn intergrate(&mut self) {
-        self.integrator.tick(&self.bodies)
+        if self.bodies.len() >= MAX_POSSIBLE_BODIES {
+            return Err(MAX_POSSIBLE_BODIES);
+        }
+
+        while self.bodies.contains_key(&self.next_body_id) {
+            if self.next_body_id == BodyID::max_value() {
+                self.next_body_id = 0;
+            } else {
+                self.next_body_id += 1;
+            }
+        }
+
+        Ok(self.next_body_id)
     }
 
+    /*** Tick Interface ***/
+
+    /// Gets the tick currently visualized by the simulation.
     pub fn get_tick(&self) -> &Tick {
         &self.tick
     }
 
+    /// Sets the tick currently being visualized by te simulation.
+    /// All bodies in the simulation will apply the transformation
+    /// that was integrated at the provided tick.
     pub fn set_tick(&mut self, tick: &Tick) {
         for body in self.bodies_mut() {
             body.apply_tick(tick);
@@ -144,6 +136,8 @@ impl Simulation {
         self.tick = *tick;
     }
 
+    /// Remove all cached transforms in all bodies including and
+    /// before the specified tick.
     pub fn invalidate_before(&mut self, tick: &Tick) {
         self.invalidate(tick, true);
 
@@ -152,6 +146,8 @@ impl Simulation {
         }
     }
 
+    /// Remove all cached transforms in all bodies after the
+    /// specified tick.
     pub fn invalidate_after(&mut self, tick: &Tick) {
         self.invalidate(tick, false);
 
@@ -179,11 +175,21 @@ impl Simulation {
             self.bodies.remove(erased_id);
         }
     }
+
+    /*** Simulate Interface ***/
+
+    /// Update the transform of all bodies in the simulation by checking for
+    /// collisions and applying gravitational forces.
+    pub fn integrate(&mut self) {
+        self.integrator.tick(&self.bodies);
+
+        for body in self.bodies_mut() {
+            body.record_next_tick()
+        }
+    }
 }
 
-/****************************************************/
-// Tests
-/****************************************************/
+/*** Tests ***/
 
 #[cfg(test)]
 mod test {
@@ -192,13 +198,13 @@ mod test {
 
     #[test]
     fn new_default() {
-        let sim = Simulation::new_with_default_gravity();
+        let sim = Simulation::new();
         assert_eq!(*sim.gravity(), DEFAULT_GRAVITY);
     }
 
     #[test]
     fn create_body() {
-        let mut sim = Simulation::new_with_default_gravity();
+        let mut sim = Simulation::new();
         let body_id1 = *sim.create_body(70.0, V2::zero(), V2::zero()).id();
 
         assert!(sim.bodies.contains_key(&body_id1));
@@ -213,7 +219,7 @@ mod test {
 
     #[test]
     fn get_body() {
-        let mut sim = Simulation::new_with_default_gravity();
+        let mut sim = Simulation::new();
 
         let body1_id = *sim.create_body(50.0, V2::zero(), V2::zero()).id();
 
@@ -226,7 +232,7 @@ mod test {
 
     #[test]
     fn has_body() {
-        let mut sim = Simulation::new_with_default_gravity();
+        let mut sim = Simulation::new();
 
         let body1_id = *sim.create_body(100.0, V2::zero(), V2::zero()).id();
         assert!(sim.has_body(&body1_id));
@@ -237,11 +243,10 @@ mod test {
 
     #[test]
     fn num_bodies() {
-        let mut sim = Simulation::new_with_default_gravity();
+        let mut sim = Simulation::new();
         assert_eq!(sim.num_bodies(), 0);
 
         sim.create_body(100.0, V2::zero(), V2::zero());
         assert_eq!(sim.num_bodies(), 1);
     }
-    //
 }

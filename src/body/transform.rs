@@ -1,15 +1,11 @@
 use crate::vector::*;
 use std::f64::NAN;
 
-/****************************************************/
-// Aliases
-/****************************************************/
+/*** Aliases ***/
 
 pub type Mass = f32;
 
-/****************************************************/
-// Constants
-/****************************************************/
+/*** Constants ***/
 
 pub const MASS_MIN: Mass = 1.0;
 
@@ -22,10 +18,10 @@ const DESTROYED_BODY_TRANSFORM: Transform = Transform {
     mass: 0.0,
 };
 
-/****************************************************/
-// BodyTransform
-/****************************************************/
-
+/// The mass and coordinates of a Body. Instances of this
+/// data structure are used by the body as it's current
+/// transformation and in the body's cache to represent
+/// it's changes over time.
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Transform {
     pub position: V2,
@@ -49,6 +45,9 @@ impl Transform {
         }
     }
 
+    /// A representation of a body transform that has been destroyed, either
+    /// because it collided into a larger body, or the simulation is visualizing
+    /// a tick where the body did not yet exist.
     pub fn destroyed() -> &'static Transform {
         &DESTROYED_BODY_TRANSFORM
     }
@@ -66,10 +65,7 @@ impl Transform {
     }
 }
 
-/****************************************************/
-// Tests
-/****************************************************/
-
+/*** Tests ***/
 #[cfg(test)]
 mod test {
 
@@ -79,7 +75,7 @@ mod test {
     #[should_panic]
     fn new() {
         Transform::new(
-            0.0, // <- mass must be above 0
+            0.0, // <- mass must be above 0.0
             V2::zero(),
             V2::zero(),
         );

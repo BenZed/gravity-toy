@@ -9,17 +9,17 @@ use bounds::Bounds;
 
 use crate::Tick;
 
-/****************************************************/
-// Aliases
-/****************************************************/
+/*** Aliases ***/
 
 type ID = u16;
 pub type BodyID = ID;
 
-/****************************************************/
-// Body
-/****************************************************/
-
+/// A body is an entity in a simulation that is influenced gravitationally
+/// by all other bodies in the simulation. They are attracted to one another
+/// and accumulate mass by colliding with each other.
+///
+/// A body also contains a cache of it's transforms during each integration
+/// tick so that an arbitrary time of a simulation can be visualized.
 #[derive(Debug)]
 pub struct Body {
     pub transform: Transform,
@@ -31,15 +31,12 @@ pub struct Body {
 }
 
 impl Body {
-    //
+    /// Creates a body configured to start at tick 0
     pub fn new(id: ID, transform: Transform) -> Body {
         Body::new_at_tick(id, 0, transform)
     }
 
-    pub fn bounds_overlap(a: &Body, b: &Body) -> bool {
-        Bounds::overlap(&a.bounds, &b.bounds)
-    }
-
+    /// Creates a body configured to start at a given tick
     pub fn new_at_tick(id: ID, tick: Tick, transform: Transform) -> Body {
         let mut body = Body {
             id,
@@ -52,6 +49,11 @@ impl Body {
 
         body.record_tick(&tick, transform);
         body
+    }
+
+    /// Do the bounds of two bodies overlap one another?
+    pub fn bounds_overlap(a: &Body, b: &Body) -> bool {
+        Bounds::overlap(&a.bounds, &b.bounds)
     }
 
     pub fn destroyed(&self) -> bool {
@@ -148,7 +150,7 @@ impl Body {
 
     fn get_cache_index(&self, tick: &Tick) -> usize {
         if tick < &self.start_tick {
-            //  ^ index would be below zero
+            // ^ index would be below zero
             panic!("Body {} did not yet exist at tick {}", self.id, tick)
         }
 
@@ -176,9 +178,7 @@ impl PartialEq for Body {
     }
 }
 
-/****************************************************/
-// Tests
-/****************************************************/
+/*** Tests ***/
 
 #[cfg(test)]
 mod test {
@@ -302,7 +302,6 @@ mod test {
         assert_eq!(body.cache.len(), TEST_CACHE_SIZE - TICKS_TO_REMOVE);
         assert_eq!(was_deleted, false);
 
-        //
         was_deleted = body.invalidate_after(&FIRST_TICK);
         assert_eq!(body.cache.len(), 0);
         assert_eq!(was_deleted, true);

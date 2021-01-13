@@ -2,46 +2,28 @@ use std::collections::HashMap;
 
 use crate::body::{Body, BodyID};
 
-/****************************************************/
-// Alias
-/****************************************************/
+/*** Aliases ***/
 
 type Bodies = HashMap<BodyID, Body>;
-/****************************************************/
-// Main
-/****************************************************/
 
-//
+/// Integrator takes a collection of bodies and performs manipulation
 #[derive(Debug)]
-pub struct Integrator {
-    body_ids: Vec<BodyID>,
-    destroyed_body_ids: Vec<BodyID>,
-}
+pub struct Integrator {}
 
 impl Integrator {
     //
     pub fn new() -> Integrator {
-        Integrator {
-            body_ids: vec![],
-            destroyed_body_ids: vec![],
-        }
+        Integrator {}
     }
 
     pub fn tick(&mut self, bodies: &Bodies) {
         //
-        self.refresh_bounds(bodies);
-        self.collision_detection(bodies);
+        self.detect_collisions(bodies);
         self.calculate_forces(bodies);
         self.apply_forces(bodies);
     }
 
-    fn refresh_bounds(&self, bodies: &Bodies) {
-        for body in bodies {
-            //
-        }
-    }
-
-    fn collision_detection(&self, bodies: &Bodies) {
+    fn detect_collisions(&self, bodies: &Bodies) {
         for body in bodies {
             //
         }
@@ -59,3 +41,8 @@ impl Integrator {
         }
     }
 }
+
+/*** Tests ***/
+
+#[cfg(test)]
+mod test {}

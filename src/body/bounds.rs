@@ -2,11 +2,14 @@ use std::cmp::Ordering;
 use std::f64::{INFINITY, NEG_INFINITY};
 
 use super::transform::Transform;
-use crate::vector::V2;
 
-/****************************************************/
-// Enums & Traits
-/****************************************************/
+/*** Traits ***/
+
+trait Refreshable {
+    fn refresh(&mut self, radius: &f32, transform: &Transform);
+}
+
+/*** Enums ***/
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 enum EdgeAxis {
@@ -20,14 +23,13 @@ enum EdgeLimit {
     Max,
 }
 
-trait Refreshable {
-    fn refresh(&mut self, radius: &f32, transform: &Transform);
-}
-
-/****************************************************/
-// Edge
-/****************************************************/
-
+/// Edge of a bound.
+///
+/// Q: What a wierd way to define an edge. Why not two V2's? To save
+///    memory?
+///
+/// A: In order to make collision detection performant, we need to have
+///    a sorted list of edges by axis. And sure, this also saves memory.
 #[derive(Debug, PartialEq, Clone, Copy)]
 struct Edge {
     value: f64,
@@ -88,10 +90,7 @@ impl Refreshable for Edge {
     }
 }
 
-/****************************************************/
-// Bounds
-/****************************************************/
-
+/// Bounding box of a body.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Bounds {
     left: Edge,
@@ -113,6 +112,7 @@ impl Bounds {
         }
     }
 
+    /// Do two sets of bounds overlap?
     pub fn overlap(a: &Self, b: &Self) -> bool {
         if a.left > b.right || b.left > a.right {
             return false;
@@ -134,3 +134,8 @@ impl Refreshable for Bounds {
         self.bottom.refresh(radius, transform);
     }
 }
+
+/*** Tests ***/
+
+#[cfg(test)]
+mod test {}

@@ -1,10 +1,5 @@
-use std::f64::consts::PI;
 use std::fmt::{Display, Formatter, Result};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
-
-/****************************************************/
-// Vector 2
-/****************************************************/
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct V2 {
@@ -53,7 +48,6 @@ impl V2 {
 
     pub fn normalize(&self) -> V2 {
         let mag = self.mag();
-
         if mag == 0.0 {
             V2::zero()
         } else {
@@ -62,8 +56,7 @@ impl V2 {
     }
 
     pub fn rotate(&self, degrees: f64) -> V2 {
-        let radians = degrees * PI / 180.0;
-
+        let radians = degrees.to_radians();
         let cos = radians.cos();
         let sin = radians.sin();
 
@@ -71,13 +64,11 @@ impl V2 {
     }
 
     pub fn angle(&self) -> f64 {
-        self.y.atan2(self.x) * 180.0 / PI
+        self.y.atan2(self.x).to_degrees()
     }
 }
 
-/****************************************************/
-// Display Implementation
-/****************************************************/
+/*** Display Implementation ***/
 
 impl Display for V2 {
     fn fmt(&self, v2: &mut Formatter<'_>) -> Result {
@@ -85,9 +76,7 @@ impl Display for V2 {
     }
 }
 
-/****************************************************/
-// Operator Overloading
-/****************************************************/
+/*** Operator Overloading ***/
 
 impl Add<V2> for V2 {
     type Output = V2;
@@ -179,7 +168,8 @@ impl DivAssign<f64> for V2 {
     }
 }
 
-// TESTS
+/*** Tests ***/
+
 #[cfg(test)]
 mod test {
 
@@ -228,9 +218,7 @@ mod test {
         let to = V2::new(4.0, 4.0);
 
         assert_eq!(from.lerp(&to, 0.0), V2::new(1.0, 1.0));
-
         assert_eq!(from.lerp(&to, 0.5), V2::new(2.5, 2.5));
-
         assert_eq!(from.lerp(&to, 1.0), V2::new(4.0, 4.0))
     }
 
