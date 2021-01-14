@@ -3,12 +3,6 @@ use std::f64::{INFINITY, NEG_INFINITY};
 
 use super::transform::Transform;
 
-/*** Traits ***/
-
-trait Refreshable {
-    fn refresh(&mut self, radius: &f32, transform: &Transform);
-}
-
 /*** Enums ***/
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -39,6 +33,7 @@ struct Edge {
 
 impl Edge {
     fn new(axis: EdgeAxis, limit: EdgeLimit) -> Edge {
+        //
         let value = match limit {
             EdgeLimit::Min => NEG_INFINITY,
             EdgeLimit::Max => INFINITY,
@@ -46,16 +41,9 @@ impl Edge {
 
         Edge { axis, limit, value }
     }
-}
 
-impl PartialOrd for Edge {
-    fn partial_cmp(&self, other: &Edge) -> Option<Ordering> {
-        self.value.partial_cmp(&other.value)
-    }
-}
-
-impl Refreshable for Edge {
-    fn refresh(&mut self, radius: &f32, transform: &Transform) {
+    fn update(&mut self, radius: &f32, transform: &Transform) {
+        //
         let velocity;
         let position;
         let mut radius = *radius as f64;
@@ -84,9 +72,15 @@ impl Refreshable for Edge {
                     shift = -velocity;
                 }
             }
-        }
+        };
 
         self.value = position + radius + shift;
+    }
+}
+
+impl PartialOrd for Edge {
+    fn partial_cmp(&self, other: &Edge) -> Option<Ordering> {
+        self.value.partial_cmp(&other.value)
     }
 }
 
@@ -124,14 +118,12 @@ impl Bounds {
 
         true
     }
-}
 
-impl Refreshable for Bounds {
-    fn refresh(&mut self, radius: &f32, transform: &Transform) {
-        self.left.refresh(radius, transform);
-        self.right.refresh(radius, transform);
-        self.top.refresh(radius, transform);
-        self.bottom.refresh(radius, transform);
+    pub fn update(&mut self, radius: &f32, transform: &Transform) {
+        self.left.update(radius, transform);
+        self.right.update(radius, transform);
+        self.top.update(radius, transform);
+        self.bottom.update(radius, transform);
     }
 }
 
