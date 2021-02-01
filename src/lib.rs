@@ -20,23 +20,25 @@ pub type Tick = usize;
 
 /*** Simulation ***/
 #[derive(Debug)]
-pub struct Simulation {
+pub struct Simulation<'a> {
     next_body_id: BodyID,
     bodies: HashMap<BodyID, Body>,
 
     g: f32,
 
     tick: Tick,
-    integrator: Integrator,
+    integrator: Integrator<'a>,
 }
 
-impl Simulation {
-    pub fn new() -> Simulation {
+impl<'a> Simulation<'a> {
+    //
+    pub fn new() -> Simulation<'a> {
         Simulation::new_with_gravity(DEFAULT_GRAVITY)
     }
 
     // Creates a new simulation with a custom gravity coefficient.
-    pub fn new_with_gravity(g: f32) -> Simulation {
+    pub fn new_with_gravity(g: f32) -> Simulation<'a> {
+        //
         if g < 0.0 {
             panic!("g cannot be below zero.")
         }
@@ -65,6 +67,7 @@ impl Simulation {
                 let body = Body::new(id, BodyTransform::new(mass, position, velocity));
 
                 self.bodies.insert(id, body);
+                self.integrator.sync_bodies(&mut self.bodies);
                 &self.bodies[&id]
             }
 
@@ -160,6 +163,7 @@ impl Simulation {
         let mut erased_ids: Vec<BodyID> = Vec::new();
 
         for body in self.bodies_mut() {
+            //
             let erased_by_invalidation = if before {
                 body.invalidate_before(tick)
             } else {
@@ -181,7 +185,7 @@ impl Simulation {
     /// Update the transform of all bodies in the simulation by checking for
     /// collisions and applying gravitational forces.
     pub fn integrate(&mut self) {
-        self.integrator.tick(&self.bodies);
+        self.integrator.tick();
 
         for body in self.bodies_mut() {
             body.record_next_tick()

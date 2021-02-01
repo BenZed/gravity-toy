@@ -25,7 +25,7 @@ enum EdgeLimit {
 /// A: In order to make collision detection performant, we need to have
 ///    a sorted list of edges by axis. And sure, this also saves memory.
 #[derive(Debug, PartialEq, Clone, Copy)]
-struct Edge {
+pub struct Edge {
     value: f64,
     axis: EdgeAxis,
     limit: EdgeLimit,
@@ -42,11 +42,11 @@ impl Edge {
         Edge { axis, limit, value }
     }
 
-    fn update(&mut self, radius: &f32, transform: &Transform) {
+    fn update(&mut self, transform: &Transform) {
         //
         let velocity;
         let position;
-        let mut radius = *radius as f64;
+        let mut radius = transform.radius() as f64;
         let mut shift = 0.0;
 
         match self.axis {
@@ -119,15 +119,17 @@ impl Bounds {
         true
     }
 
-    pub fn update(&mut self, radius: &f32, transform: &Transform) {
-        self.left.update(radius, transform);
-        self.right.update(radius, transform);
-        self.top.update(radius, transform);
-        self.bottom.update(radius, transform);
+    pub fn update(&mut self, transform: &Transform) {
+        self.left.update(transform);
+        self.right.update(transform);
+        self.top.update(transform);
+        self.bottom.update(transform);
     }
 }
 
 /*** Tests ***/
 
 #[cfg(test)]
-mod test {}
+mod test {
+    //
+}

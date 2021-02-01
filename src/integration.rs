@@ -1,45 +1,45 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 use crate::body::{Body, BodyID};
 
 /*** Aliases ***/
 
-type Bodies = HashMap<BodyID, Body>;
-
 /// Integrator takes a collection of bodies and performs manipulation
 #[derive(Debug)]
-pub struct Integrator {}
+pub struct Integrator<'a> {
+    bodies: HashMap<BodyID, &'a Body>,
+}
 
-impl Integrator {
+impl<'a> Integrator<'a> {
     //
-    pub fn new() -> Integrator {
-        Integrator {}
+    pub fn new() -> Integrator<'a> {
+        Integrator {
+            bodies: HashMap::new(),
+        }
     }
 
-    pub fn tick(&mut self, bodies: &Bodies) {
+    pub fn sync_bodies(&mut self, bodies: &mut HashMap<BodyID, Body>) {
+        for (id, body) in bodies {
+            //
+        }
         //
-        self.detect_collisions(bodies);
-        self.calculate_forces(bodies);
-        self.apply_forces(bodies);
     }
 
-    fn detect_collisions(&self, bodies: &Bodies) {
-        for body in bodies {
-            //
-        }
+    pub fn tick(&mut self) {
+        //
+        self.detect_collisions();
+        self.calculate_forces();
+        self.apply_forces();
     }
 
-    fn calculate_forces(&self, bodies: &Bodies) {
-        for body in bodies {
-            //
-        }
-    }
+    //
+    fn detect_collisions(&self) {}
 
-    fn apply_forces(&self, bodies: &Bodies) {
-        for body in bodies {
-            //
-        }
-    }
+    //
+    fn calculate_forces(&self) {}
+
+    //
+    fn apply_forces(&self) {}
 }
 
 /*** Tests ***/

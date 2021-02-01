@@ -6,6 +6,7 @@ pub use transform::Transform as BodyTransform;
 
 mod bounds;
 use bounds::Bounds;
+pub use bounds::Edge as BodyBoundEdge;
 
 use crate::Tick;
 
@@ -19,7 +20,7 @@ pub type BodyID = ID;
 /// and accumulate mass by colliding with each other.
 ///
 /// A body also contains a cache of it's transforms during each integration
-/// tick so that an arbitrary time of a simulation can be visualized.
+/// tick so that an arbitrary previous state of a simulation can be visualized.
 #[derive(Debug)]
 pub struct Body {
     pub transform: Transform,
@@ -38,6 +39,7 @@ impl Body {
 
     /// Creates a body configured to start at a given tick
     pub fn new_at_tick(id: ID, tick: Tick, transform: Transform) -> Body {
+        //
         let mut body = Body {
             id,
 
@@ -47,6 +49,7 @@ impl Body {
             bounds: Bounds::new(),
         };
 
+        body.bounds.update(&transform);
         body.record_tick(&tick, transform);
         body
     }
@@ -132,9 +135,10 @@ impl Body {
 
     pub fn invalidate_after(&mut self, tick: &Tick) -> bool {
         let exclusive_tick = *tick;
-        // ^ thought about having invalidate_before_inc, invalidate_before_exc, invalidate_after_inc
-        // abd invalidate_after_exc methods, but figured that might have been over-kill. Decided to
-        // make invalidate_before inclusive and invalidate_after exclusive, because that covers all
+        // ^ thought about having invalidate_before_inc, invalidate_before_exc,
+        // invalidate_after_inc and invalidate_after_exc methods, but figured
+        // that might have been over-kill. Decided to make invalidate_before
+        // inclusive and invalidate_after exclusive, because that covers all
         // cache-invalidation use cases.
 
         if exclusive_tick < self.start_tick {
