@@ -56,7 +56,7 @@ module.exports = {
       'additionalHooks': 'useAsyncAction'
     }],
 
-    '@typescript-eslint/indent': 'on',
+    '@typescript-eslint/indent': [1],
     '@typescript-eslint/no-empty-interface': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/prefer-readonly': 'error',

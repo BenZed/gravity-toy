@@ -14,6 +14,7 @@ import {
 
 import Body, { BodyProps } from './body'
 import Integrator from './integrator'
+import { StreamData } from './integrator/worker'
 
 /*** Types ***/
 
@@ -313,23 +314,23 @@ class Simulation extends EventEmitter<SimulationEvents> {
         return this.runUntil(oneTick, startTick, description)
     }
 
-    stop() {
+    public stop() {
         this._integrator.stop()
     }
 
-    createBodies(props: BodyProps | BodyProps[], tick = this.currentTick) {
+    public createBodies(props: Partial<BodyProps> | Partial<BodyProps>[], tick = this.currentTick): Body[] {
 
         if (!is.array(props))
             props = [props]
 
-        const bodies = this._cache
-        const created = []
+        const cache = this._cache
+        const created: Body[] = []
 
         for (const prop of props) {
 
-            const id = bodies.nextAssignId++
+            const id = cache.nextAssignId++
             const body = new Body(prop, tick, id)
-            bodies.bodies.set(id, body)
+            cache.bodies.set(id, body)
 
             // If we're not on the tick that we're adding the body
             // to, it's current values should be changed.
@@ -347,7 +348,7 @@ class Simulation extends EventEmitter<SimulationEvents> {
         return created
     }
 
-    clearAfterTick(tick = this.currentTick) {
+    public clearAfterTick(tick = this.currentTick) {
         this.assertTick(tick)
 
         if (tick < this.currentTick)
@@ -453,11 +454,11 @@ class Simulation extends EventEmitter<SimulationEvents> {
         cache.usedBytes = min(cache.maxBytes, allocations * NUMBER_SIZE)
     }
 
-    toArray(ids: number[]) {
+    public toArray(ids: number[]) {
         return [...this.bodies(ids)]
     }
 
-    toJSON() {
+    public toJSON() {
 
         const {
             g, maxCacheMemory
@@ -490,7 +491,7 @@ class Simulation extends EventEmitter<SimulationEvents> {
         }
     }
 
-    private _writeTick(data) {
+    private _writeTick(data: StreamData) {
 
         const simulation = this
         if (!simulation.running)

@@ -2,9 +2,6 @@
     "include": [
         "src"
     ],
-    "exclude": [
-        "src/**/*.test.ts"
-    ],
     "compilerOptions": {
         "lib": [
             "ESNext",
@@ -24,6 +21,7 @@
         // Enable strictest settings like strictNullChecks & noImplicitAny.
         "strict": true,
         "skipLibCheck": true,
+        "allowJs": false,
         // Import non-ES modules as default imports.
         "esModuleInterop": true,
         "downlevelIteration": true,
