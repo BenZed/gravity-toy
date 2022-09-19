@@ -18,7 +18,7 @@ class Edge {
         this.value = isMin ? -Infinity : Infinity
     }
 
-    refresh() {
+    public refresh() {
         const { body, isX, isMin } = this
 
         const vel = isX ? body.vel.x : body.vel.y
@@ -30,7 +30,7 @@ class Edge {
         this.value = axis + radius + shift
     }
 
-    valueOf() {
+    public valueOf() {
         return this.value
     }
 }
@@ -85,15 +85,13 @@ class Body {
 
     public link: Body | null = null
     public merge: Body | null = null
+    public bounds: Bounds
 
     public pos = V2.ZERO
     public vel = V2.ZERO
     public force = V2.ZERO
 
-    public bounds: Bounds
-
     public id: number
-
     public radius: number
 
     constructor (id: number, mass: number, pos: V2, vel: V2) {
@@ -104,9 +102,7 @@ class Body {
         this.vel = vel
 
         this.radius = radiusFromMass(mass)
-
         this.bounds = new Bounds(this)
-
     }
 
     public valueOf() {

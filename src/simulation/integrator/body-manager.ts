@@ -113,7 +113,6 @@ class BodyManager {
 
         for (const body of real)
             calculateForces(body, real, physics)
-
     }
 
     public applyForces(physics: Physics) {
@@ -154,7 +153,6 @@ class BodyManager {
                 this.combineBodies(b1, b2)
                 needsSort = true
             }
-
         }
 
         if (needsSort)
@@ -228,13 +226,11 @@ class BodyManager {
         // destroyed bodies have zero mass and since we're sorted by mass they'll
         // all be at the end of the array. While there are still destroyed bodies at
         // the end of the all array, pop them and place them in the destroyed array
-        while (living.at(-1)?.mass ?? Infinity <= 0) {
+        while (living.length > 0 && (living.at(-1) as Body).mass <= 0) {
             const body = living.pop() as Body
             destroyed.push(body)
         }
-
     }
-
 }
 
 /*** Helper ***/
@@ -245,14 +241,14 @@ function didCollide(...args: [Body, Body]) {
 
     const rel = fast.vel.copy().sub(slow.vel)
 
-    let dist
+    let dist: number
 
     // Due to float point precision errors, we can't use the same linear algebra
     // to determine the position of moving circles if their velocities are very
     // close because we'll get false positives.
 
     if (rel.sqrMagnitude >= RELATIVE_VELOCITY_EPSILON) {
-        const col = closestPointOnLine(fast.pos.sub(rel), fast.pos, slow.pos)
+        const col = closestPointOnLine(fast.pos.copy().sub(rel), fast.pos, slow.pos)
         dist = col.copy().sub(slow.pos).magnitude
     } else
         dist = fast.pos.copy().sub(slow.pos).magnitude
@@ -309,7 +305,7 @@ function calculateForces(body: Body, bodies: Body[], physics: Physics, addPsuedo
         if (!addPsuedoMassOnly) {
             // inlining relative.magnitude
             const dist = sqrt(distSqr)
-            body.force.add(relative.mult(attraction).div(dist))
+            body.force.add(relative.copy().mult(attraction).div(dist))
         }
 
     }

@@ -2,17 +2,22 @@
     "include": [
         "src"
     ],
+    "exclude": [
+        "src/renderer",
+        "src/client"
+    ],
     "compilerOptions": {
         "lib": [
             "ESNext",
             "dom"
         ],
         "types": [
-            "node"
+            "node",
+            "jest"
         ],
         "build": true,
         "target": "es5",
-        "outDir": "",
+        "outDir": "lib",
         "declaration": true,
         // Decorators are tight
         "experimentalDecorators": true,

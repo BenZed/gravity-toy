@@ -14,9 +14,9 @@ const RenderOptionsStyle = styled.div`
 /******************************************************************************/
 
 const RenderOptions = ({ children, ...props }) =>
-  <RenderOptionsStyle {...props}>
+    <RenderOptionsStyle {...props}>
      Render Options
-  </RenderOptionsStyle>
+    </RenderOptionsStyle>
 
 /******************************************************************************/
 // Exports

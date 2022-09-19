@@ -7,24 +7,24 @@ import Body from '../body'
 /*** Main ***/
 
 function orbitalVelocity(
-  bodyOrPos: Body | V2,
-  parent: Body,
-  g = DEFAULT_PHYSICS.g
+    bodyOrPos: Body | V2,
+    parent: Body,
+    g = DEFAULT_PHYSICS.g
 ) {
 
-  const pos = is(bodyOrPos, V2) ? bodyOrPos : bodyOrPos.pos
+    const pos = is(bodyOrPos, V2) ? bodyOrPos : bodyOrPos.pos
 
-  const relative = pos.sub(parent.pos)
-  const dist = relative.magnitude
+    const relative = pos.sub(parent.pos)
+    const dist = relative.magnitude
 
-  // I'm not sure why I have to divide by 10. According to Google
-  // this equation should work without it
-  const speed = sqrt(g * parent.mass / dist) * 0.1
+    // I'm not sure why I have to divide by 10. According to Google
+    // this equation should work without it
+    const speed = sqrt(g * parent.mass / dist) * 0.1
 
-  return relative
-    .perpendicular()
-    .mult(speed)
-    .add(parent.vel)
+    return relative
+        .perpendicular()
+        .mult(speed)
+        .add(parent.vel)
 
 }
 
@@ -33,5 +33,5 @@ function orbitalVelocity(
 export default orbitalVelocity
 
 export {
-  orbitalVelocity
+    orbitalVelocity
 }

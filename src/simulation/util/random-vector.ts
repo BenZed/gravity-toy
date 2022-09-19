@@ -4,11 +4,11 @@ import { random, sqrt, cos, sin, PI, V2 } from '@benzed/math'
 
 function randomVector(radius: number) {
 
-  const angle = random(0, 2 * PI)
-  const rRadiusSqr = random(radius ** 2)
-  const rRadius = sqrt(rRadiusSqr)
+    const angle = random(0, 2 * PI)
+    const rRadiusSqr = random(radius ** 2)
+    const rRadius = sqrt(rRadiusSqr)
 
-  return new V2(rRadius * cos(angle), rRadius * sin(angle))
+    return new V2(rRadius * cos(angle), rRadius * sin(angle))
 }
 
 /*** Exports ***/
@@ -16,5 +16,5 @@ function randomVector(radius: number) {
 export default randomVector
 
 export {
-  randomVector
+    randomVector
 }

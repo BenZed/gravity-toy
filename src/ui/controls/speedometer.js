@@ -10,19 +10,19 @@ import { $ } from '../theme'
 
 const Speedometer = styled(props => {
 
-  const { gravity, ...rest } = props
+    const { gravity, ...rest } = props
 
-  useStateTree.observe(gravity, 'targetSpeed', 'actualSpeed')
+    useStateTree.observe(gravity, 'targetSpeed', 'actualSpeed')
 
-  const { targetSpeed, actualSpeed } = gravity
+    const { targetSpeed, actualSpeed } = gravity
 
-  return <div {...rest} >
-    <span>{targetSpeed}<sub>x</sub></span>
+    return <div {...rest} >
+        <span>{targetSpeed}<sub>x</sub></span>
 
-    <span data-match={actualSpeed !== targetSpeed}>
-      {actualSpeed.toFixed(2)}<sub>x</sub>
-    </span>
-  </div>
+        <span data-match={actualSpeed !== targetSpeed}>
+            {actualSpeed.toFixed(2)}<sub>x</sub>
+        </span>
+    </div>
 })`
 
   margin: auto 0em 0.5em 0.25em;

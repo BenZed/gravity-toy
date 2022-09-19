@@ -12,10 +12,10 @@ import RenderOptions from './render-options'
 /******************************************************************************/
 
 export {
-  Speed,
-  Speedometer,
-  Timeline,
-  Zoom,
-  Move,
-  RenderOptions
+    Speed,
+    Speedometer,
+    Timeline,
+    Zoom,
+    Move,
+    RenderOptions
 }

@@ -7,20 +7,20 @@ import { KeyButton } from '../common'
 
 const Speed = ({ reverse, gravity, ...props }) =>
 
-  <KeyButton
-    {...props}
-    down={e => gravity.incrementTargetSpeed(reverse)}
-    keys={reverse ? 'j' : 'l'}
-  >
-    { reverse ? '◀' : '▶' }
-  </KeyButton>
+    <KeyButton
+        {...props}
+        down={e => gravity.incrementTargetSpeed(reverse)}
+        keys={reverse ? 'j' : 'l'}
+    >
+        { reverse ? '◀' : '▶' }
+    </KeyButton>
 
 /******************************************************************************/
 // Defaults
 /******************************************************************************/
 
 Speed.defaultProps = {
-  $size: 1
+    $size: 1
 }
 
 /******************************************************************************/

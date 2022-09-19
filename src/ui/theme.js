@@ -15,17 +15,17 @@ const BLACK = 'black'
 
 const theme = {
 
-  ...themes.basic,
-  bg: new Color(BLACK),
-  fg: new Color(PURPLE),
+    ...themes.basic,
+    bg: new Color(BLACK),
+    fg: new Color(PURPLE),
 
-  brand: {
-    primary: new Color(PURPLE),
-    detail: new Color(GREEN),
-    danger: new Color(ORANGE)
-  },
+    brand: {
+        primary: new Color(PURPLE),
+        detail: new Color(GREEN),
+        danger: new Color(ORANGE)
+    },
 
-  titleSize: 3 // vw
+    titleSize: 3 // vw
 }
 
 const $ = Styler.createInterface(theme)
@@ -37,5 +37,5 @@ const $ = Styler.createInterface(theme)
 export default $
 
 export {
-  theme, $
+    theme, $
 }

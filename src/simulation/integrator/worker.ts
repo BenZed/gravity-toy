@@ -14,7 +14,7 @@ import BodyManager from './body-manager'
 
 /*** Types ***/
 
-interface StreamData {
+interface FromWorkerData {
 
     nextAssignId: number
     destroyed: { mergeId: number, id: number }[]
@@ -22,10 +22,14 @@ interface StreamData {
     stream: number[]
 }
 
+interface ToWorkerData {
+    physics: Physics
+    data: number[]
+}
 
 /*** Helper ***/
 
-const destroyedIds = (body: Body): StreamData['destroyed'][number] => ({
+const destroyedIds = (body: Body): FromWorkerData['destroyed'][number] => ({
     id: body.id,
     mergeId: (body.merge as Body).id
 })
@@ -54,34 +58,32 @@ const sendToParent = isWebWorker
 
 const NEXT_TICK_DELAY = 0
 
-const physics: Physics = {
-    ...DEFAULT_PHYSICS
-}
+const physics: Physics = { ...DEFAULT_PHYSICS }
 
 const bodies = new BodyManager()
 
 /*** I/O ***/
 
-function receiveStream(data: { physics: Physics, stream: number[] }) {
+function receiveStream(workerData: ToWorkerData) {
 
-    for (const key in data.physics) {
+    for (const key in workerData.physics) {
         const k = key as keyof Physics
-        physics[k] = data.physics[k]
+        physics[k] = workerData.physics[k]
     }
 
     const created = []
 
     let i = 0
 
-    bodies.nextAssignId = data.stream[i++] // First item in stream is last assigned id
+    bodies.nextAssignId = workerData.data[i++] // First item in stream is last assigned id
 
-    while (i < data.stream.length) {
-        const id = data.stream[i++]
-        const mass = data.stream[i++]
-        const posX = data.stream[i++]
-        const posY = data.stream[i++]
-        const velX = data.stream[i++]
-        const velY = data.stream[i++]
+    while (i < workerData.data.length) {
+        const id = workerData.data[i++]
+        const mass = workerData.data[i++]
+        const posX = workerData.data[i++]
+        const posY = workerData.data[i++]
+        const velX = workerData.data[i++]
+        const velY = workerData.data[i++]
 
         const pos = new Vector(posX, posY)
         const vel = new Vector(velX, velY)
@@ -107,7 +109,7 @@ function sendStream() {
 
     const { living, destroyed, created, nextAssignId } = bodies
 
-    const data: StreamData = {
+    const data: FromWorkerData = {
         nextAssignId,
         destroyed: [...destroyed.map(destroyedIds)],
         created: [...created.map(idOfBody)],
@@ -155,5 +157,6 @@ function tick(queueNextTick = true) {
 export { physics, bodies, tick }
 
 export {
-    StreamData
+    FromWorkerData,
+    ToWorkerData
 }

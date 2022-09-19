@@ -6,6 +6,6 @@ import useCanvas from './use-canvas'
 /******************************************************************************/
 
 export {
-  useKeyCommand,
-  useCanvas
+    useKeyCommand,
+    useCanvas
 }

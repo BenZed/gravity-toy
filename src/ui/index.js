@@ -8,6 +8,6 @@ import GravityToyStateTree from './gravity-toy-state-tree'
 export default GravityToy
 
 export {
-  GravityToy,
-  GravityToyStateTree
+    GravityToy,
+    GravityToyStateTree
 }

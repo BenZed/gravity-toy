@@ -26,7 +26,7 @@ class TestSimulation {
         this.g = physics.g
 
         for (const key in physics)
-            worker.physics[key] = physics[key]
+            worker.physics[key as keyof Physics] = physics[key as keyof Physics]
 
         worker.bodies.living.length = 0
         worker.bodies.created.length = 0
@@ -34,7 +34,7 @@ class TestSimulation {
         worker.bodies.nextAssignId = 0
 
         for (const key in worker.bodies.overlaps)
-            delete worker.bodies.overlaps[key]
+            delete worker.bodies.overlaps[key as `${number}-${number}`]
     }
 
     public createBodies(props: Partial<BodyProps> | (Partial<BodyProps>)[]) {
@@ -94,12 +94,9 @@ class TestSimulation {
 
 describe('Integration', function () {
 
-    this.slow(1000)
-
     describe('meta', () => {
 
         it('TestSimulation gives same results as Simulation', async function () {
-            this.slow(2000)
 
             const smallAndBig = () => {
                 return [{
@@ -135,7 +132,7 @@ describe('Integration', function () {
 
                 g += 0.25
             }
-        })
+        }, 2000)
 
         it('instancing TestSimulation resets worker state', () => {
             const sim1 = new TestSimulation({})
@@ -161,7 +158,7 @@ describe('Integration', function () {
             new TestSimulation(config)
 
             for (const key in config)
-                expect(worker.physics[key]).toEqual(config[key])
+                expect(worker.physics[key as keyof Physics]).toEqual(config[key as keyof Physics])
         })
     })
 
@@ -243,7 +240,7 @@ describe('Integration', function () {
 
             const [p1, p2] = sim.createBodies([
                 { mass: 99, pos: V2.ZERO },
-                { mass: 99, pos: new V2(10, 0) }
+                { mass: 99, pos: new V2(20, 0) }
             ])
 
             worker.bodies.sort(worker.physics)
@@ -251,12 +248,14 @@ describe('Integration', function () {
             expect(p1).toHaveProperty('real', false)
             expect(p2).toHaveProperty('real', false)
 
+            await sim.runForOneTick()
+
             await sim.runForNumTicks(5)
+
 
             // If psuedo bodies were attracted to each other, they would have moved
             expect(p1.pos.x).toEqual(0)
-            expect(p2.pos.x).toEqual(10)
-
+            expect(p2.pos.x).toEqual(20)
         })
 
         it('pseudo bodies are attracted to real bodies', async () => {
@@ -376,7 +375,9 @@ describe('Integration', function () {
 
             describe('bodies.overlaps', () => {
 
-                let sim, b1, b2
+                let sim: TestSimulation
+                let b1: PhysicsBody
+                let b2: PhysicsBody
                 const tests: { [key: string]: unknown } = {}
                 beforeAll(async () => {
 
@@ -452,12 +453,13 @@ describe('Integration', function () {
                     for (const size1 of sizes)
                         for (const speed2 of speeds)
                             for (const size2 of sizes)
-                                it(`${speed1} ${size1} vs ${speed2} ${size2}`)
+                                it.todo(`${speed1} ${size1} vs ${speed2} ${size2}`)
             })
 
             describe('on body destroyed', () => {
 
-                let big, small
+                let big: PhysicsBody
+                let small: PhysicsBody
                 beforeAll(async () => {
 
                     const sim = new TestSimulation({});

@@ -19,32 +19,32 @@ const CURRENT_PROGRESS_THRESHOLD = 0.01 // * 100%
 
 const EraserButton = styled(props => {
 
-  const { show, eraseProgress, setEraseProgress, progress, erase, containerRef, ...rest } = props
+    const { show, eraseProgress, setEraseProgress, progress, erase, containerRef, ...rest } = props
 
-  return <button
-    draggable
+    return <button
+        draggable
 
-    onClick={e => {
-      if (eraseProgress <= 0)
-        setEraseProgress(ERASER_PROGRESS_THRESHOLD)
-      else
-        erase()
-    }}
+        onClick={e => {
+            if (eraseProgress <= 0)
+                setEraseProgress(ERASER_PROGRESS_THRESHOLD)
+            else
+                erase()
+        }}
 
-    onDrag={e => {
-      const { width, left } = containerRef.current.getBoundingClientRect()
-      if (e.clientX <= 0)
-        return
+        onDrag={e => {
+            const { width, left } = containerRef.current.getBoundingClientRect()
+            if (e.clientX <= 0)
+                return
 
-      const x = e.clientX - left
-      const eraseProgress = clamp(x / width, 0, progress)
+            const x = e.clientX - left
+            const eraseProgress = clamp(x / width, 0, progress)
 
-      setEraseProgress(eraseProgress)
-    }}
-    onDragEnd={erase}
-    {...rest}>
+            setEraseProgress(eraseProgress)
+        }}
+        onDragEnd={erase}
+        {...rest}>
     ✂
-  </button>
+    </button>
 })`
 
   margin-right: 0em;
@@ -69,46 +69,46 @@ const EraserButton = styled(props => {
 
 const CurrentTickSlider = styled(props => {
 
-  const { show, progress, currentProgress, containerRef, gravity, ...rest } = props
+    const { show, progress, currentProgress, containerRef, gravity, ...rest } = props
 
-  const startRef = useRef()
+    const startRef = useRef()
 
-  return <div
-    draggable
-    onDragStart={e => {
-      startRef.current = {
-        x: e.clientX,
-        progress,
-        simulationState: gravity.simulationState
-      }
-      gravity.setPaused(true)
-    }}
-    onDrag={e => {
-      if (e.clientX <= 0)
-        return
+    return <div
+        draggable
+        onDragStart={e => {
+            startRef.current = {
+                x: e.clientX,
+                progress,
+                simulationState: gravity.simulationState
+            }
+            gravity.setPaused(true)
+        }}
+        onDrag={e => {
+            if (e.clientX <= 0)
+                return
 
-      const bounds = containerRef.current.getBoundingClientRect()
-      const sim = startRef.current.simulationState
-      const progress = startRef.current.progress
+            const bounds = containerRef.current.getBoundingClientRect()
+            const sim = startRef.current.simulationState
+            const progress = startRef.current.progress
 
-      const lastPossibleTick = round((sim.lastTick - sim.firstTick) / progress)
+            const lastPossibleTick = round((sim.lastTick - sim.firstTick) / progress)
 
-      const deltaX = e.clientX - startRef.current.x
-      const deltaP = deltaX / bounds.width
-      const deltaTicks = round(deltaP * lastPossibleTick)
+            const deltaX = e.clientX - startRef.current.x
+            const deltaP = deltaX / bounds.width
+            const deltaTicks = round(deltaP * lastPossibleTick)
 
-      const targetTick = sim.currentTick + round(deltaTicks)
+            const targetTick = sim.currentTick + round(deltaTicks)
 
-      gravity.simulation.setCurrentTick(targetTick)
-    }}
-    onDragEnd={e => {
-      startRef.current = null
-      gravity.setPaused(false)
-    }}
-    style={{
-      left: `calc(${currentProgress * progress * 100}% - 0.5em)`
-    }}
-    {...rest}>︱</div>
+            gravity.simulation.setCurrentTick(targetTick)
+        }}
+        onDragEnd={e => {
+            startRef.current = null
+            gravity.setPaused(false)
+        }}
+        style={{
+            left: `calc(${currentProgress * progress * 100}% - 0.5em)`
+        }}
+        {...rest}>︱</div>
 })`
   position: absolute;
   top: -0.75em;
@@ -127,91 +127,91 @@ const CurrentTickSlider = styled(props => {
 
 const Timeline = styled(props => {
 
-  const { gravity, ...rest } = props
+    const { gravity, ...rest } = props
 
-  useStateTree.observe(gravity, 'simulationState')
+    useStateTree.observe(gravity, 'simulationState')
 
-  const {
-    currentTick: current,
-    firstTick: first,
-    lastTick: last,
-    usedCacheMemory: used,
-    maxCacheMemory: max,
-    running
-  } = gravity.simulationState
+    const {
+        currentTick: current,
+        firstTick: first,
+        lastTick: last,
+        usedCacheMemory: used,
+        maxCacheMemory: max,
+        running
+    } = gravity.simulationState
 
-  const progress = ((used / max) || 0)
+    const progress = ((used / max) || 0)
 
-  const currentProgress = (current - first) / (last - first)
+    const currentProgress = (current - first) / (last - first)
 
-  const containerRef = useRef()
-  const [ eraseProgress, setEraseProgress ] = useState(0)
+    const containerRef = useRef()
+    const [ eraseProgress, setEraseProgress ] = useState(0)
 
-  const erase = () => {
+    const erase = () => {
 
-    if (eraseProgress <= 0)
-      return
+        if (eraseProgress <= 0)
+            return
 
-    const lastPossibleTick = round((last - first) / progress)
-    const eraseTick = first + round(eraseProgress * lastPossibleTick)
+        const lastPossibleTick = round((last - first) / progress)
+        const eraseTick = first + round(eraseProgress * lastPossibleTick)
 
-    gravity.simulation.clearBeforeTick(eraseTick)
-    setEraseProgress(0)
-    if (!running)
-      gravity.simulation.run()
-  }
+        gravity.simulation.clearBeforeTick(eraseTick)
+        setEraseProgress(0)
+        if (!running)
+            gravity.simulation.run()
+    }
 
-  // console.log((current - first) / (last - first))
+    // console.log((current - first) / (last - first))
 
-  return <div {...rest} >
+    return <div {...rest} >
 
-    <EraserButton
-      show={progress > ERASER_PROGRESS_THRESHOLD}
-      progress={progress}
-      eraseProgress={eraseProgress}
-      setEraseProgress={setEraseProgress}
-      erase={erase}
-      containerRef={containerRef}
-    />
-
-    <div className='timeline'>
-
-      <CurrentTickSlider
-        gravity={gravity}
-        show={progress > CURRENT_PROGRESS_THRESHOLD && currentProgress < 1}
-        currentProgress={currentProgress}
-        progress={progress}
-        containerRef={containerRef}
-      />
-
-      <div className='bar-container'
-        ref={containerRef}
-        onClick={e => {
-          const bounds = containerRef.current.getBoundingClientRect()
-          const lastPossibleTick = round((last - first) / progress)
-
-          const deltaP = (e.clientX - bounds.left) / bounds.width
-          const targetTick = first + round(deltaP * lastPossibleTick)
-
-          gravity.simulation.setCurrentTick(targetTick)
-        }}
-      >
-
-        <div
-
-          className='progress-bar'
-          style={{ width: `${progress * 100}%` }}
+        <EraserButton
+            show={progress > ERASER_PROGRESS_THRESHOLD}
+            progress={progress}
+            eraseProgress={eraseProgress}
+            setEraseProgress={setEraseProgress}
+            erase={erase}
+            containerRef={containerRef}
         />
 
-        <div
-          className='eraser-bar'
-          style={{ width: `${eraseProgress * 100}%` }}
-        />
+        <div className='timeline'>
 
-      </div>
+            <CurrentTickSlider
+                gravity={gravity}
+                show={progress > CURRENT_PROGRESS_THRESHOLD && currentProgress < 1}
+                currentProgress={currentProgress}
+                progress={progress}
+                containerRef={containerRef}
+            />
 
+            <div className='bar-container'
+                ref={containerRef}
+                onClick={e => {
+                    const bounds = containerRef.current.getBoundingClientRect()
+                    const lastPossibleTick = round((last - first) / progress)
+
+                    const deltaP = (e.clientX - bounds.left) / bounds.width
+                    const targetTick = first + round(deltaP * lastPossibleTick)
+
+                    gravity.simulation.setCurrentTick(targetTick)
+                }}
+            >
+
+                <div
+
+                    className='progress-bar'
+                    style={{ width: `${progress * 100}%` }}
+                />
+
+                <div
+                    className='eraser-bar'
+                    style={{ width: `${eraseProgress * 100}%` }}
+                />
+
+            </div>
+
+        </div>
     </div>
-  </div>
 })`
 
   display: flex;

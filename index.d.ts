@@ -1,2 +1,1 @@
-import 'normalize.css';
-import './assets/gravity-toy.css';
+export * from './simulation';

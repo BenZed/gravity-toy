@@ -1,8 +1,10 @@
-import Simulation, { Simulation as Simulation2 } from './simulation'
+import Simulation, { Simulation as Simulation2, SimulationSettings } from './simulation'
 import { Body, BodyProps } from './body'
 import { V2 as Vector } from '@benzed/math'
 
-function bodies(count = 1): Partial<BodyProps>[] {
+/*** Helper ***/
+
+function createBodies(count = 1): Partial<BodyProps>[] {
     const props: Partial<BodyProps>[] = []
     let x = 0
     let y = 0
@@ -17,11 +19,12 @@ function bodies(count = 1): Partial<BodyProps>[] {
     return props
 }
 
-describe('Simulation', function () {
-    this.slow(1000)
+/*** Test ***/
+
+describe('Simulation', () => {
 
     it('is a class', () => {
-        expect(() => new Simulation()).toThrow()
+        expect(() => new Simulation()).not.toThrow()
         // @ts-expect-error no new keyword
         expect(() => Simulation()).toThrow('cannot be invoked without \'new\'')
     })
@@ -35,7 +38,8 @@ describe('Simulation', function () {
 
             it('must be an object', () => {
                 // eslint-disable-next-line new-parens
-                for (const bad of ['weee', 1, [], true, Symbol('sym'), new Date(), new function () { /**/ }])
+                for (const bad of ['weee', 1, [], true, Symbol('sym'), new Date()])
+                    // @ts-expect-error Bad input
                     expect(() => new Simulation(bad)).toThrow(TypeError)
 
                 expect(() => new Simulation({})).not.toThrow(TypeError)
@@ -70,7 +74,7 @@ describe('Simulation', function () {
 
     describe('Methods', () => {
 
-        let sim
+        let sim: Simulation
         beforeEach(() => {
             sim = new Simulation()
         })
@@ -83,7 +87,7 @@ describe('Simulation', function () {
         describe('run()', () => {
 
             it('Starts the simulation', () => {
-                sim.createBodies(bodies(1))
+                sim.createBodies(createBodies(1))
                 sim.run()
                 expect(sim).toHaveProperty('running', true)
             })
@@ -93,7 +97,7 @@ describe('Simulation', function () {
             })
 
             it('invalidates cache after provided tick', async () => {
-                sim.createBodies(bodies(1))
+                sim.createBodies(createBodies(1))
                 await sim.runForNumTicks(10)
                 sim.run(5)
                 sim.stop()
@@ -101,7 +105,7 @@ describe('Simulation', function () {
             })
 
             it('throws if provided tick is out of range', () => {
-                sim.createBodies(bodies(1))
+                sim.createBodies(createBodies(1))
                 expect(() => sim.run(1)).toThrow(RangeError)
             })
 
@@ -110,7 +114,7 @@ describe('Simulation', function () {
                 const [body] = sim.createBodies({
                     mass: 100,
                     vel: new Vector(0.0125, 0),
-                    pos: Vector.zero
+                    pos: Vector.ZERO
                 })
 
                 body.pos.x = 10
@@ -126,16 +130,15 @@ describe('Simulation', function () {
                 sim.currentTick = 20
                 // Proves that body.pos.x = 1000 was not used because simulation wasn;t
                 // started from currentTick
-                expect(body.pos.x).to.be.below(1000)
+                expect(body.pos.x).toBeLessThan(1000)
             })
 
             it('throws if cache memory is full', async function () {
 
-                this.timeout(10000)
                 const sim = new Simulation({
                     maxCacheMemory: 0.1
                 })
-                sim.createBodies(bodies(100))
+                sim.createBodies(createBodies(100))
                 sim.run()
                 await new Promise(resolve => sim.on('cache-full', resolve))
 
@@ -144,7 +147,7 @@ describe('Simulation', function () {
                 // Once cache is cleared, start should work again
                 expect(() => sim.run(0)).not.toThrow()
                 sim.stop()
-            })
+            }, 10000)
 
         })
 
@@ -159,7 +162,7 @@ describe('Simulation', function () {
         describe('runForNumTicks()', () => {
 
             it('starts the simulation for a fixed amount of ticks and then stops it', async () => {
-                sim.createBodies(bodies(1))
+                sim.createBodies(createBodies(1))
 
                 await sim.runForNumTicks(10)
                 expect(sim).toHaveProperty('lastTick', 10)
@@ -167,34 +170,33 @@ describe('Simulation', function () {
             })
 
             it('returns a promise', () => {
-                sim.createBodies(bodies(1))
+                sim.createBodies(createBodies(1))
                 return expect(sim.runForNumTicks(1) instanceof Promise).toBe(true)
             })
 
             it('rejects if cache fills up before all ticks executed', async function () {
-                this.timeout(10000)
                 const sim = new Simulation({ maxCacheMemory: 0.1 })
-                sim.createBodies(bodies(100))
+                sim.createBodies(createBodies(100))
 
-                let err
+                let err: Error | null = null
                 try {
                     await sim.runForNumTicks(10000)
                 } catch (e) {
-                    err = e
+                    err = e as Error
                 }
 
-                expect(err).toBeInstanceof(Error)
+                expect(err).toBeInstanceOf(Error)
                 expect(err).toHaveProperty('message')
-                return expect(err.message.includes('Could not run for')).toBe(true)
-            })
+                return expect(err?.message.includes('Could not run for')).toBe(true)
+            }, 10000)
 
-            it('throws if totalTicks is not provided or invalid', () => {
-                sim.createBodies(bodies(1))
-                expect(() => sim.runForNumTicks()).toThrow('totalTicks must be a number above zero')
+            it('throws if totalTicks is below 0', () => {
+                sim.createBodies(createBodies(1))
+                expect(() => sim.runForNumTicks(-1)).toThrow('totalTicks must be a number above zero')
             })
 
             it('optionally takes a startTick argument', async () => {
-                sim.createBodies(bodies(1))
+                sim.createBodies(createBodies(1))
                 await sim.runForNumTicks(10)
                 const final = await sim.runForNumTicks(5, 2)
                 expect(final).toEqual(7)
@@ -205,7 +207,7 @@ describe('Simulation', function () {
             })
 
             it('returns stopped tick index', async () => {
-                sim.createBodies(bodies(1))
+                sim.createBodies(createBodies(1))
                 const final = await sim.runForNumTicks(10)
                 expect(final).toEqual(10)
             })
@@ -213,16 +215,16 @@ describe('Simulation', function () {
         })
 
         describe('runForOneTick', () => {
-            it('returns a promise that resolves when a single tick has been run')
-            it('rejects if cache is full')
-            it('optionally takes a start tick')
-            it('throws if start tick is out of range')
+            it.todo('returns a promise that resolves when a single tick has been run')
+            it.todo('rejects if cache is full')
+            it.todo('optionally takes a start tick')
+            it.todo('throws if start tick is out of range')
         })
 
         describe('stop()', () => {
 
             it('Stops the simulation', async () => {
-                sim.createBodies(bodies(10))
+                sim.createBodies(createBodies(10))
                 await sim.runForNumTicks(10)
                 expect(sim).toHaveProperty('running', false)
             })
@@ -232,7 +234,7 @@ describe('Simulation', function () {
         describe('setCurrentTick()', () => {
 
             it('sets the current tick', async () => {
-                sim.createBodies(bodies(10))
+                sim.createBodies(createBodies(10))
                 await sim.runForNumTicks(10)
 
                 expect(sim).toHaveProperty('currentTick', 0)
@@ -257,23 +259,23 @@ describe('Simulation', function () {
             })
 
             it('clips given tick to valid range', async () => {
-                sim.createBodies(bodies(5))
+                sim.createBodies(createBodies(5))
                 await sim.runForNumTicks(4)
                 sim.setCurrentTick(5)
                 expect(sim.currentTick).toEqual(4)
             })
 
-            it('non existant bodies are given a null mass', async () => {
-                sim.createBodies(bodies(1))
+            it('non existant bodies are given a 0 mass', async () => {
+                sim.createBodies(createBodies(1))
                 await sim.runForNumTicks(10)
 
-                const [body] = sim.createBodies(bodies(1), 5)
+                const [body] = sim.createBodies(createBodies(1), 5)
 
                 sim.setCurrentTick(5)
                 expect(body.mass).toEqual(100)
 
                 sim.setCurrentTick(2)
-                return expect(body.mass).toBeNull()
+                return expect(body.mass).toBe(0)
             })
 
         })
@@ -281,34 +283,34 @@ describe('Simulation', function () {
         describe('createBodies()', () => {
 
             it('Creates one or multiple bodies at a given tick index', () => {
-                const [body] = sim.createBodies(bodies(1))
+                const [body] = sim.createBodies(createBodies(1))
                 return expect(body instanceof Body).toBe(true)
             })
 
             it('invalidates data after given tick', async () => {
-                sim.createBodies(bodies(1), 0)
+                sim.createBodies(createBodies(1), 0)
                 await sim.runForNumTicks(10)
 
                 expect(sim).toHaveProperty('lastTick', 10)
 
-                sim.createBodies(bodies(1), 5)
+                sim.createBodies(createBodies(1), 5)
                 expect(sim).toHaveProperty('lastTick', 5)
             })
 
             it('ensures body current values are correct', async () => {
-                sim.createBodies(bodies(1), 0)
+                sim.createBodies(createBodies(1), 0)
                 await sim.runForNumTicks(10)
 
-                const [body] = sim.createBodies(bodies(1), 5)
+                const [body] = sim.createBodies(createBodies(1), 5)
 
                 expect(sim.currentTick).toEqual(0)
                 return expect(body.exists).toBe(false)
             })
 
             it('doesnt halt the simulation if it is running', () => {
-                sim.createBodies(bodies(1), 0)
+                sim.createBodies(createBodies(1), 0)
                 sim.run()
-                sim.createBodies(bodies(2), 0)
+                sim.createBodies(createBodies(2), 0)
                 expect(sim).toHaveProperty('running', true)
             })
         })
@@ -316,9 +318,9 @@ describe('Simulation', function () {
         describe('numLivingBodies()', () => {
 
             it('returns the number of living bodies at current tick', async () => {
-                sim.createBodies(bodies(1))
+                sim.createBodies(createBodies(1))
                 await sim.runForNumTicks(10)
-                sim.createBodies(bodies(1), 5)
+                sim.createBodies(createBodies(1), 5)
 
                 sim.currentTick = 5
                 expect(sim.numLivingBodies()).toEqual(2)
@@ -331,17 +333,17 @@ describe('Simulation', function () {
         describe('clearAfterTick()', () => {
 
             it('invalidates the cache after given tick', async () => {
-                const [body] = sim.createBodies(bodies(1))
+                const [body] = sim.createBodies(createBodies(1))
 
                 await sim.runForNumTicks(10)
 
-                expect(body.cache.data).toHaveProperty('length', 66)
+                expect(body['_cache'].data).toHaveProperty('length', 66)
                 expect(sim).toHaveProperty('lastTick', 10)
 
                 sim.clearAfterTick(0)
 
                 expect(sim).toHaveProperty('lastTick', 0)
-                expect(body.cache.data).toHaveProperty('length', 6)
+                expect(body['_cache'].data).toHaveProperty('length', 6)
 
             })
 
@@ -350,10 +352,10 @@ describe('Simulation', function () {
             })
 
             it('deletes bodies that were created after the provided tick', async () => {
-                sim.createBodies(bodies(1))
+                sim.createBodies(createBodies(1))
                 await sim.runForNumTicks(10)
 
-                sim.createBodies(bodies(1), 10)
+                sim.createBodies(createBodies(1), 10)
                 expect([...sim]).toHaveProperty('length', 2)
 
                 sim.clearAfterTick(5)
@@ -361,7 +363,7 @@ describe('Simulation', function () {
             })
 
             it('clears body._cache.deathTick if it is out of range', async () => {
-                const [body] = sim.createBodies(bodies(1))
+                const [body] = sim.createBodies(createBodies(1))
                 await sim.runForNumTicks(10)
 
                 // Fake death
@@ -370,12 +372,12 @@ describe('Simulation', function () {
 
                 await sim.clearAfterTick(4)
 
-                return expect(cache.deathTick).toBeNull()
+                return expect(cache.deathTick).toBe(-1)
             })
 
             it('updates usedCacheMemory', async () => {
                 const sim = new Simulation({ maxCacheMemory: 0.1 })
-                sim.createBodies(bodies(100))
+                sim.createBodies(createBodies(100))
 
                 await sim.runForNumTicks(10)
                 const used = sim.usedCacheMemory
@@ -390,21 +392,21 @@ describe('Simulation', function () {
         describe('clearBeforeTick()', () => {
 
             it('invalidates the cache before a given tick', async () => {
-                const [body] = sim.createBodies(bodies(1))
+                const [body] = sim.createBodies(createBodies(1))
 
                 await sim.runForNumTicks(10)
 
-                expect(body._cache.data).toHaveProperty('length', 66)
+                expect(body['_cache'].data).toHaveProperty('length', 66)
                 expect(sim).toHaveProperty('firstTick', 0)
 
                 sim.clearBeforeTick(6)
 
                 expect(sim).toHaveProperty('firstTick', 6)
-                expect(body._cache.data).toHaveProperty('length', 30)
+                expect(body['_cache'].data).toHaveProperty('length', 30)
             })
 
             it('body._cache.data is spliced correctly and birthTick is set', async () => {
-                const [body] = sim.createBodies(bodies(1))
+                const [body] = sim.createBodies(createBodies(1))
 
                 await sim.runForNumTicks(10)
                 sim.setCurrentTick(10)
@@ -417,15 +419,15 @@ describe('Simulation', function () {
                 sim.setCurrentTick(10)
 
                 expect(body.pos.x).toEqual(x)
-                expect(body._cache.birthTick).toEqual(5)
+                expect(body['_cache'].birthTick).toEqual(5)
             })
 
             it('bodies killed before given tick are deleted', async () => {
-                const [body] = sim.createBodies(bodies(1))
+                const [body] = sim.createBodies(createBodies(1))
 
                 await sim.runForNumTicks(10)
 
-                const cache = body._cache
+                const cache = body['_cache']
                 cache.deathTick = 5
 
                 sim.clearBeforeTick(5)
@@ -434,7 +436,7 @@ describe('Simulation', function () {
             })
 
             it('sets current tick if it would be out of range', async () => {
-                sim.createBodies(bodies(1))
+                sim.createBodies(createBodies(1))
                 await sim.runForNumTicks(10)
 
                 expect(sim).toHaveProperty('currentTick', 0)
@@ -448,7 +450,7 @@ describe('Simulation', function () {
 
             it('updates usedCacheMemory', async () => {
                 const sim = new Simulation({ maxCacheMemory: 0.1 })
-                sim.createBodies(bodies(100))
+                sim.createBodies(createBodies(100))
 
                 await sim.runForNumTicks(10)
                 const used = sim.usedCacheMemory
@@ -461,18 +463,19 @@ describe('Simulation', function () {
 
         describe('toArray()', () => {
 
-            it('returns bodies in simulation as an array')
+            it.todo('returns bodies in simulation as an array')
 
-            it('can take an id or array of ids as a filter')
+            it.todo('can take an id or array of ids as a filter')
 
         })
 
         describe('toJSON', () => {
 
-            let sim, json
+            let sim: Simulation
+            let json: SimulationSettings
             beforeAll(async () => {
                 sim = new Simulation()
-                sim.createBodies(bodies(10))
+                sim.createBodies(createBodies(10))
                 await sim.runForNumTicks(10)
                 json = sim.toJSON()
             })
@@ -490,7 +493,7 @@ describe('Simulation', function () {
 
         describe('static fromJSON', () => {
 
-            it('creates simulation from serialized state')
+            it.todo('creates simulation from serialized state')
 
         })
     })
@@ -554,7 +557,7 @@ describe('Simulation', function () {
                 sim.createBodies({ mass: 100 })
 
                 let ticks = 0
-                sim.on('tick', () => ticks++)
+                sim.on('tick', () => { ticks++ })
                 await sim.runForNumTicks(10)
 
                 expect(ticks).toEqual(10)
@@ -575,13 +578,12 @@ describe('Simulation', function () {
         describe('cache-full', () => {
 
             it('emits when cache memory is used up', async function () {
-                this.timeout(10000)
 
                 const sim = new Simulation({
                     maxCacheMemory: 0.1
                 })
 
-                sim.createBodies(bodies(100))
+                sim.createBodies(createBodies(100))
 
                 await new Promise(resolve => {
                     sim.once('cache-full', resolve)
@@ -589,7 +591,7 @@ describe('Simulation', function () {
                 })
 
                 expect(sim.usedCacheMemory).toEqual(0.1)
-            })
+            }, 10000)
         })
     })
 
@@ -624,9 +626,9 @@ describe('Simulation', function () {
                     expect(body).toEqual(otherBody)
             })
 
-            it('can optionally take an id')
+            it.todo('can optionally take an id')
 
-            it('can optionally take an array of ids')
+            it.todo('can optionally take an array of ids')
 
         })
 
@@ -634,10 +636,10 @@ describe('Simulation', function () {
             it('yields every body alive at current tick', async () => {
                 const sim = new Simulation()
 
-                const [body] = sim.createBodies(bodies(1))
+                const [body] = sim.createBodies(createBodies(1))
                 await sim.runForNumTicks(10)
 
-                sim.createBodies(bodies(1), 5)
+                sim.createBodies(createBodies(1), 5)
 
                 for (const otherBody of sim.livingBodies())
                     expect(body).toEqual(otherBody)

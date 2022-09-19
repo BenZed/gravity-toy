@@ -4,9 +4,5 @@
         // Build Options
         "build": false, // we'll never need to build test fields
         "target": "esnext", // prevents jest tests from failing,
-        "types": [
-            "node",
-            "jest"
-        ]
     }
 }

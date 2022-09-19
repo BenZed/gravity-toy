@@ -9,17 +9,17 @@ import { MASS_MIN, RADIUS_MIN, RADIUS_FACTOR } from '../constants'
 
 export function radiusFromMass(bodyOrMass: number | Body) {
 
-  const mass = isNumber(bodyOrMass) ? bodyOrMass : bodyOrMass.mass
+    const mass = isNumber(bodyOrMass) ? bodyOrMass : bodyOrMass.mass
 
-  return RADIUS_MIN + cbrt(mass - MASS_MIN) * RADIUS_FACTOR
+    return RADIUS_MIN + cbrt(mass - MASS_MIN) * RADIUS_FACTOR
 
 }
 
 export function massFromRadius(bodyOrRadius: number | Body) {
 
-  const radius = isNumber(bodyOrRadius) ? bodyOrRadius : bodyOrRadius.radius
+    const radius = isNumber(bodyOrRadius) ? bodyOrRadius : bodyOrRadius.radius
 
-  return ((radius - RADIUS_MIN) / RADIUS_FACTOR) ** 3 + MASS_MIN
+    return ((radius - RADIUS_MIN) / RADIUS_FACTOR) ** 3 + MASS_MIN
 
 }
 

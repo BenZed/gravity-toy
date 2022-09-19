@@ -27,65 +27,65 @@ const TRAIL_FADE_FACTOR = 0.33 // %, the last 33% of the trail will fade
 const NO_DASH = []
 
 const dopplerColor = new WeightedColorizer(
-  [ 'blue', 'cyan', 'white', 'orange', 'red' ],
-  [ -DOPPLER_MAX_VEL, -DOPPLER_MAX_VEL / 3, 0, DOPPLER_MAX_VEL / 3, DOPPLER_MAX_VEL ]
+    [ 'blue', 'cyan', 'white', 'orange', 'red' ],
+    [ -DOPPLER_MAX_VEL, -DOPPLER_MAX_VEL / 3, 0, DOPPLER_MAX_VEL / 3, DOPPLER_MAX_VEL ]
 )
 
 const massColor = new WeightedColorizer(
-  ['grey', 'white', 'white', 'fuchsia', 'gold', 'firebrick'],
-  [0, 50, 1000, 10000, 100000, 1000000]
+    ['grey', 'white', 'white', 'fuchsia', 'gold', 'firebrick'],
+    [0, 50, 1000, 10000, 100000, 1000000]
 )
 
 // TODO Move these
 function escapeSpeed (child, parent, g) {
-  const relative = child.pos.sub(parent.pos)
-  return g * parent.mass * child.mass / relative.sqrMagnitude
+    const relative = child.pos.sub(parent.pos)
+    return g * parent.mass * child.mass / relative.sqrMagnitude
 }
 
 function baryCenter (a, b) {
 
-  const small = a.mass > b.mass ? b : a
-  const big = small === a ? b : a
+    const small = a.mass > b.mass ? b : a
+    const big = small === a ? b : a
 
-  const relative = big.pos.sub(small.pos)
-  const distance = relative.magnitude
-  const baryRadius = distance / (1 + small.mass / big.mass)
+    const relative = big.pos.sub(small.pos)
+    const distance = relative.magnitude
+    const baryRadius = distance / (1 + small.mass / big.mass)
 
-  return relative
-    .normalize()
-    .imult(baryRadius)
-    .iadd(small.pos)
+    return relative
+        .normalize()
+        .imult(baryRadius)
+        .iadd(small.pos)
 }
 
 const numDigits = n =>
-  // No fucking idea. Found it on the internet
-  (log10((n ^ (n >> 31)) - (n >> 31)) | 0) + 1
+// No fucking idea. Found it on the internet
+    (log10((n ^ (n >> 31)) - (n >> 31)) | 0) + 1
 
 /******************************************************************************/
 // Colors
 /******************************************************************************/
 
 function colorByMass (ctx, body) {
-  ctx.fillStyle = ctx.strokeStyle = massColor(body.mass)
+    ctx.fillStyle = ctx.strokeStyle = massColor(body.mass)
 }
 
 function colorByDoppler (ctx, body, referencePos, relativeVel) {
 
-  const relativePos = body.pos.sub(referencePos)
-  const dist = relativePos.magnitude
-  const speed = relativeVel.magnitude
+    const relativePos = body.pos.sub(referencePos)
+    const dist = relativePos.magnitude
+    const speed = relativeVel.magnitude
 
-  const direction = Vector.dot(relativePos, relativeVel)
-  const distanceFactor = clamp(dist / DOPPLER_MAX_DIST)
+    const direction = Vector.dot(relativePos, relativeVel)
+    const distanceFactor = clamp(dist / DOPPLER_MAX_DIST)
 
-  const intensity = distanceFactor * DOPPLER_MAX_VEL + ((1 - distanceFactor) * speed)
+    const intensity = distanceFactor * DOPPLER_MAX_VEL + ((1 - distanceFactor) * speed)
 
-  ctx.fillStyle = ctx.strokeStyle = dopplerColor(direction * intensity)
+    ctx.fillStyle = ctx.strokeStyle = dopplerColor(direction * intensity)
 
 }
 
 const pointIsVisible = (point, radius = 1, canvas) =>
-  point.x + radius > 0 &&
+    point.x + radius > 0 &&
     point.x - radius < canvas.width &&
     point.y + radius > 0 &&
     point.y - radius < canvas.height
@@ -95,296 +95,296 @@ const pointIsVisible = (point, radius = 1, canvas) =>
 /******************************************************************************/
 
 function createCirclePath (ctx, pos, r1, r2 = r1, angle = 0) {
-  ctx.beginPath()
-  ctx.ellipse(
-    pos.x, pos.y, r1, r2, angle, 0, 2 * PI
-  )
-  ctx.closePath()
+    ctx.beginPath()
+    ctx.ellipse(
+        pos.x, pos.y, r1, r2, angle, 0, 2 * PI
+    )
+    ctx.closePath()
 }
 
 function drawBody (ctx, renderer, body) {
 
-  const { radius, pos, vel } = body
-  const { camera, canvas, options, speed } = renderer
-  const frame = camera.referenceFrame
+    const { radius, pos, vel } = body
+    const { camera, canvas, options, speed } = renderer
+    const frame = camera.referenceFrame
 
-  const relativeVel = frame
-    ? vel.sub(frame.vel)
-    : vel
+    const relativeVel = frame
+        ? vel.sub(frame.vel)
+        : vel
 
-  const viewVel = relativeVel.div(camera.current.zoom)
-  const viewRadius = max(radius / camera.current.zoom, RADIUS_MIN)
-  const viewPos = camera.worldToCanvas(pos, canvas)
+    const viewVel = relativeVel.div(camera.current.zoom)
+    const viewRadius = max(radius / camera.current.zoom, RADIUS_MIN)
+    const viewPos = camera.worldToCanvas(pos, canvas)
 
-  if (!pointIsVisible(viewPos, viewRadius, canvas))
-    return
+    if (!pointIsVisible(viewPos, viewRadius, canvas))
+        return
 
-  const speedOfBody = viewVel.magnitude * clamp(abs(speed), 0, MAX_SPEED_DISTORTION)
-  const speedDistortionRadius = max(speedOfBody, viewRadius)
-  const speedDistortionAngle = viewVel.angle * PI / 180
+    const speedOfBody = viewVel.magnitude * clamp(abs(speed), 0, MAX_SPEED_DISTORTION)
+    const speedDistortionRadius = max(speedOfBody, viewRadius)
+    const speedDistortionAngle = viewVel.angle * PI / 180
 
-  createCirclePath(ctx, viewPos, speedDistortionRadius, viewRadius, speedDistortionAngle)
-  if (options.bodyColorBy === 'mass')
-    colorByMass(ctx, body)
+    createCirclePath(ctx, viewPos, speedDistortionRadius, viewRadius, speedDistortionAngle)
+    if (options.bodyColorBy === 'mass')
+        colorByMass(ctx, body)
 
-  else if (options.bodyColorBy === 'doppler')
-    colorByDoppler(ctx, body, frame ? frame.pos : camera.current.pos, relativeVel)
+    else if (options.bodyColorBy === 'doppler')
+        colorByDoppler(ctx, body, frame ? frame.pos : camera.current.pos, relativeVel)
 
-  // slightly fade bodies that would be too small to see
-  const sizeFade = ((radius / camera.current.zoom) / RADIUS_MIN)
-  ctx.globalAlpha = clamp(sizeFade, 0.5, 1)
-  ctx.fill()
-  ctx.globalAlpha = 1
+    // slightly fade bodies that would be too small to see
+    const sizeFade = ((radius / camera.current.zoom) / RADIUS_MIN)
+    ctx.globalAlpha = clamp(sizeFade, 0.5, 1)
+    ctx.fill()
+    ctx.globalAlpha = 1
 
-  // Draw reference ring
-  if (body === frame)
-    drawReferenceFrameOutline(ctx, options, viewPos, viewRadius)
+    // Draw reference ring
+    if (body === frame)
+        drawReferenceFrameOutline(ctx, options, viewPos, viewRadius)
 }
 
 function detailStroke (ctx, options) {
-  ctx.strokeStyle = options.detailsColor
-  ctx.setLineDash(options.detailsDash)
-  ctx.globalAlpha = 1
-  ctx.stroke()
+    ctx.strokeStyle = options.detailsColor
+    ctx.setLineDash(options.detailsDash)
+    ctx.globalAlpha = 1
+    ctx.stroke()
 }
 
 function drawReferenceFrameOutline (ctx, options, viewPos, viewRadius) {
-  const ringRadius = viewRadius + options.detailsPad
+    const ringRadius = viewRadius + options.detailsPad
 
-  createCirclePath(ctx, viewPos, ringRadius)
-  detailStroke(ctx, options)
+    createCirclePath(ctx, viewPos, ringRadius)
+    detailStroke(ctx, options)
 }
 
 function drawBodyParentLine (ctx, renderer, child, simulation) {
 
-  const { options, camera, canvas } = renderer
+    const { options, camera, canvas } = renderer
 
-  const parent = simulation.body(child.linkId)
-  if (!parent)// || child.mass >= parent.mass)
-    return
+    const parent = simulation.body(child.linkId)
+    if (!parent)// || child.mass >= parent.mass)
+        return
 
-  const relSpeed = child.vel.sub(parent.vel).magnitude
-  if (relSpeed > escapeSpeed(child, parent, simulation.g))
-    return
+    const relSpeed = child.vel.sub(parent.vel).magnitude
+    if (relSpeed > escapeSpeed(child, parent, simulation.g))
+        return
 
-  const from = camera.worldToCanvas(parent.pos, canvas)
-  const to = camera.worldToCanvas(child.pos, canvas)
+    const from = camera.worldToCanvas(parent.pos, canvas)
+    const to = camera.worldToCanvas(child.pos, canvas)
 
-  ctx.beginPath()
-  ctx.moveTo(from.x, from.y)
-  ctx.lineTo(to.x, to.y)
+    ctx.beginPath()
+    ctx.moveTo(from.x, from.y)
+    ctx.lineTo(to.x, to.y)
 
-  detailStroke(ctx, options)
+    detailStroke(ctx, options)
 
-  const bary = camera.worldToCanvas(baryCenter(parent, child), canvas)
-  const off = options.detailsPad * 4
+    const bary = camera.worldToCanvas(baryCenter(parent, child), canvas)
+    const off = options.detailsPad * 4
 
-  ctx.beginPath()
-  ctx.setLineDash(NO_DASH)
+    ctx.beginPath()
+    ctx.setLineDash(NO_DASH)
 
-  ctx.moveTo(bary.x - off, bary.y)
-  ctx.lineTo(bary.x + off, bary.y)
-  ctx.moveTo(bary.x, bary.y + off)
-  ctx.lineTo(bary.x, bary.y - off)
+    ctx.moveTo(bary.x - off, bary.y)
+    ctx.lineTo(bary.x + off, bary.y)
+    ctx.moveTo(bary.x, bary.y + off)
+    ctx.lineTo(bary.x, bary.y - off)
 
-  ctx.stroke()
+    ctx.stroke()
 }
 
 const getGridZoomData = zoom => {
 
-  const levels = numDigits(zoom)
-  const levelCurrent = 10 ** levels
-  const levelPrev = levelCurrent / 10
+    const levels = numDigits(zoom)
+    const levelCurrent = 10 ** levels
+    const levelPrev = levelCurrent / 10
 
-  const increment = max(levelPrev / 10, 1)
-  const opacityFactor = clamp(1 - (zoom - levelPrev) / (levelCurrent - levelPrev))
+    const increment = max(levelPrev / 10, 1)
+    const opacityFactor = clamp(1 - (zoom - levelPrev) / (levelCurrent - levelPrev))
 
-  return {
-    levelCurrent,
-    levelPrev,
-    opacityFactor,
-    increment
-  }
+    return {
+        levelCurrent,
+        levelPrev,
+        opacityFactor,
+        increment
+    }
 }
 
 function drawGrid (ctx, renderer) {
 
-  const { camera, canvas, options } = renderer
-  const { current } = camera
-  const { zoom } = current
-  const { width, height } = canvas
+    const { camera, canvas, options } = renderer
+    const { current } = camera
+    const { zoom } = current
+    const { width, height } = canvas
 
-  ctx.strokeStyle = options.detailsColor
-  ctx.setLineDash(NO_DASH)
-  ctx.lineWidth = 1
+    ctx.strokeStyle = options.detailsColor
+    ctx.setLineDash(NO_DASH)
+    ctx.lineWidth = 1
 
-  const data = getGridZoomData(zoom)
+    const data = getGridZoomData(zoom)
 
-  const canvasHalfWorldSize = new Vector(width, height).imult(zoom * 0.5)
-  const worldTL = current.pos.sub(canvasHalfWorldSize).imax(MAX_TOP_LEFT)
-  const worldBR = current.pos.add(canvasHalfWorldSize).imin(MAX_BOT_RIGHT)
-  const worldSnapTL = new Vector(
-    floor(worldTL.x, canvas.width * data.increment),
-    floor(worldTL.y, canvas.height * data.increment)
-  )
+    const canvasHalfWorldSize = new Vector(width, height).imult(zoom * 0.5)
+    const worldTL = current.pos.sub(canvasHalfWorldSize).imax(MAX_TOP_LEFT)
+    const worldBR = current.pos.add(canvasHalfWorldSize).imin(MAX_BOT_RIGHT)
+    const worldSnapTL = new Vector(
+        floor(worldTL.x, canvas.width * data.increment),
+        floor(worldTL.y, canvas.height * data.increment)
+    )
 
-  drawGridLines(ctx, renderer, worldSnapTL, worldBR, true, data)
-  drawGridLines(ctx, renderer, worldSnapTL, worldBR, false, data)
+    drawGridLines(ctx, renderer, worldSnapTL, worldBR, true, data)
+    drawGridLines(ctx, renderer, worldSnapTL, worldBR, false, data)
 }
 
 const drawGridLines = (ctx, rend, from, to, horizontal, data) => {
-  const current = from.copy()
+    const current = from.copy()
 
-  const axis = horizontal ? 'x' : 'y'
-  const dimension = rend.canvas[horizontal ? 'width' : 'height']
+    const axis = horizontal ? 'x' : 'y'
+    const dimension = rend.canvas[horizontal ? 'width' : 'height']
 
-  const delta = dimension * data.increment
-  const limitTL = rend.camera.worldToCanvas(MAX_TOP_LEFT, rend.canvas)
-  const limitBR = rend.camera.worldToCanvas(MAX_BOT_RIGHT, rend.canvas)
+    const delta = dimension * data.increment
+    const limitTL = rend.camera.worldToCanvas(MAX_TOP_LEFT, rend.canvas)
+    const limitBR = rend.camera.worldToCanvas(MAX_BOT_RIGHT, rend.canvas)
 
-  while (current[axis] <= to[axis]) {
+    while (current[axis] <= to[axis]) {
 
-    let opacity = GRID_OPACITY_MAX
+        let opacity = GRID_OPACITY_MAX
 
-    const index = current[axis] / dimension
-    if (index % data.levelCurrent !== 0 && index % data.levelPrev !== 0)
-      opacity *= data.opacityFactor
+        const index = current[axis] / dimension
+        if (index % data.levelCurrent !== 0 && index % data.levelPrev !== 0)
+            opacity *= data.opacityFactor
 
-    const world = rend.camera.referenceFrame
-      ? current
-        .add(rend.camera.referenceFrame.pos)
-      : current
+        const world = rend.camera.referenceFrame
+            ? current
+                .add(rend.camera.referenceFrame.pos)
+            : current
 
-    const canvasPoint = rend.camera.worldToCanvas(world, rend.canvas)
+        const canvasPoint = rend.camera.worldToCanvas(world, rend.canvas)
 
-    drawGridLine(ctx, rend, canvasPoint[axis], limitTL, limitBR, horizontal, opacity)
+        drawGridLine(ctx, rend, canvasPoint[axis], limitTL, limitBR, horizontal, opacity)
 
-    current[axis] += delta
-  }
+        current[axis] += delta
+    }
 }
 
 function drawGridLine (ctx, renderer, start, limitTL, limitBR, horizontal, opac = 0.25) {
 
-  const { canvas } = renderer
+    const { canvas } = renderer
 
-  const x = max(horizontal ? start : 0, limitTL.x)
-  const y = max(horizontal ? 0 : start, limitTL.y)
+    const x = max(horizontal ? start : 0, limitTL.x)
+    const y = max(horizontal ? 0 : start, limitTL.y)
 
-  ctx.beginPath()
-  ctx.moveTo(x, y)
-  ctx.lineTo(
-    min(horizontal ? x : x + canvas.width, limitBR.x),
-    min(horizontal ? y + canvas.height : y, limitBR.y)
-  )
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(
+        min(horizontal ? x : x + canvas.width, limitBR.x),
+        min(horizontal ? y + canvas.height : y, limitBR.y)
+    )
 
-  ctx.globalAlpha = opac
-  ctx.stroke()
+    ctx.globalAlpha = opac
+    ctx.stroke()
 
 }
 
 const getTrailWorldPositionAtTick = (body, tick) => {
-  const bCache = body[$$cache]
+    const bCache = body[$$cache]
 
-  const index = bCache.getTickDataIndex(tick)
-  const mass = bCache.data[index]
-  if (!mass || mass === 0)
-    return null
+    const index = bCache.getTickDataIndex(tick)
+    const mass = bCache.data[index]
+    if (!mass || mass === 0)
+        return null
 
-  const worldPoint = new Vector(
-    bCache.data[index + 1],
-    bCache.data[index + 2]
-  )
+    const worldPoint = new Vector(
+        bCache.data[index + 1],
+        bCache.data[index + 2]
+    )
 
-  return worldPoint
+    return worldPoint
 }
 
 function drawTrails (ctx, renderer, body, simulation) {
 
-  const { options, camera, canvas } = renderer
+    const { options, camera, canvas } = renderer
 
-  const rBody = camera.referenceFrame
-  if (body === rBody)
-    return
+    const rBody = camera.referenceFrame
+    if (body === rBody)
+        return
 
-  const bCache = rBody[$$cache]
+    const bCache = rBody[$$cache]
 
-  const zoomF = sqrt(camera.current.zoom)
+    const zoomF = sqrt(camera.current.zoom)
 
-  let numTicks = abs(options.trailLength * zoomF)
-  const step = floor(options.trailStep * zoomF)
-  const direction = sign(options.trailLength)
+    let numTicks = abs(options.trailLength * zoomF)
+    const step = floor(options.trailStep * zoomF)
+    const direction = sign(options.trailLength)
 
-  ctx.lineWidth = 1
-  ctx.globalAlpha = 1
-  ctx.setLineDash(direction > 0 ? options.detailsDash : [])
-  ctx.fillStyle = ctx.strokeStyle = options.trailColor
+    ctx.lineWidth = 1
+    ctx.globalAlpha = 1
+    ctx.setLineDash(direction > 0 ? options.detailsDash : [])
+    ctx.fillStyle = ctx.strokeStyle = options.trailColor
 
-  let tick = simulation.currentTick
-  // prevents jittering caused by step
-  tick -= tick % step
+    let tick = simulation.currentTick
+    // prevents jittering caused by step
+    tick -= tick % step
 
-  // clamp numTicks
-  if (direction > 0 && bCache.deathTick !== null && bCache.deathTick - tick < numTicks)
-    numTicks = bCache.deathTick - tick
-  else if (direction < 0 && tick - bCache.birthTick < numTicks)
-    numTicks = tick - bCache.birthTick
+    // clamp numTicks
+    if (direction > 0 && bCache.deathTick !== null && bCache.deathTick - tick < numTicks)
+        numTicks = bCache.deathTick - tick
+    else if (direction < 0 && tick - bCache.birthTick < numTicks)
+        numTicks = tick - bCache.birthTick
 
-  let lastPoint = null
+    let lastPoint = null
 
-  for (let i = 0; i < numTicks; i += step, tick += direction * step) {
+    for (let i = 0; i < numTicks; i += step, tick += direction * step) {
 
-    const firstDrawnTickForExistingBody = i === 0 && body.exists
-    const worldPoint = firstDrawnTickForExistingBody
-    // ensures trail starts at body, as a result of correcting for jitter
-      ? body.pos.copy()
-      : getTrailWorldPositionAtTick(body, tick)
+        const firstDrawnTickForExistingBody = i === 0 && body.exists
+        const worldPoint = firstDrawnTickForExistingBody
+        // ensures trail starts at body, as a result of correcting for jitter
+            ? body.pos.copy()
+            : getTrailWorldPositionAtTick(body, tick)
 
-    if (!worldPoint)
-      if (lastPoint)
-        break
-      else
-        continue
+        if (!worldPoint)
+            if (lastPoint)
+                break
+            else
+                continue
 
-    const rWorldPoint = firstDrawnTickForExistingBody
-      ? null
-      : rBody && getTrailWorldPositionAtTick(rBody, tick)
-    if (rWorldPoint)
-      worldPoint
-        .isub(rWorldPoint)
-        .iadd(rBody.pos)
+        const rWorldPoint = firstDrawnTickForExistingBody
+            ? null
+            : rBody && getTrailWorldPositionAtTick(rBody, tick)
+        if (rWorldPoint)
+            worldPoint
+                .isub(rWorldPoint)
+                .iadd(rBody.pos)
 
-    const canvasPoint = camera.worldToCanvas(worldPoint, canvas)
+        const canvasPoint = camera.worldToCanvas(worldPoint, canvas)
 
-    if (lastPoint && (pointIsVisible(lastPoint, 1, canvas) || pointIsVisible(canvasPoint, 1, canvas))) {
-      ctx.beginPath()
-      ctx.moveTo(lastPoint.x, lastPoint.y)
-      ctx.lineTo(canvasPoint.x, canvasPoint.y)
-      ctx.globalAlpha = direction < 0
-        ? getTrailOpacity(i, numTicks)
-        : TRAIL_OPACITY_MAX
-      ctx.stroke()
+        if (lastPoint && (pointIsVisible(lastPoint, 1, canvas) || pointIsVisible(canvasPoint, 1, canvas))) {
+            ctx.beginPath()
+            ctx.moveTo(lastPoint.x, lastPoint.y)
+            ctx.lineTo(canvasPoint.x, canvasPoint.y)
+            ctx.globalAlpha = direction < 0
+                ? getTrailOpacity(i, numTicks)
+                : TRAIL_OPACITY_MAX
+            ctx.stroke()
+        }
+
+        lastPoint = canvasPoint
+
     }
-
-    lastPoint = canvasPoint
-
-  }
 
 }
 
 const getTrailOpacity = (index, length) => {
 
-  const fadeMultiplier = 1 / TRAIL_FADE_FACTOR
-  const maxIndex = length - 1
+    const fadeMultiplier = 1 / TRAIL_FADE_FACTOR
+    const maxIndex = length - 1
 
-  const progress = index / maxIndex
+    const progress = index / maxIndex
 
-  return min((1 - progress) * fadeMultiplier, 1) * TRAIL_OPACITY_MAX
+    return min((1 - progress) * fadeMultiplier, 1) * TRAIL_OPACITY_MAX
 }
 
 function ensureLivingReferenceFrame ({ camera }, simulation) {
 
-  while (camera.referenceFrame && !camera.referenceFrame.exists)
-    camera.referenceFrame = simulation.body(camera.referenceFrame.mergeId)
+    while (camera.referenceFrame && !camera.referenceFrame.exists)
+        camera.referenceFrame = simulation.body(camera.referenceFrame.mergeId)
 
 }
 /******************************************************************************/
@@ -393,30 +393,30 @@ function ensureLivingReferenceFrame ({ camera }, simulation) {
 
 export function clearCanvas (ctx, renderer) {
 
-  const { canvas } = renderer
+    const { canvas } = renderer
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
 
 }
 
 export function drawBodies (ctx, renderer, simulation) {
 
-  ensureLivingReferenceFrame(renderer, simulation)
+    ensureLivingReferenceFrame(renderer, simulation)
 
-  if (renderer.options.grid)
-    drawGrid(ctx, renderer)
+    if (renderer.options.grid)
+        drawGrid(ctx, renderer)
 
-  if (renderer.camera.referenceFrame && renderer.options.relations) {
-    const body = renderer.camera.referenceFrame
-    drawBodyParentLine(ctx, renderer, body, simulation)
-  }
+    if (renderer.camera.referenceFrame && renderer.options.relations) {
+        const body = renderer.camera.referenceFrame
+        drawBodyParentLine(ctx, renderer, body, simulation)
+    }
 
-  if (renderer.options.trailLength !== 0)
-    for (const body of simulation)
-      drawTrails(ctx, renderer, body, simulation)
+    if (renderer.options.trailLength !== 0)
+        for (const body of simulation)
+            drawTrails(ctx, renderer, body, simulation)
 
-  // const bodiesByMass = new SortedArray(...simulation.livingBodies())
-  for (const body of simulation.livingBodies())
-    drawBody(ctx, renderer, body)
+    // const bodiesByMass = new SortedArray(...simulation.livingBodies())
+    for (const body of simulation.livingBodies())
+        drawBody(ctx, renderer, body)
 
 }

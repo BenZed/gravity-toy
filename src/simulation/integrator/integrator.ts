@@ -1,11 +1,13 @@
 import is from '@benzed/is'
 import { Physics } from '../constants'
+import { FromWorkerData, ToWorkerData } from './worker'
 
+/* eslint-disable @typescript-eslint/no-var-requires */
 // Helper
 
 interface Worker {
 
-    start(payload: { physics: Physics, data: number[] }): void
+    start(data: ToWorkerData): void
 
     end(): void
 
@@ -16,13 +18,13 @@ const createWorker = (() => {
     const isBrowser = typeof window === 'object'
     if (isBrowser) {
 
-        // eslint-disable-next-line import/no-webpack-loader-syntax
-        const WebWorker = require('worker-loader!./worker.js')
+        const WebWorker = require('worker-loader!./worker.ts')
 
-        return (onTick: (data: number[]) => void) => {
+        return (onTick: (data: FromWorkerData) => void) => {
+
             const webWorker = new WebWorker()
 
-            webWorker.onmessage = (msg: { data: number[] }) => onTick(msg.data)
+            webWorker.onmessage = (msg: { data: FromWorkerData }) => onTick(msg.data)
             webWorker.end = webWorker.terminate.bind(webWorker)
             webWorker.start = webWorker.postMessage.bind(webWorker)
 
@@ -39,22 +41,21 @@ const createWorker = (() => {
         const { fork } = require('child_process')
         const path = require('path')
 
-        const FORK_PATH = path.resolve(__dirname, 'worker.js')
+        const FORK_PATH = path.resolve(__dirname, '../../../lib/integrator/worker.js')
         const FORK_MEMORY = { execArgv: ['--max-old-space-size=128'] }
 
-        return (onTick: (data: number[]) => void) => {
+        return (onTick: (data: FromWorkerData) => void) => {
             const child = fork(FORK_PATH, FORK_MEMORY)
 
             child.on('message', onTick)
 
             const worker: Worker = {
-                start: child.kill.bind(child),
-                end: child.send.bind(child)
+                start: child.send.bind(child),
+                end: child.kill.bind(child)
             }
 
             return worker
         }
-
     }
 })()
 
@@ -90,7 +91,7 @@ function validateIntegratorSettings(input: unknown): IntegratorSettings {
 
 interface IntegratorSettings extends Physics {
 
-    onTick: (data: number[]) => void
+    onTick: (data: FromWorkerData) => void
 
 }
 
@@ -98,7 +99,7 @@ interface IntegratorSettings extends Physics {
 
 class Integrator {
 
-    public readonly onTick: (data: number[]) => void
+    public readonly onTick: (data: FromWorkerData) => void
     public readonly physics: Physics
 
     public worker: Worker | null = null
@@ -121,7 +122,7 @@ class Integrator {
 
         const { onTick, physics } = this
 
-        const worker = this.worker ??= createWorker(onTick)
+        const worker = this.worker = createWorker(onTick)
 
         worker.start({ physics, data })
     }

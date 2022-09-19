@@ -14,7 +14,7 @@ import {
 
 import Body, { BodyProps } from './body'
 import Integrator from './integrator'
-import { StreamData } from './integrator/worker'
+import { FromWorkerData } from './integrator/worker'
 
 /*** Types ***/
 
@@ -36,6 +36,10 @@ interface SimulationTick {
     current: number
     first: number
     last: number
+}
+
+interface SimulationSettings extends Physics {
+    maxCacheMemory: number
 }
 
 /*** Helper ***/
@@ -90,12 +94,12 @@ class Simulation extends EventEmitter<SimulationEvents> {
         last: 0
     }
 
-    public constructor (physics: Partial<Physics> = {}) {
+    public constructor (settings: Partial<SimulationSettings> = {}) {
 
         super()
 
-        if (!is.plainObject(physics))
-            throw new TypeError('props argument must be a plain object')
+        if (!is.plainObject(settings))
+            throw new TypeError('settings must be a plain object')
 
         const {
             g,
@@ -103,7 +107,7 @@ class Simulation extends EventEmitter<SimulationEvents> {
             realMassThreshold,
             realBodiesMin,
             maxCacheMemory = DEFAULT_MAX_MB
-        } = { ...DEFAULT_PHYSICS, ...physics }
+        } = { ...DEFAULT_PHYSICS, ...settings }
 
         if (!is.number(maxCacheMemory) || maxCacheMemory <= 0)
             throw new Error('maxCacheMemory must be above zero')
@@ -214,7 +218,7 @@ class Simulation extends EventEmitter<SimulationEvents> {
 
         for (const body of bodies.bodies.values()) {
             const cache = body['_cache']
-            if (tick < cache.birthTick || (cache.deathTick !== null && tick >= cache.deathTick))
+            if (tick < cache.birthTick || (cache.deathTick > -1 && tick >= cache.deathTick))
                 continue
 
             stream.push(body.id)
@@ -276,7 +280,7 @@ class Simulation extends EventEmitter<SimulationEvents> {
                 reject(new Error(`Could not run ${description}. Cache memory used up on tick ${lastTick}`))
             }
 
-            this.once('tick', resolver)
+            this.on('tick', resolver)
             this.once('cache-full', rejecter)
 
             this.run(startTick)
@@ -298,7 +302,8 @@ class Simulation extends EventEmitter<SimulationEvents> {
 
         let ticks = 0
 
-        const condition = () => ++ticks >= totalTicks
+        const condition = () =>
+            ++ticks >= totalTicks
 
         const description = `for ${totalTicks} ticks`
 
@@ -307,7 +312,7 @@ class Simulation extends EventEmitter<SimulationEvents> {
 
 
     public runForOneTick(startTick = this.currentTick) {
-        const description = `for one tick`
+        const description = 'for one tick'
 
         const oneTick = () => true
 
@@ -389,7 +394,7 @@ class Simulation extends EventEmitter<SimulationEvents> {
         for (const body of bodies.bodies.values()) {
             const cache = body['_cache']
 
-            if (cache.deathTick !== null && tick >= cache.deathTick) {
+            if (cache.deathTick > -1 && tick >= cache.deathTick) {
                 bodies.bodies.delete(body.id)
                 continue
             }
@@ -444,15 +449,7 @@ class Simulation extends EventEmitter<SimulationEvents> {
         return count
     }
 
-    private _updateUsedBytes() {
-        const cache = this._cache
-
-        let allocations = 0
-        for (const body of cache.bodies.values())
-            allocations += body['_cache'].data.length
-
-        cache.usedBytes = min(cache.maxBytes, allocations * NUMBER_SIZE)
-    }
+    /*** Conversion ***/
 
     public toArray(ids: number[]) {
         return [...this.bodies(ids)]
@@ -491,14 +488,25 @@ class Simulation extends EventEmitter<SimulationEvents> {
         }
     }
 
-    private _writeTick(data: StreamData) {
+    /*** Helper ***/
 
-        const simulation = this
-        if (!simulation.running)
+    private _updateUsedBytes() {
+        const cache = this._cache
+
+        let allocations = 0
+        for (const body of cache.bodies.values())
+            allocations += body['_cache'].data.length
+
+        cache.usedBytes = min(cache.maxBytes, allocations * NUMBER_SIZE)
+    }
+
+    private _writeTick(data: FromWorkerData) {
+
+        if (!this.running)
             return
 
-        const bodies = simulation._cache
-        const tick = simulation._tick
+        const bodies = this._cache
+        const tick = this._tick
 
         tick.last++
 
@@ -538,12 +546,12 @@ class Simulation extends EventEmitter<SimulationEvents> {
             )
         }
 
-        simulation.emit('tick', tick.last)
+        this.emit('tick', tick.last)
 
         this._updateUsedBytes()
         if (bodies.usedBytes === bodies.maxBytes) {
-            simulation.stop()
-            simulation.emit('cache-full', tick.last)
+            this.stop()
+            this.emit('cache-full', tick.last)
         }
     }
 
@@ -554,5 +562,6 @@ class Simulation extends EventEmitter<SimulationEvents> {
 export default Simulation
 
 export {
-    Simulation
+    Simulation,
+    SimulationSettings
 }

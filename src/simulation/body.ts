@@ -1,8 +1,8 @@
-import { floor, V2 } from "@benzed/math"
+import { floor, V2 } from '@benzed/math'
 import is from '@benzed/is'
 
 import { CACHED_VALUES_PER_TICK, MASS_MIN, NO_LINK } from './constants'
-import { radiusFromMass } from "./util"
+import { radiusFromMass } from './util'
 
 /*** Main ***/
 
@@ -89,7 +89,7 @@ class Body {
     public mergeId: number = NO_LINK
     public readonly id: number
 
-    private _cache: BodyCache
+    private readonly _cache: BodyCache
     public getTickDataIndex(tick: number) {
         return (floor(tick) - this._cache.birthTick) * CACHED_VALUES_PER_TICK
     }

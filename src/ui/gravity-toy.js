@@ -6,12 +6,12 @@ import { StateTreeContext, GlobalStyle, Write } from '@benzed/react'
 
 import $, { theme } from './theme'
 import {
-  Speed,
-  Speedometer,
-  Timeline,
-  Zoom,
-  Move,
-  RenderOptions
+    Speed,
+    Speedometer,
+    Timeline,
+    Zoom,
+    Move,
+    RenderOptions
 } from './controls'
 
 import Canvas from './canvas'
@@ -68,39 +68,39 @@ const Title = styled.h1.attrs({ children: <Write start=''>Gravity Toy</Write> })
 
 const GravityToy = ({ children, gravity, ...props }) =>
 
-  <StateTreeContext.Provider value={gravity}>
-    <GlobalStyle theme={theme}>
+    <StateTreeContext.Provider value={gravity}>
+        <GlobalStyle theme={theme}>
 
-      <Canvas gravity={gravity}/>
+            <Canvas gravity={gravity}/>
 
-      <Controls>
+            <Controls>
 
-        <TopRow>
+                <TopRow>
 
-          <Column>
-            <Title />
-            <div>Body Controls</div>
-            <RenderOptions gravity={gravity} />
-            <Speedometer gravity={gravity} />
-          </Column>
+                    <Column>
+                        <Title />
+                        <div>Body Controls</div>
+                        <RenderOptions gravity={gravity} />
+                        <Speedometer gravity={gravity} />
+                    </Column>
 
-          <Column>
-            <Move gravity={gravity} />
-            <Zoom gravity={gravity} />
-          </Column>
+                    <Column>
+                        <Move gravity={gravity} />
+                        <Zoom gravity={gravity} />
+                    </Column>
 
-        </TopRow>
+                </TopRow>
 
-        <BottomRow>
-          <Speed gravity={gravity} reverse />
-          <Speed gravity={gravity} />
-          <Timeline gravity={gravity}/>
-        </BottomRow>
+                <BottomRow>
+                    <Speed gravity={gravity} reverse />
+                    <Speed gravity={gravity} />
+                    <Timeline gravity={gravity}/>
+                </BottomRow>
 
-      </Controls>
+            </Controls>
 
-    </GlobalStyle>
-  </StateTreeContext.Provider>
+        </GlobalStyle>
+    </StateTreeContext.Provider>
 
 /******************************************************************************/
 // Exports
