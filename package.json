@@ -46,6 +46,7 @@
   },
   "dependencies": {
     "@benzed/array": "^3.2.1",
+    "@benzed/is": "^3.1.2",
     "@benzed/math": "^3.1.4",
     "color-interpolate": "^1.0.5",
     "define-utility": "^2.0.2",
