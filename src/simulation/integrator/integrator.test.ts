@@ -36,7 +36,7 @@ class TestSimulation {
   createBodies(props) {
     if (!is(props, Array)) props = [props]
 
-    const created = props.map(({ mass = MASS_MIN, pos = V2.zero, vel = V2.zero }) => {
+    const created = props.map(({ mass = MASS_MIN, pos = V2.ZERO, vel = V2.ZERO }) => {
 
       const id = worker.bodies.nextAssignId++
       const body = new PhysicsBody(id, mass, pos, vel)
@@ -236,7 +236,7 @@ describe('Integration', function () {
       })
 
       const [p1, p2] = sim.createBodies([
-        { mass: 99, pos: V2.zero },
+        { mass: 99, pos: V2.ZERO },
         { mass: 99, pos: new V2(10, 0) }
       ])
 
