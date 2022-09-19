@@ -6,8 +6,8 @@ import { DEFAULT_RENDERING } from '../simulation/constants'
 
 const PURPLE = DEFAULT_RENDERING.trailColor
 const GREEN = DEFAULT_RENDERING.detailsColor
-const ORANGE = `#ff9900`
-const BLACK = `black`
+const ORANGE = '#ff9900'
+const BLACK = 'black'
 
 /******************************************************************************/
 // Theme

@@ -1,47 +1,107 @@
-// const { WebpackConfig } = require('@benzed/dev')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+const MiniCssExtractPlugin = require('mini-css-extract-plugin')
+const { CleanWebpackPlugin } = require('clean-webpack-plugin')
+const { EnvironmentPlugin } = require('webpack')
 const path = require('path')
-
-/******************************************************************************/
-// Production
-/******************************************************************************/
-// const webpackConfig = new WebpackConfig({
-//   output: path.resolve(__dirname, '../example')
-// })
-
-/******************************************************************************/
-// DEV
-/******************************************************************************/
-
-// TODO Remove this once @benzed packages are all done
 const fs = require('fs')
 
-const BENZED = path.resolve(__dirname, '../benzed-mono')
-const BENZED_NM = path.resolve(BENZED, 'node_modules')
-const BENZED_BNM = path.resolve(BENZED, 'bootstrap', 'node_modules')
-const BENZED_PKG = path.resolve(BENZED, 'packages')
+const styledComponentsTransformer =
+  require('typescript-plugin-styled-components').default()
 
-const names = fs.readdirSync(BENZED_PKG)
+/* CONSTANTS */
 
-// Create Webpack Config From Dev
-const { WebpackConfig } = require(path.join(BENZED_PKG, 'dev'))
-const webpackConfig = new WebpackConfig({
-  output: path.resolve(__dirname, '../example'),
-  html: path.resolve(__dirname, 'src', 'webpack', 'index.html')
-})
+const WEBPACK_DEV_SERVER_PORT = 3500
 
-// Resolve BenZed node_modules
-webpackConfig.resolve.modules = [ BENZED_BNM, BENZED_NM, 'node_modules' ]
-webpackConfig.resolve.alias = {}
+const ENV = {
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  APP_PORT: 3000
+}
 
-webpackConfig.devServer = webpackConfig.devServer || {}
-webpackConfig.devServer.port = 7000
+const LIB = path.resolve(process.cwd(), 'lib')
 
-// Alias BenZed Packages
-for (const name of names)
-  webpackConfig.resolve.alias[`@benzed/${name}`] = path.join(BENZED_PKG, name)
+if (!fs.existsSync(LIB))
+  fs.mkdirSync(LIB)
 
-/******************************************************************************/
-// Exports
-/******************************************************************************/
+const OUTPUT = path.resolve(LIB, 'public')
 
-module.exports = webpackConfig
+/* EXPORTS */
+
+module.exports = {
+
+  mode: ENV.NODE_ENV,
+
+  entry: './src/client/index.tsx',
+
+  output: {
+    filename: 'bz-[contenthash].js',
+    path: OUTPUT,
+    publicPath: '/'
+  },
+
+  devServer: {
+    compress: true,
+    port: WEBPACK_DEV_SERVER_PORT,
+    historyApiFallback: true,
+    host: '0.0.0.0',
+    devMiddleware: {
+      writeToDisk: true
+    }
+  },
+  devtool: 'inline-source-map',
+
+  module: {
+    rules: [
+      {
+        test: /\.tsx?$/i,
+        use: {
+          loader: 'ts-loader',
+          options: {
+            getCustomTransformers: () => ({
+              before: [styledComponentsTransformer]
+            })
+          }
+        },
+        exclude: /node_modules/
+
+      },
+      {
+        test: /\.css$/,
+        use: [MiniCssExtractPlugin.loader, 'css-loader']
+      },
+      {
+        test: /\.(svg|png|jpe?g|gif)$/,
+        use: {
+          loader: 'file-loader',
+          options: {
+            name: '[name]@[contenthash].[ext]'
+          }
+        }
+      }
+    ]
+  },
+
+  optimization: {
+    splitChunks: {
+      chunks: 'all'
+    }
+  },
+
+  resolve: {
+    extensions: ['.tsx', '.ts', '.js'],
+    fallback: {
+      util: false
+    }
+  },
+
+  plugins: [
+    new CleanWebpackPlugin(),
+    new MiniCssExtractPlugin(),
+    new HtmlWebpackPlugin({
+      title: 'Gravity Toy',
+      template: './src/client/index.html',
+      inject: 'head'
+    }),
+    new EnvironmentPlugin(ENV)
+  ]
+
+}

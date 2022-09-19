@@ -6,7 +6,7 @@ import { Vector } from '@benzed/math'
 // eslint-disable-next-line no-unused-vars
 /* global describe it before after beforeEach afterEach */
 
-function bodies (count = 1) {
+function bodies(count = 1) {
   const props = []
   let x = 0
   let y = 0
@@ -38,7 +38,7 @@ describe('Simulation', function () {
 
       it('must be an object', () => {
         // eslint-disable-next-line new-parens
-        for (const bad of ['weee', 1, [], true, Symbol('sym'), new Date(), new function () {}])
+        for (const bad of ['weee', 1, [], true, Symbol('sym'), new Date(), new function () { }])
           expect(() => new Simulation(bad)).to.throw(TypeError)
 
         expect(() => new Simulation({})).to.not.throw(TypeError)
@@ -110,7 +110,7 @@ describe('Simulation', function () {
 
       it('uses body current values if starting from current tick', async () => {
         const sim = new Simulation()
-        const [ body ] = sim.createBodies({
+        const [body] = sim.createBodies({
           mass: 100,
           vel: new Vector(0.0125, 0),
           pos: Vector.zero
@@ -246,7 +246,7 @@ describe('Simulation', function () {
       })
 
       it('sets body properties to their values at that tick', async () => {
-        const [ body ] = sim.createBodies({
+        const [body] = sim.createBodies({
           mass: 1000,
           pos: new Vector(1, 1),
           vel: new Vector(0, 1)
@@ -270,7 +270,7 @@ describe('Simulation', function () {
         sim.createBodies(bodies(1))
         await sim.runForNumTicks(10)
 
-        const [ body ] = sim.createBodies(bodies(1), 5)
+        const [body] = sim.createBodies(bodies(1), 5)
 
         sim.setCurrentTick(5)
         expect(body.mass).to.be.equal(100)
@@ -284,7 +284,7 @@ describe('Simulation', function () {
     describe('createBodies()', () => {
 
       it('Creates one or multiple bodies at a given tick index', () => {
-        const [ body ] = sim.createBodies(bodies(1))
+        const [body] = sim.createBodies(bodies(1))
         return expect(body instanceof Body).to.be.true
       })
 
@@ -302,7 +302,7 @@ describe('Simulation', function () {
         sim.createBodies(bodies(1), 0)
         await sim.runForNumTicks(10)
 
-        const [ body ] = sim.createBodies(bodies(1), 5)
+        const [body] = sim.createBodies(bodies(1), 5)
 
         expect(sim.currentTick).to.be.equal(0)
         return expect(body.exists).to.be.false
@@ -334,7 +334,7 @@ describe('Simulation', function () {
     describe('clearAfterTick()', () => {
 
       it('invalidates the cache after given tick', async () => {
-        const [ body ] = sim.createBodies(bodies(1))
+        const [body] = sim.createBodies(bodies(1))
 
         await sim.runForNumTicks(10)
 
@@ -357,14 +357,14 @@ describe('Simulation', function () {
         await sim.runForNumTicks(10)
 
         sim.createBodies(bodies(1), 10)
-        expect([ ...sim ]).to.have.property('length', 2)
+        expect([...sim]).to.have.property('length', 2)
 
         sim.clearAfterTick(5)
-        expect([ ...sim ]).to.have.property('length', 1)
+        expect([...sim]).to.have.property('length', 1)
       })
 
       it('clears body[CACHE].deathTick if it is out of range', async () => {
-        const [ body ] = sim.createBodies(bodies(1))
+        const [body] = sim.createBodies(bodies(1))
         await sim.runForNumTicks(10)
 
         // Fake death
@@ -393,7 +393,7 @@ describe('Simulation', function () {
     describe('clearBeforeTick()', () => {
 
       it('invalidates the cache before a given tick', async () => {
-        const [ body ] = sim.createBodies(bodies(1))
+        const [body] = sim.createBodies(bodies(1))
 
         await sim.runForNumTicks(10)
 
@@ -407,7 +407,7 @@ describe('Simulation', function () {
       })
 
       it('body[CACHE].data is spliced correctly and birthTick is set', async () => {
-        const [ body ] = sim.createBodies(bodies(1))
+        const [body] = sim.createBodies(bodies(1))
 
         await sim.runForNumTicks(10)
         sim.setCurrentTick(10)
@@ -424,7 +424,7 @@ describe('Simulation', function () {
       })
 
       it('bodies killed before given tick are deleted', async () => {
-        const [ body ] = sim.createBodies(bodies(1))
+        const [body] = sim.createBodies(bodies(1))
 
         await sim.runForNumTicks(10)
 
@@ -603,7 +603,7 @@ describe('Simulation', function () {
       it('yields every body in simulation', () => {
 
         const sim = new Simulation()
-        const [ body ] = sim.createBodies({
+        const [body] = sim.createBodies({
           mass: 100,
           pos: new Vector(10, 10)
         })
@@ -618,7 +618,7 @@ describe('Simulation', function () {
     describe('* bodies()', () => {
       it('same as Symbol.iterator', () => {
         const sim = new Simulation()
-        const [ body ] = sim.createBodies({
+        const [body] = sim.createBodies({
           mass: 100,
           pos: new Vector(10, 10)
         })
@@ -637,7 +637,7 @@ describe('Simulation', function () {
       it('yields every body alive at current tick', async () => {
         const sim = new Simulation()
 
-        const [ body ] = sim.createBodies(bodies(1))
+        const [body] = sim.createBodies(bodies(1))
         await sim.runForNumTicks(10)
 
         sim.createBodies(bodies(1), 5)

@@ -34,8 +34,8 @@ class TestSimulation {
       delete worker.bodies.overlaps[key]
   }
 
-  createBodies (props) {
-    if (!is(props, Array)) props = [ props ]
+  createBodies(props) {
+    if (!is(props, Array)) props = [props]
 
     const created = props.map(({ mass = MASS_MIN, pos = Vector.zero, vel = Vector.zero }) => {
 
@@ -50,7 +50,7 @@ class TestSimulation {
     return created
   }
 
-  runUntil (condition, doEveryTick = () => {}) {
+  runUntil(condition, doEveryTick = () => { }) {
     if (worker.bodies.living.length === 0)
       throw new Error('Cannot start without any bodies.')
 
@@ -71,7 +71,7 @@ class TestSimulation {
     })
   }
 
-  runForNumTicks (totalTicks, doEveryTick) {
+  runForNumTicks(totalTicks, doEveryTick) {
     let ticks = 0
     const totalTicksAdjusted = totalTicks * worker.physics.physicsSteps
     const condition = () => ++ticks >= totalTicksAdjusted
@@ -79,7 +79,7 @@ class TestSimulation {
     return this.runUntil(condition, doEveryTick)
   }
 
-  runForOneTick (doEveryTick) {
+  runForOneTick(doEveryTick) {
     return this.runUntil(() => true, doEveryTick)
   }
 
@@ -109,13 +109,13 @@ describe('Integration', function () {
       }
 
       let g = 0.5
-      for (const physicsSteps of [ 1, 2, 4, 8 ]) {
+      for (const physicsSteps of [1, 2, 4, 8]) {
 
         const rSim = new Simulation({ g, physicsSteps })
         const tSim = new TestSimulation({ g, physicsSteps })
 
-        const [ rSmall, rBig ] = rSim.createBodies(smallAndBig())
-        const [ tSmall, tBig ] = tSim.createBodies(smallAndBig())
+        const [rSmall, rBig] = rSim.createBodies(smallAndBig())
+        const [tSmall, tBig] = tSim.createBodies(smallAndBig())
 
         expect(rSmall.pos).to.deep.equal(tSmall.pos)
         expect(rBig.pos).to.deep.equal(tBig.pos)
@@ -165,7 +165,7 @@ describe('Integration', function () {
   describe('sorting', () => {
 
     it('psuedo bodies must be under the props.realMassThreshold', () => {
-      for (const threshold of [ 100, 200, 300 ]) {
+      for (const threshold of [100, 200, 300]) {
         const sim = new TestSimulation({
           realBodiesMin: 0,
           realMassThreshold: threshold
@@ -179,7 +179,7 @@ describe('Integration', function () {
     })
 
     it('there must be at least props.realBodiesMin before any pseudo bodies are made', () => {
-      for (const count of [ 4, 8, 12 ]) {
+      for (const count of [4, 8, 12]) {
         const sim = new TestSimulation({
           realBodiesMin: count,
           realMassThreshold: 100
@@ -195,9 +195,9 @@ describe('Integration', function () {
 
     it('real bodies are attracted to each other', async () => {
       const sim = new TestSimulation()
-      const [ small, big ] = sim.createBodies([
+      const [small, big] = sim.createBodies([
         { mass: 100, pos: new Vector(0, 0) },
-        { mass: 1000, pos:new Vector(50, 0) }
+        { mass: 1000, pos: new Vector(50, 0) }
       ])
 
       await sim.runForNumTicks(10)
@@ -214,7 +214,7 @@ describe('Integration', function () {
         realMassThreshold: 100
       })
 
-      const [ psuedo, real ] = sim.createBodies([
+      const [psuedo, real] = sim.createBodies([
         { mass: 99, pos: Vector.zero },
         { mass: 100, pos: new Vector(50, 0) }
       ])
@@ -238,7 +238,7 @@ describe('Integration', function () {
         realMassThreshold: 100
       })
 
-      const [ p1, p2 ] = sim.createBodies([
+      const [p1, p2] = sim.createBodies([
         { mass: 99, pos: Vector.zero },
         { mass: 99, pos: new Vector(10, 0) }
       ])
@@ -263,7 +263,7 @@ describe('Integration', function () {
         realMassThreshold: 100
       })
 
-      const [ psuedo, real ] = sim.createBodies([
+      const [psuedo, real] = sim.createBodies([
         { mass: 99, pos: new Vector(50, 0) },
         { mass: 1000, pos: new Vector(0, 0) }
       ])
@@ -290,7 +290,7 @@ describe('Integration', function () {
         physicsSteps: 1
       })
 
-      const [ p1, p2, p3, r1 ] = sim.createBodies([
+      const [p1, p2, p3, r1] = sim.createBodies([
         { mass: 100, pos: new Vector(50, 50) },
         { mass: 100, pos: new Vector(50, 0) },
         { mass: 100, pos: new Vector(0, 50) },
@@ -328,7 +328,7 @@ describe('Integration', function () {
 
           const sim = new TestSimulation({ physicsSteps: 1 })
 
-          const [ body ] = sim.createBodies({
+          const [body] = sim.createBodies({
             mass: massFromRadius(1),
             pos: new Vector(0, 0),
             vel: new Vector(0, 0)
@@ -381,7 +381,7 @@ describe('Integration', function () {
             physicsSteps: 1
           });
 
-          ([ b1, b2 ] = sim.createBodies([
+          ([b1, b2] = sim.createBodies([
             { mass: 1000, pos: new Vector(0, 0), vel: new Vector(40, 40) },
             { mass: 1000, pos: new Vector(25, 0), vel: new Vector(40, 40) }
           ]))
@@ -420,7 +420,7 @@ describe('Integration', function () {
 
           // These props were curated from randomly generated bodies in a test
           // bed.
-          const [ small, big ] = sim.createBodies([{
+          const [small, big] = sim.createBodies([{
             mass: 135.5901425892382,
             pos: new Vector(740.66514718532036, 345.91316877961964)
           }, {
@@ -442,8 +442,8 @@ describe('Integration', function () {
 
     describe('narrow phase', () => {
       describe('bodies register collisions on intersect courses', () => {
-        const sizes = [ 'big', 'medium', 'small' ]
-        const speeds = [ 'fast', 'slow' ]
+        const sizes = ['big', 'medium', 'small']
+        const speeds = ['fast', 'slow']
 
         for (const speed1 of speeds)
           for (const size1 of sizes)
@@ -459,7 +459,7 @@ describe('Integration', function () {
 
           const sim = new TestSimulation();
 
-          [ big, small ] = sim.createBodies([{
+          [big, small] = sim.createBodies([{
             mass: 1000
           }, {
             mass: 500,
