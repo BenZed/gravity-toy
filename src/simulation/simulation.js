@@ -28,7 +28,7 @@ const $$integrator = Symbol('integrator')
 
 class Simulation extends EventEmitter {
 
-  static fromJSON (json) {
+  static fromJSON(json) {
     if (typeof json === 'string')
       json = JSON.parse(json)
 
@@ -69,14 +69,14 @@ class Simulation extends EventEmitter {
       throw new Error('maxCacheMemory must be above zero')
 
     const integrator = new Integrator({
-      onTick: this::writeTick,
+      onTick: this:: writeTick,
       g,
       physicsSteps,
       realMassThreshold,
       realBodiesMin
     })
 
-    this::define()
+    this:: define()
       .enum.const('g', g)
       .enum.const('maxCacheMemory', maxCacheMemory)
       .const($$integrator, integrator)
@@ -95,9 +95,9 @@ class Simulation extends EventEmitter {
 
   }
 
-  run (tick = this.currentTick) {
+  run(tick = this.currentTick) {
 
-    this::assertTick(tick)
+    this:: assertTick(tick)
 
     if (tick < this.lastTick)
       this.clearAfterTick(tick)
@@ -130,7 +130,7 @@ class Simulation extends EventEmitter {
           body.vel.y
         )
       else {
-      // Otherwise, we want to take the values from the cache.
+        // Otherwise, we want to take the values from the cache.
         let index = cache.getTickDataIndex(tick)
         stream.push(
           cache.data[index++], // mass
@@ -153,8 +153,8 @@ class Simulation extends EventEmitter {
     this[$$integrator].start(stream)
   }
 
-  runUntil (condition, startTick = this.currentTick, description = 'until condition met') {
-    this::assertTick(startTick)
+  runUntil(condition, startTick = this.currentTick, description = 'until condition met') {
+    this:: assertTick(startTick)
 
     if (!is.func(condition))
       throw new Error('condition must be a function.')
@@ -187,7 +187,7 @@ class Simulation extends EventEmitter {
     })
   }
 
-  runForNumTicks (totalTicks, startTick = this.currentTick) {
+  runForNumTicks(totalTicks, startTick = this.currentTick) {
     if (!is.number(totalTicks) || totalTicks <= 0)
       throw new Error('totalTicks must be a number above zero.')
 
@@ -200,50 +200,50 @@ class Simulation extends EventEmitter {
     return this.runUntil(condition, startTick, description)
   }
 
-  runForOneTick (startTick = this.currentTick) {
+  runForOneTick(startTick = this.currentTick) {
     const description = `for one tick`
 
     return this.runUntil(oneTick, startTick, description)
   }
 
-  stop () {
+  stop() {
     this[$$integrator].stop()
   }
 
-  get running () {
+  get running() {
     return !!this[$$integrator].worker
   }
 
-  get usedCacheMemory () {
+  get usedCacheMemory() {
     return this[$$bodies].usedBytes / ONE_MB
   }
 
-  get maxCacheMemory () {
+  get maxCacheMemory() {
     return this[$$bodies].maxBytes / ONE_MB
   }
 
-  get firstTick () {
+  get firstTick() {
     return this[$$tick].first
   }
 
-  get lastTick () {
+  get lastTick() {
     return this[$$tick].last
   }
 
-  get currentTick () {
+  get currentTick() {
     return this[$$tick].current
   }
 
-  set currentTick (value) {
+  set currentTick(value) {
     this.setCurrentTick(value, false)
   }
 
-  setCurrentTick (tick, autoClamp = true) {
+  setCurrentTick(tick, autoClamp = true) {
 
     if (autoClamp)
       tick = clamp(tick, this.firstTick, this.lastTick)
 
-    this::assertTick(tick)
+    this:: assertTick(tick)
 
     const bodies = this[$$bodies]
 
@@ -253,10 +253,10 @@ class Simulation extends EventEmitter {
     this[$$tick].current = tick
   }
 
-  createBodies (props, tick = this.currentTick) {
+  createBodies(props, tick = this.currentTick) {
 
     if (!is.array(props))
-      props = [ props ]
+      props = [props]
 
     const bodies = this[$$bodies]
     const created = []
@@ -283,8 +283,8 @@ class Simulation extends EventEmitter {
     return created
   }
 
-  clearAfterTick (tick = this.currentTick) {
-    this::assertTick(tick)
+  clearAfterTick(tick = this.currentTick) {
+    this:: assertTick(tick)
 
     if (tick < this.currentTick)
       this.setCurrentTick(tick)
@@ -312,8 +312,8 @@ class Simulation extends EventEmitter {
 
   }
 
-  clearBeforeTick (tick = this.currentTick) {
-    this::assertTick(tick)
+  clearBeforeTick(tick = this.currentTick) {
+    this:: assertTick(tick)
 
     if (tick > this.currentTick)
       this.setCurrentTick(tick)
@@ -340,37 +340,37 @@ class Simulation extends EventEmitter {
     bodies.updateUsedBytes()
   }
 
-  body (id) {
+  body(id) {
     return this[$$bodies].map.get(id)
   }
 
-  [Symbol.iterator] () {
+  [Symbol.iterator]() {
     return this[$$bodies].map.values()
   }
 
-  * bodies (ids = []) {
+  * bodies(ids = []) {
 
     if (is.defined(ids) && !is.array(ids))
-      ids = [ ids ]
+      ids = [ids]
 
-    ids = [ ...ids ] // idArrayCheck mutates the array, so we'll prevent side effects
+    ids = [...ids] // idArrayCheck mutates the array, so we'll prevent side effects
 
     for (const body of this)
       if (idArrayCheck(ids, body.id))
         yield body
   }
 
-  get numBodies () {
+  get numBodies() {
     return this[$$bodies].map.size
   }
 
-  * livingBodies () {
+  * livingBodies() {
     for (const body of this)
       if (body.exists)
         yield body
   }
 
-  numLivingBodies () {
+  numLivingBodies() {
     let count = 0
     for (const body of this)
       if (body.exists)
@@ -379,11 +379,11 @@ class Simulation extends EventEmitter {
     return count
   }
 
-  toArray (ids) {
-    return [ ...this.bodies(ids) ]
+  toArray(ids) {
+    return [...this.bodies(ids)]
   }
 
-  toJSON () {
+  toJSON() {
 
     const {
       g, maxCacheMemory
@@ -422,7 +422,7 @@ class Simulation extends EventEmitter {
 // Private Danglers
 /******************************************************************************/
 
-function writeTick (data) {
+function writeTick(data) {
 
   const simulation = this
   if (!simulation.running)
@@ -478,7 +478,7 @@ function writeTick (data) {
   }
 }
 
-function assertTick (tick) {
+function assertTick(tick) {
 
   const simulation = this
 
@@ -492,7 +492,7 @@ function assertTick (tick) {
 
 }
 
-function updateUsedBytes () {
+function updateUsedBytes() {
   const bodies = this
 
   let allocations = 0
@@ -504,7 +504,7 @@ function updateUsedBytes () {
 
 // This is used in the runForOneTick function which calls the runUntil function
 // using this as a condition. runUntil true means it only runs for one tick.
-function oneTick () {
+function oneTick() {
   return true
 }
 
@@ -512,23 +512,23 @@ function oneTick () {
 // Helper
 /******************************************************************************/
 
-function setBodyValuesFromCache (body, tick) {
+function setBodyValuesFromCache(body, tick) {
 
   const cache = body[$$cache]
   const { data } = cache
 
   let index = cache.getTickDataIndex(tick)
 
-  body.mass = data[ index++ ] || null
-  body.pos.x = data[ index++ ]
-  body.pos.y = data[ index++ ]
-  body.vel.x = data[ index++ ]
-  body.vel.y = data[ index++ ]
-  body.linkId = data[ index++ ]
+  body.mass = data[index++] || null
+  body.pos.x = data[index++]
+  body.pos.y = data[index++]
+  body.vel.x = data[index++]
+  body.vel.y = data[index++]
+  body.linkId = data[index++]
 
 }
 
-function idArrayCheck (haystack, needle) {
+function idArrayCheck(haystack, needle) {
 
   if (haystack.length === 0)
     return true

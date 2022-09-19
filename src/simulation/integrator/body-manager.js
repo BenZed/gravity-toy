@@ -29,7 +29,7 @@ class BodyManager {
   boundsY = new SortedArray()
 
   overlaps = {
-    * [Symbol.iterator] () {
+    *[Symbol.iterator]() {
       for (const key in this)
         yield this[key]
     }
@@ -59,10 +59,10 @@ class BodyManager {
       delete overlaps[key]
 
     else if (!hasPair && hasOverlap)
-      overlaps[key] = [ b1, b2 ]
+      overlaps[key] = [b1, b2]
   }
 
-  updateOverlaps () {
+  updateOverlaps() {
 
     const { boundsX, boundsY, living, checkBoundsIfEdgesOverlap } = this
 
@@ -74,7 +74,7 @@ class BodyManager {
 
   }
 
-  setBodies (bodies, physics) {
+  setBodies(bodies, physics) {
 
     this.living.length = 0
     this.living.push(...bodies)
@@ -98,7 +98,7 @@ class BodyManager {
 
   }
 
-  calculateForces (physics) {
+  calculateForces(physics) {
 
     const { living, psuedo, real } = this
 
@@ -116,7 +116,7 @@ class BodyManager {
 
   }
 
-  applyForces (physics) {
+  applyForces(physics) {
 
     const { living } = this
 
@@ -130,11 +130,11 @@ class BodyManager {
     }
   }
 
-  checkCollisions (physics) {
+  checkCollisions(physics) {
     let needsSort = false
 
     for (const key in this.overlaps) {
-      const [ b1, b2 ] = this.overlaps[key]
+      const [b1, b2] = this.overlaps[key]
 
       // If either body was destroyed in another collision
       if (b1.mass <= 0 || b2.mass <= 0)
@@ -153,9 +153,9 @@ class BodyManager {
       this.sort(physics)
   }
 
-  combineBodies (...args) {
+  combineBodies(...args) {
 
-    const [ big, small ] = args.sort(byMass)
+    const [big, small] = args.sort(byMass)
 
     const totalMass = big.mass + small.mass
     big.pos
@@ -183,7 +183,7 @@ class BodyManager {
     boundsY.remove(small.bounds.t)
   }
 
-  sort (physics) {
+  sort(physics) {
 
     const { living, real, psuedo, destroyed } = this
     const { realBodiesMin, realMassThreshold } = physics
@@ -233,9 +233,9 @@ class BodyManager {
 // Private
 /******************************************************************************/
 
-function didCollide (...args) {
+function didCollide(...args) {
 
-  const [ fast, slow ] = args.sort(bySpeed)
+  const [fast, slow] = args.sort(bySpeed)
 
   const rel = fast.vel.sub(slow.vel)
 
@@ -254,7 +254,7 @@ function didCollide (...args) {
   return dist < fast.radius + slow.radius
 }
 
-function calculatePsuedoMass (body, bodies, physics) {
+function calculatePsuedoMass(body, bodies, physics) {
   calculateForces(body, bodies, physics, true)
 }
 
@@ -262,7 +262,7 @@ function calculatePsuedoMass (body, bodies, physics) {
 // a single tick, so there are some manual inlining and optimizations
 // I've made. I dunno if they make any real difference in the
 // grand scheme of things, but it helps my OCD
-function calculateForces (body, bodies, physics, addPsuedoMassOnly = false) {
+function calculateForces(body, bodies, physics, addPsuedoMassOnly = false) {
 
   // Relative position vector between two bodies.
   // Declared outside of the while loop to save
@@ -318,7 +318,7 @@ function calculateForces (body, bodies, physics, addPsuedoMassOnly = false) {
 
 const byMass = (a, b) => a.mass > b.mass
   ? -1 : a.mass < b.mass
-  ? 1 : 0 // eslint-disable-line indent
+    ? 1 : 0 // eslint-disable-line indent
 
 const bySpeed = (a, b) => {
 
@@ -327,7 +327,7 @@ const bySpeed = (a, b) => {
 
   return aSqrVel > bSqrVel
     ? -1 : aSqrVel < bSqrVel
-    ? 1 : 0 // eslint-disable-line indent
+      ? 1 : 0 // eslint-disable-line indent
 }
 
 const last = arr => arr[arr.length - 1]

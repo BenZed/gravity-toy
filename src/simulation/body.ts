@@ -1,18 +1,52 @@
 import { floor, V2 } from "@benzed/math"
-import { CACHED_VALUES_PER_TICK, NO_LINK } from './constants'
+import is from '@benzed/is'
+
+import { CACHED_VALUES_PER_TICK, MASS_MIN, NO_LINK } from './constants'
 import { radiusFromMass } from "./util"
 
 /*** Main ***/
 
 interface BodyCache {
-    readonly birthTick: number
+    birthTick: number
     deathTick: number
     readonly data: number[]
 }
 
+interface BodyProps {
+    mass: number,
+    pos: V2
+    vel: V2
+}
+
+
+
 /*** Main ***/
 
 class Body {
+
+    static validateProps(input: unknown): BodyProps {
+
+        if (!is.plainObject(input))
+            throw new Error('BodyProps must be an object')
+
+        const {
+            mass = MASS_MIN,
+            vel = V2.ZERO,
+            pos = V2.ZERO
+        } = input as Partial<BodyProps>
+
+        if (!is(pos, V2))
+            throw new Error('pos must be a V2')
+
+        if (!is(vel, V2))
+            throw new Error('vel must be a V2')
+
+        if (mass < MASS_MIN)
+            throw new Error(`mass must be a number above or equal to ${MASS_MIN}`)
+
+
+        return { mass, vel, pos }
+    }
 
     public mass: number
 
@@ -24,15 +58,15 @@ class Body {
     public vel: V2
 
     public constructor (
-        data: {
-            mass: number,
-            pos?: V2
-            vel?: V2
-        },
+        data: Partial<BodyProps>,
         tick: number,
         id: number) {
 
-        const { mass, pos = V2.ZERO, vel = V2.ZERO } = data
+        const {
+            mass = MASS_MIN,
+            pos = V2.ZERO,
+            vel = V2.ZERO
+        } = data
 
         this.mass = mass
         this.pos = pos
@@ -72,5 +106,6 @@ class Body {
 export default Body
 
 export {
-    Body
+    Body,
+    BodyProps
 }
