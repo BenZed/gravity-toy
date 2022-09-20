@@ -411,7 +411,7 @@ class Simulation extends EventEmitter<SimulationEvents> {
     }
 
     public body(id: number) {
-        return this._cache.bodies.get(id)
+        return this._cache.bodies.get(id) ?? null
     }
 
     [Symbol.iterator]() {

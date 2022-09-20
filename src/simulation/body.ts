@@ -18,8 +18,6 @@ interface BodyProps {
     vel: V2
 }
 
-
-
 /*** Main ***/
 
 class Body {

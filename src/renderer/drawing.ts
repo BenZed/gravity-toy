@@ -1,19 +1,19 @@
-import { Vector, PI, log10, max, min, clamp, floor, sign, abs, sqrt } from '@benzed/math'
+import { V2, PI, log10, max, min, clamp, floor, sign, abs, sqrt } from '@benzed/math'
 
-import { WeightedColorizer } from '../util'
-import { RADIUS_MIN } from '../constants'
-import { $$cache } from '../body'
+import { Body, Simulation } from '../simulation'
 
-/******************************************************************************/
-// Helpers
-/******************************************************************************/
+import { RADIUS_MIN } from '../simulation/constants'
+import Renderer, { RendererOptions } from './renderer'
+import createWeightedColorizer from './weighted-colorizer'
+
+/*** Constants ***/
 
 // TODO Right now this is for drawing the grid only.
 // It should come from the simulation.
-const LARGEST_SAFE_AXIS = 99999999.999999999
+const LARGEST_SAFE_AXIS = 99999999.99999999
 
-const MAX_TOP_LEFT = new Vector(-LARGEST_SAFE_AXIS, -LARGEST_SAFE_AXIS)
-const MAX_BOT_RIGHT = new Vector(LARGEST_SAFE_AXIS, LARGEST_SAFE_AXIS)
+const MAX_TOP_LEFT = new V2(-LARGEST_SAFE_AXIS, -LARGEST_SAFE_AXIS)
+const MAX_BOT_RIGHT = new V2(LARGEST_SAFE_AXIS, LARGEST_SAFE_AXIS)
 
 // This contains a whole bunch of draw helpers so they don't have to be placed
 // renderer class page
@@ -24,25 +24,26 @@ const MAX_SPEED_DISTORTION = 6 // from renderer speed specifically, not body vel
 const GRID_OPACITY_MAX = 0.5
 const TRAIL_OPACITY_MAX = 0.5
 const TRAIL_FADE_FACTOR = 0.33 // %, the last 33% of the trail will fade
-const NO_DASH = []
+const NO_DASH: number[] = []
 
-const dopplerColor = new WeightedColorizer(
-    [ 'blue', 'cyan', 'white', 'orange', 'red' ],
-    [ -DOPPLER_MAX_VEL, -DOPPLER_MAX_VEL / 3, 0, DOPPLER_MAX_VEL / 3, DOPPLER_MAX_VEL ]
+const dopplerColor = createWeightedColorizer(
+    ['blue', 'cyan', 'white', 'orange', 'red'],
+    [-DOPPLER_MAX_VEL, -DOPPLER_MAX_VEL / 3, 0, DOPPLER_MAX_VEL / 3, DOPPLER_MAX_VEL]
 )
 
-const massColor = new WeightedColorizer(
+const massColor = createWeightedColorizer(
     ['grey', 'white', 'white', 'fuchsia', 'gold', 'firebrick'],
     [0, 50, 1000, 10000, 100000, 1000000]
 )
 
-// TODO Move these
-function escapeSpeed (child, parent, g) {
+/*** Helper ***/
+
+function escapeSpeed(child: Body, parent: Body, g: number) {
     const relative = child.pos.sub(parent.pos)
     return g * parent.mass * child.mass / relative.sqrMagnitude
 }
 
-function baryCenter (a, b) {
+function baryCenter(a: Body, b: Body): V2 {
 
     const small = a.mass > b.mass ? b : a
     const big = small === a ? b : a
@@ -52,30 +53,35 @@ function baryCenter (a, b) {
     const baryRadius = distance / (1 + small.mass / big.mass)
 
     return relative
+        .copy()
         .normalize()
-        .imult(baryRadius)
-        .iadd(small.pos)
+        .mult(baryRadius)
+        .add(small.pos)
 }
 
-const numDigits = n =>
-// No fucking idea. Found it on the internet
+const numDigits = (n: number) =>
+    // No fucking idea. Found it on the internet
     (log10((n ^ (n >> 31)) - (n >> 31)) | 0) + 1
 
-/******************************************************************************/
-// Colors
-/******************************************************************************/
 
-function colorByMass (ctx, body) {
+/*** Colors ***/
+
+function colorByMass(ctx: CanvasRenderingContext2D, body: Body) {
     ctx.fillStyle = ctx.strokeStyle = massColor(body.mass)
 }
 
-function colorByDoppler (ctx, body, referencePos, relativeVel) {
+function colorByDoppler(
+    ctx: CanvasRenderingContext2D,
+    body: Body,
+    referencePos: V2,
+    relativeVel: V2
+) {
 
     const relativePos = body.pos.sub(referencePos)
     const dist = relativePos.magnitude
     const speed = relativeVel.magnitude
 
-    const direction = Vector.dot(relativePos, relativeVel)
+    const direction = V2.dot(relativePos, relativeVel)
     const distanceFactor = clamp(dist / DOPPLER_MAX_DIST)
 
     const intensity = distanceFactor * DOPPLER_MAX_VEL + ((1 - distanceFactor) * speed)
@@ -84,17 +90,16 @@ function colorByDoppler (ctx, body, referencePos, relativeVel) {
 
 }
 
-const pointIsVisible = (point, radius = 1, canvas) =>
+const pointIsVisible = (point: V2, radius = 1, canvas: HTMLCanvasElement) =>
     point.x + radius > 0 &&
     point.x - radius < canvas.width &&
     point.y + radius > 0 &&
     point.y - radius < canvas.height
 
-/******************************************************************************/
-// Drawing
-/******************************************************************************/
 
-function createCirclePath (ctx, pos, r1, r2 = r1, angle = 0) {
+/*** Drawing ***/
+
+function createCirclePath(ctx: CanvasRenderingContext2D, pos: V2, r1: number, r2 = r1, angle = 0) {
     ctx.beginPath()
     ctx.ellipse(
         pos.x, pos.y, r1, r2, angle, 0, 2 * PI
@@ -102,7 +107,7 @@ function createCirclePath (ctx, pos, r1, r2 = r1, angle = 0) {
     ctx.closePath()
 }
 
-function drawBody (ctx, renderer, body) {
+function drawBody(ctx: CanvasRenderingContext2D, renderer: Renderer, body: Body) {
 
     const { radius, pos, vel } = body
     const { camera, canvas, options, speed } = renderer
@@ -141,21 +146,26 @@ function drawBody (ctx, renderer, body) {
         drawReferenceFrameOutline(ctx, options, viewPos, viewRadius)
 }
 
-function detailStroke (ctx, options) {
+function detailStroke(ctx: CanvasRenderingContext2D, options: RendererOptions) {
     ctx.strokeStyle = options.detailsColor
     ctx.setLineDash(options.detailsDash)
     ctx.globalAlpha = 1
     ctx.stroke()
 }
 
-function drawReferenceFrameOutline (ctx, options, viewPos, viewRadius) {
+function drawReferenceFrameOutline(ctx: CanvasRenderingContext2D, options: RendererOptions, viewPos: V2, viewRadius: number) {
     const ringRadius = viewRadius + options.detailsPad
 
     createCirclePath(ctx, viewPos, ringRadius)
     detailStroke(ctx, options)
 }
 
-function drawBodyParentLine (ctx, renderer, child, simulation) {
+function drawBodyParentLine(
+    ctx: CanvasRenderingContext2D,
+    renderer: Renderer,
+    child: Body,
+    simulation: Simulation
+) {
 
     const { options, camera, canvas } = renderer
 
@@ -190,7 +200,7 @@ function drawBodyParentLine (ctx, renderer, child, simulation) {
     ctx.stroke()
 }
 
-const getGridZoomData = zoom => {
+function getGridZoomData(zoom: number) {
 
     const levels = numDigits(zoom)
     const levelCurrent = 10 ** levels
@@ -207,7 +217,8 @@ const getGridZoomData = zoom => {
     }
 }
 
-function drawGrid (ctx, renderer) {
+
+function drawGrid(ctx: CanvasRenderingContext2D, renderer: Renderer) {
 
     const { camera, canvas, options } = renderer
     const { current } = camera
@@ -220,10 +231,16 @@ function drawGrid (ctx, renderer) {
 
     const data = getGridZoomData(zoom)
 
-    const canvasHalfWorldSize = new Vector(width, height).imult(zoom * 0.5)
-    const worldTL = current.pos.sub(canvasHalfWorldSize).imax(MAX_TOP_LEFT)
-    const worldBR = current.pos.add(canvasHalfWorldSize).imin(MAX_BOT_RIGHT)
-    const worldSnapTL = new Vector(
+    const canvasHalfWorldSize = new V2(width, height).mult(zoom * 0.5)
+    const worldTL = current.pos.copy().sub(canvasHalfWorldSize)
+    worldTL.x = max(worldTL.x, MAX_TOP_LEFT.x)
+    worldTL.y = max(worldTL.y, MAX_TOP_LEFT.y)
+
+    const worldBR = current.pos.copy().add(canvasHalfWorldSize)
+    worldTL.x = min(worldBR.x, MAX_BOT_RIGHT.x)
+    worldTL.y = min(worldBR.y, MAX_BOT_RIGHT.y)
+
+    const worldSnapTL = new V2(
         floor(worldTL.x, canvas.width * data.increment),
         floor(worldTL.y, canvas.height * data.increment)
     )
@@ -232,7 +249,14 @@ function drawGrid (ctx, renderer) {
     drawGridLines(ctx, renderer, worldSnapTL, worldBR, false, data)
 }
 
-const drawGridLines = (ctx, rend, from, to, horizontal, data) => {
+function drawGridLines(
+    ctx: CanvasRenderingContext2D,
+    rend: Renderer,
+    from: V2,
+    to: V2,
+    horizontal: boolean,
+    data: ReturnType<typeof getGridZoomData>
+) {
     const current = from.copy()
 
     const axis = horizontal ? 'x' : 'y'
@@ -263,7 +287,15 @@ const drawGridLines = (ctx, rend, from, to, horizontal, data) => {
     }
 }
 
-function drawGridLine (ctx, renderer, start, limitTL, limitBR, horizontal, opac = 0.25) {
+function drawGridLine(
+    ctx: CanvasRenderingContext2D,
+    renderer: Renderer,
+    start: number,
+    limitTL: V2,
+    limitBR: V2,
+    horizontal: boolean,
+    opac = 0.25
+) {
 
     const { canvas } = renderer
 
@@ -282,15 +314,15 @@ function drawGridLine (ctx, renderer, start, limitTL, limitBR, horizontal, opac 
 
 }
 
-const getTrailWorldPositionAtTick = (body, tick) => {
-    const bCache = body[$$cache]
+const getTrailWorldPositionAtTick = (body: Body, tick: number) => {
+    const bCache = body['_cache']
 
-    const index = bCache.getTickDataIndex(tick)
+    const index = body.getTickDataIndex(tick)
     const mass = bCache.data[index]
     if (!mass || mass === 0)
         return null
 
-    const worldPoint = new Vector(
+    const worldPoint = new V2(
         bCache.data[index + 1],
         bCache.data[index + 2]
     )
@@ -298,15 +330,15 @@ const getTrailWorldPositionAtTick = (body, tick) => {
     return worldPoint
 }
 
-function drawTrails (ctx, renderer, body, simulation) {
+function drawTrails(ctx: CanvasRenderingContext2D, renderer: Renderer, body: Body, simulation: Simulation) {
 
     const { options, camera, canvas } = renderer
 
     const rBody = camera.referenceFrame
-    if (body === rBody)
+    if (body === rBody || !rBody)
         return
 
-    const bCache = rBody[$$cache]
+    const bCache = rBody['_cache']
 
     const zoomF = sqrt(camera.current.zoom)
 
@@ -335,7 +367,7 @@ function drawTrails (ctx, renderer, body, simulation) {
 
         const firstDrawnTickForExistingBody = i === 0 && body.exists
         const worldPoint = firstDrawnTickForExistingBody
-        // ensures trail starts at body, as a result of correcting for jitter
+            // ensures trail starts at body, as a result of correcting for jitter
             ? body.pos.copy()
             : getTrailWorldPositionAtTick(body, tick)
 
@@ -350,8 +382,8 @@ function drawTrails (ctx, renderer, body, simulation) {
             : rBody && getTrailWorldPositionAtTick(rBody, tick)
         if (rWorldPoint)
             worldPoint
-                .isub(rWorldPoint)
-                .iadd(rBody.pos)
+                .sub(rWorldPoint)
+                .add(rBody.pos)
 
         const canvasPoint = camera.worldToCanvas(worldPoint, canvas)
 
@@ -371,7 +403,7 @@ function drawTrails (ctx, renderer, body, simulation) {
 
 }
 
-const getTrailOpacity = (index, length) => {
+function getTrailOpacity(index: number, length: number) {
 
     const fadeMultiplier = 1 / TRAIL_FADE_FACTOR
     const maxIndex = length - 1
@@ -381,17 +413,19 @@ const getTrailOpacity = (index, length) => {
     return min((1 - progress) * fadeMultiplier, 1) * TRAIL_OPACITY_MAX
 }
 
-function ensureLivingReferenceFrame ({ camera }, simulation) {
+function ensureLivingReferenceFrame({ camera }: Renderer, simulation: Simulation) {
 
-    while (camera.referenceFrame && !camera.referenceFrame.exists)
+    while (
+        camera.referenceFrame &&
+        !camera.referenceFrame.exists
+    )
         camera.referenceFrame = simulation.body(camera.referenceFrame.mergeId)
 
 }
-/******************************************************************************/
-// Exports
-/******************************************************************************/
 
-export function clearCanvas (ctx, renderer) {
+/*** Exports ***/
+
+export function clearCanvas(ctx: CanvasRenderingContext2D, renderer: Renderer) {
 
     const { canvas } = renderer
 
@@ -399,7 +433,7 @@ export function clearCanvas (ctx, renderer) {
 
 }
 
-export function drawBodies (ctx, renderer, simulation) {
+export function drawBodies(ctx: CanvasRenderingContext2D, renderer: Renderer, simulation: Simulation) {
 
     ensureLivingReferenceFrame(renderer, simulation)
 

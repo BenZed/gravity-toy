@@ -3,7 +3,6 @@
         "src"
     ],
     "exclude": [
-        "src/renderer",
         "src/client"
     ],
     "compilerOptions": {
