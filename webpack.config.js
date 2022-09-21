@@ -17,7 +17,7 @@ const ENV = {
   APP_PORT: 3000
 }
 
-const LIB = path.resolve(process.cwd(), 'lib')
+const LIB = path.resolve(__dirname, 'lib')
 
 if (!fs.existsSync(LIB))
   fs.mkdirSync(LIB)
@@ -97,7 +97,9 @@ module.exports = {
   },
 
   plugins: [
-    new CleanWebpackPlugin(),
+    new CleanWebpackPlugin({
+      dangerouslyAllowCleanPatternsOutsideProject: true
+    }),
     new MiniCssExtractPlugin(),
     new HtmlWebpackPlugin({
       title: 'Gravity Toy',

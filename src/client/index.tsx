@@ -5,18 +5,24 @@ import './assets/gravity-toy.css'
 
 const dependencies = [
     import('react'),
-    import('react-dom')
+    import('react-dom/client'),
+    import('./components/simulation'),
+    import('./setup-gravity-toy')
 ] as const
+
+const mainTag = document.getElementById('gravity-toy')
 
 /*** Main ***/
 
 Promise.all(dependencies).then(([
     { default: React },
-    { render }
+    { createRoot },
+    { Simulation },
+    { setupGravityToy }
 ]) => {
 
-    const mainTag = document
-        .getElementById('gravity-toy')
+    if (!mainTag)
+        throw new Error('No <main id="gravity-toy"/> tag.')
 
-    render(<p>Gravity Toy</p>, mainTag)
+    createRoot(mainTag).render(<Simulation setup={setupGravityToy} />)
 })
