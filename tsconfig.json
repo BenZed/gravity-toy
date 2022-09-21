@@ -2,9 +2,6 @@
     "include": [
         "src"
     ],
-    "exclude": [
-        "src/client"
-    ],
     "compilerOptions": {
         "lib": [
             "ESNext",
