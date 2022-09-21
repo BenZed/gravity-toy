@@ -92,7 +92,9 @@ module.exports = {
   resolve: {
     extensions: ['.tsx', '.ts', '.js'],
     fallback: {
-      util: false
+      util: false,
+      path: false,
+      child_process: false
     }
   },
 

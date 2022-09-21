@@ -18,7 +18,7 @@ const createWorker = (() => {
     const isBrowser = typeof window === 'object'
     if (isBrowser) {
 
-        const WebWorker = require('worker-loader!./worker.ts')
+        const { default: WebWorker } = require('worker-loader!./worker.ts')
 
         return (onTick: (data: FromWorkerData) => void) => {
 

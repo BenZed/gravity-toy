@@ -24,5 +24,6 @@ Promise.all(dependencies).then(([
     if (!mainTag)
         throw new Error('No <main id="gravity-toy"/> tag.')
 
-    createRoot(mainTag).render(<Simulation setup={setupGravityToy} />)
+    createRoot(mainTag)
+        .render(<Simulation setup={setupGravityToy} />)
 })

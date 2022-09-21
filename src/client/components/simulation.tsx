@@ -1,10 +1,12 @@
 import React, { ReactElement, useEffect, useRef } from 'react'
+
+import { Renderer as GravityToyRenderer } from '../../renderer'
 import { Simulation as GravityToy } from '../../simulation'
 
 /*** Canvas Component ***/
 
 interface SimulationProps {
-    setup: (toy: GravityToy, canvas: HTMLCanvasElement) => void
+    setup: (toy: GravityToy, renderer: GravityToyRenderer) => void
 }
 
 const Simulation = (props: SimulationProps): ReactElement => {
@@ -18,9 +20,32 @@ const Simulation = (props: SimulationProps): ReactElement => {
     />
 }
 
+/*** Helper ***/
+
+function startGravityToyRenderer(toy: GravityToy, renderer: GravityToyRenderer) {
+
+    const render = () => {
+        // Resize
+        renderer.canvas.width = document.body.clientWidth
+        renderer.canvas.height = document.body.clientHeight
+
+        if (toy.lastTick > toy.currentTick)
+            toy.currentTick++
+
+        // Update
+        renderer.render(toy)
+
+        // Queue
+        if (toy.running)
+            requestAnimationFrame(render)
+    }
+    requestAnimationFrame(render)
+
+}
+
 /*** Hooks ***/
 
-const useGravityToy = (withToy: SimulationProps['setup']) => {
+const useGravityToy = (setupGravityToy: SimulationProps['setup']) => {
 
     const canvasRef = useRef<HTMLCanvasElement | null>(null)
     const toyRef = useRef<GravityToy | null>(null)
@@ -30,15 +55,19 @@ const useGravityToy = (withToy: SimulationProps['setup']) => {
             return
 
         const canvas = canvasRef.current
-        const gravityToy = toyRef.current = {} as GravityToy // new GravityToy()
 
-        withToy(gravityToy, canvas)
+        const toy = toyRef.current = new GravityToy()
+        const renderer = new GravityToyRenderer({}, canvas)
+
+        setupGravityToy(toy, renderer)
+        toy.run()
+
+        startGravityToyRenderer(toy, renderer)
 
         return () => {
-            gravityToy.stop()
+            toy.stop()
         }
-    }, [canvasRef, toyRef, withToy])
-
+    }, [canvasRef, toyRef, setupGravityToy])
 
 
     return canvasRef
