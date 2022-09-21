@@ -29,7 +29,7 @@
     "eslint-plugin-standard": "^3.0.1",
     "html-loader": "^0.4.4",
     "json-loader": "^0.5.4",
-    "mocha": "^3.0.2",
+    "mocha": "^10.0.0",
     "webpack": "^3.5.5",
     "webpack-dev-server": "^2.7.1",
     "worker-loader": "^0.8.0"
