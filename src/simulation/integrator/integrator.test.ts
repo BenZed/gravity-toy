@@ -7,7 +7,7 @@ import is from '@benzed/is'
 import { V2 } from '@benzed/math'
 
 import * as worker from './worker'
-import { MASS_MIN, DEFAULT_PHYSICS, Physics } from '../constants'
+import { MASS_MIN, DEFAULT_PHYSICS, PhysicsSettings } from '../constants'
 
 import { massFromRadius } from '../util'
 
@@ -19,14 +19,14 @@ class TestSimulation {
 
     public g: number
 
-    constructor (input: Partial<Physics>) {
+    constructor (input: Partial<PhysicsSettings>) {
 
         const physics = { ...DEFAULT_PHYSICS, ...input }
 
         this.g = physics.g
 
         for (const key in physics)
-            worker.physics[key as keyof Physics] = physics[key as keyof Physics]
+            worker.physics[key as keyof PhysicsSettings] = physics[key as keyof PhysicsSettings]
 
         worker.bodies.living.length = 0
         worker.bodies.created.length = 0
@@ -158,7 +158,7 @@ describe('Integration', function () {
             new TestSimulation(config)
 
             for (const key in config)
-                expect(worker.physics[key as keyof Physics]).toEqual(config[key as keyof Physics])
+                expect(worker.physics[key as keyof PhysicsSettings]).toEqual(config[key as keyof PhysicsSettings])
         })
     })
 

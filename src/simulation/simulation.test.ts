@@ -36,15 +36,6 @@ describe('Simulation', () => {
     describe('constructor()', () => {
         describe('properties argument', () => {
 
-            it('must be an object', () => {
-                // eslint-disable-next-line new-parens
-                for (const bad of ['weee', 1, [], true, Symbol('sym'), new Date()])
-                    // @ts-expect-error Bad input
-                    expect(() => new Simulation(bad)).toThrow(TypeError)
-
-                expect(() => new Simulation({})).not.toThrow(TypeError)
-            })
-
             it('props.g must be above zero', () => {
                 expect(() => new Simulation({ g: 0 })).toThrow('g must be above zero')
                 expect(() => new Simulation({ g: -1 })).toThrow('g must be above zero')

@@ -2,7 +2,7 @@ import { min, sqrt, V2 } from '@benzed/math'
 import SortedArray from '@benzed/array/sorted-array'
 
 import { radiusFromMass, closestPointOnLine } from '../util'
-import { Physics, TICK_DURATION } from '../constants'
+import { PhysicsSettings, TICK_DURATION } from '../constants'
 import { Body, Edge } from './body'
 
 /*** Constants ***/
@@ -74,7 +74,7 @@ class BodyManager {
 
     }
 
-    public setBodies(bodies: Body[], physics: Physics) {
+    public setBodies(bodies: Body[], physics: PhysicsSettings) {
 
         this.living.length = 0
         this.living.push(...bodies)
@@ -98,7 +98,7 @@ class BodyManager {
 
     }
 
-    public calculateForces(physics: Physics) {
+    public calculateForces(physics: PhysicsSettings) {
 
         const { living, psuedo, real } = this
 
@@ -115,7 +115,7 @@ class BodyManager {
             calculateForces(body, real, physics)
     }
 
-    public applyForces(physics: Physics) {
+    public applyForces(physics: PhysicsSettings) {
 
         const { living } = this
 
@@ -134,7 +134,7 @@ class BodyManager {
         }
     }
 
-    public checkCollisions(physics: Physics) {
+    public checkCollisions(physics: PhysicsSettings) {
         let needsSort = false
 
         for (const key in this.overlaps) {
@@ -189,7 +189,7 @@ class BodyManager {
         boundsY.splice(boundsY.indexOf(small.bounds.t), 1)
     }
 
-    public sort(physics: Physics) {
+    public sort(physics: PhysicsSettings) {
 
         const { living, real, psuedo, destroyed } = this
         const { realBodiesMin, realMassThreshold } = physics
@@ -256,7 +256,7 @@ function didCollide(...args: [Body, Body]) {
     return dist < fast.radius + slow.radius
 }
 
-function calculatePsuedoMass(body: Body, bodies: Body[], physics: Physics) {
+function calculatePsuedoMass(body: Body, bodies: Body[], physics: PhysicsSettings) {
     calculateForces(body, bodies, physics, true)
 }
 
@@ -264,7 +264,7 @@ function calculatePsuedoMass(body: Body, bodies: Body[], physics: Physics) {
 // a single tick, so there are some manual inlining and optimizations
 // I've made. I dunno if they make any real difference in the
 // grand scheme of things, but it helps my OCD
-function calculateForces(body: Body, bodies: Body[], physics: Physics, addPsuedoMassOnly = false) {
+function calculateForces(body: Body, bodies: Body[], physics: PhysicsSettings, addPsuedoMassOnly = false) {
 
     // Relative position vector between two bodies.
     // Declared outside of the while loop to save

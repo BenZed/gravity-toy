@@ -1,4 +1,4 @@
-import { DEFAULT_PHYSICS, NO_LINK, Physics } from '../constants'
+import { DEFAULT_PHYSICS, NO_LINK, PhysicsSettings } from '../constants'
 import { V2 as Vector } from '@benzed/math'
 
 import Body from './body'
@@ -23,7 +23,7 @@ interface FromWorkerData {
 }
 
 interface ToWorkerData {
-    physics: Physics
+    physics: PhysicsSettings
     data: number[]
 }
 
@@ -58,7 +58,7 @@ const sendToParent = isWebWorker
 
 const NEXT_TICK_DELAY = 0
 
-const physics: Physics = { ...DEFAULT_PHYSICS }
+const physics: PhysicsSettings = { ...DEFAULT_PHYSICS }
 
 const bodies = new BodyManager()
 
@@ -67,7 +67,7 @@ const bodies = new BodyManager()
 function receiveStream(workerData: ToWorkerData) {
 
     for (const key in workerData.physics) {
-        const k = key as keyof Physics
+        const k = key as keyof PhysicsSettings
         physics[k] = workerData.physics[k]
     }
 
@@ -150,7 +150,6 @@ function tick(queueNextTick = true) {
         setTimeout(tick, NEXT_TICK_DELAY)
 
 }
-
 
 /*** Exports ***/
 

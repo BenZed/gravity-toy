@@ -1,5 +1,5 @@
 import is from '@benzed/is'
-import { Physics } from '../constants'
+import { PhysicsSettings } from '../constants'
 import { FromWorkerData, ToWorkerData } from './worker'
 
 /* eslint-disable @typescript-eslint/no-var-requires */
@@ -39,9 +39,8 @@ const createWorker = (() => {
     } else {
 
         const { fork } = require('child_process')
-        const path = require('path')
 
-        const FORK_PATH = path.resolve(__dirname, '../../../lib/integrator/worker.js')
+        const FORK_PATH = 'lib/integrator/worker.js'
         const FORK_MEMORY = { execArgv: ['--max-old-space-size=128'] }
 
         return (onTick: (data: FromWorkerData) => void) => {
@@ -89,7 +88,7 @@ function validateIntegratorSettings(input: unknown): IntegratorSettings {
     return settings
 }
 
-interface IntegratorSettings extends Physics {
+interface IntegratorSettings extends PhysicsSettings {
 
     onTick: (data: FromWorkerData) => void
 
@@ -100,7 +99,7 @@ interface IntegratorSettings extends Physics {
 class Integrator {
 
     public readonly onTick: (data: FromWorkerData) => void
-    public readonly physics: Physics
+    public readonly physics: PhysicsSettings
 
     public worker: Worker | null = null
 
@@ -115,6 +114,7 @@ class Integrator {
     }
 
     public start(data: number[]) {
+
         this.stop()
 
         if (!is.array(data) || data.length <= 1)

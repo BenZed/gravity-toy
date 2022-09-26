@@ -1,7 +1,7 @@
 import is from '@benzed/is'
 import { min, clamp, V2 as Vector } from '@benzed/math'
-
 import { EventEmitter } from '@benzed/util'
+import { pluck } from '@benzed/array'
 
 import {
     CACHED_VALUES_PER_TICK,
@@ -9,7 +9,7 @@ import {
     DEFAULT_MAX_MB,
     NUMBER_SIZE,
     ONE_MB,
-    Physics
+    PhysicsSettings
 } from './constants'
 
 import Body, { BodyProps } from './body'
@@ -27,9 +27,10 @@ interface SimulationCache {
 
     usedBytes: number
     maxBytes: number
-    nextAssignId: number
-    readonly bodies: Map<number, Body>
 
+    nextAssignId: number
+
+    readonly bodies: Map<number, Body>
 }
 
 interface SimulationTick {
@@ -38,32 +39,16 @@ interface SimulationTick {
     last: number
 }
 
-interface SimulationSettings extends Physics {
+interface SimulationSettings extends PhysicsSettings {
     maxCacheMemory: number
 }
-
-/*** Helper ***/
-
-function idArrayCheck(haystack: number[], needle: number) {
-
-    if (haystack.length === 0)
-        return true
-
-    for (let i = 0; i < haystack.length; i++)
-        if (haystack[i] === needle) {
-            haystack.splice(i, 1) // remove from array to speed it up
-            return true
-        }
-
-    return false
-}
-
 
 /*** Main ***/
 
 class Simulation extends EventEmitter<SimulationEvents> {
 
-    static fromJSON(json: any) {
+    static fromJson(json: any) {
+        //
         if (typeof json === 'string')
             json = JSON.parse(json)
 
@@ -71,21 +56,20 @@ class Simulation extends EventEmitter<SimulationEvents> {
 
         const sim = new Simulation(init)
 
-        const props = bodies.map((body: Body) => {
-            const prop = {
-                pos: Vector.from(body.pos),
-                vel: Vector.from(body.vel),
-                mass: body.mass
-            }
-            return prop
-        })
+        const props = bodies.map((body: Body) => ({
+            pos: Vector.from(body.pos),
+            vel: Vector.from(body.vel),
+            mass: body.mass
+        }))
 
         sim.createBodies(props)
 
         return sim
     }
 
-    public readonly g: number
+    public get g(): number {
+        return this._integrator.physics.g
+    }
     public readonly _integrator: Integrator
     public readonly _cache: SimulationCache
     public readonly _tick: SimulationTick = {
@@ -98,37 +82,28 @@ class Simulation extends EventEmitter<SimulationEvents> {
 
         super()
 
-        if (!is.plainObject(settings))
-            throw new TypeError('settings must be a plain object')
-
         const {
-            g,
-            physicsSteps,
-            realMassThreshold,
-            realBodiesMin,
-            maxCacheMemory = DEFAULT_MAX_MB
-        } = { ...DEFAULT_PHYSICS, ...settings }
+            maxCacheMemory = DEFAULT_MAX_MB,
+            ...physics
+        } = settings
 
-        if (!is.number(maxCacheMemory) || maxCacheMemory <= 0)
+        if (maxCacheMemory <= 0)
             throw new Error('maxCacheMemory must be above zero')
-
-        const integratorSettings = {
-            onTick: this._writeTick.bind(this),
-            g,
-            physicsSteps,
-            realMassThreshold,
-            realBodiesMin
-        }
 
         this._cache = {
             usedBytes: 0,
             maxBytes: maxCacheMemory * ONE_MB,
+
             nextAssignId: 0,
+
             bodies: new Map()
         }
 
-        this.g = g
-        this._integrator = new Integrator(integratorSettings)
+        this._integrator = new Integrator({
+            onTick: this._writeTick.bind(this),
+            ...DEFAULT_PHYSICS,
+            ...physics
+        })
     }
 
     public get currentTick(): number {
@@ -152,21 +127,6 @@ class Simulation extends EventEmitter<SimulationEvents> {
             this._setBodyValuesFromCache(body, tick)
 
         this._tick.current = tick
-    }
-
-    private _setBodyValuesFromCache(body: Body, tick: number) {
-
-        const { data } = body['_cache']
-
-        let index = body.getTickDataIndex(tick)
-
-        body.mass = data[index++] || 0
-        body.pos.x = data[index++]
-        body.pos.y = data[index++]
-        body.vel.x = data[index++]
-        body.vel.y = data[index++]
-        body.linkId = data[index++]
-
     }
 
     public get firstTick(): number {
@@ -295,7 +255,6 @@ class Simulation extends EventEmitter<SimulationEvents> {
         })
     }
 
-
     public runForNumTicks(totalTicks: number, startTick = this.currentTick) {
         if (totalTicks <= 0)
             throw new Error('totalTicks must be a number above zero.')
@@ -312,11 +271,7 @@ class Simulation extends EventEmitter<SimulationEvents> {
 
 
     public runForOneTick(startTick = this.currentTick) {
-        const description = 'for one tick'
-
-        const oneTick = () => true
-
-        return this.runUntil(oneTick, startTick, description)
+        return this.runForNumTicks(1, startTick)
     }
 
     public stop() {
@@ -425,9 +380,12 @@ class Simulation extends EventEmitter<SimulationEvents> {
 
         ids = [...ids] // idArrayCheck mutates the array, so we'll prevent side effects
 
-        for (const body of this)
-            if (idArrayCheck(ids, body.id))
+        for (const body of this) {
+
+            const id = pluck(ids, id => id === body.id, 1).at(0)
+            if (id !== undefined)
                 yield body
+        }
     }
 
     public get numBodies() {
@@ -498,6 +456,21 @@ class Simulation extends EventEmitter<SimulationEvents> {
             allocations += body['_cache'].data.length
 
         cache.usedBytes = min(cache.maxBytes, allocations * NUMBER_SIZE)
+    }
+
+    private _setBodyValuesFromCache(body: Body, tick: number) {
+
+        const { data } = body['_cache']
+
+        let index = body.getTickDataIndex(tick)
+
+        body.mass = data[index++] || 0
+        body.pos.x = data[index++]
+        body.pos.y = data[index++]
+        body.vel.x = data[index++]
+        body.vel.y = data[index++]
+        body.linkId = data[index++]
+
     }
 
     private _writeTick(data: FromWorkerData) {

@@ -1,7 +1,7 @@
 
 /*** Simulation Constants ***/
 
-export interface Physics {
+export interface PhysicsSettings {
 
     /**
      * Gravitational Constant. Higher values, faster bodies.
