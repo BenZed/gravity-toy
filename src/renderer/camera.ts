@@ -2,9 +2,9 @@ import { V2, clamp, lerp, v2 } from '@benzed/math'
 
 import { TICK_DURATION } from '../simulation/constants'
 
-import { Body } from '../simulation/body'
+import { Body } from '../old/simulation/body'
 import Renderer from './renderer'
-import { Simulation } from '../simulation'
+import { Simulation } from '../old/simulation'
 
 /*** Helper ***/
 

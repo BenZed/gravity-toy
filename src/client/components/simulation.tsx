@@ -1,7 +1,7 @@
 import React, { ReactElement, useEffect, useRef } from 'react'
 
 import { Renderer as GravityToyRenderer } from '../../renderer'
-import { Simulation as GravityToy } from '../../simulation'
+import { GravityToy } from '../../simulation'
 
 /*** Canvas Component ***/
 
@@ -30,13 +30,13 @@ function startGravityToyRenderer(toy: GravityToy, renderer: GravityToyRenderer) 
         renderer.canvas.height = document.body.clientHeight
 
         if (toy.lastTick > toy.currentTick)
-            toy.currentTick++
+            toy.tick++
 
         // Update
         renderer.render(toy)
 
         // Queue
-        if (toy.running)
+        if (toy.isRunning)
             requestAnimationFrame(render)
     }
     requestAnimationFrame(render)
@@ -60,7 +60,7 @@ const useGravityToy = (setupGravityToy: SimulationProps['setup']) => {
         const renderer = new GravityToyRenderer({}, canvas)
 
         setupGravityToy(toy, renderer)
-        toy.run()
+        toy.start()
 
         startGravityToyRenderer(toy, renderer)
 

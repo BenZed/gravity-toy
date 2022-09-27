@@ -1,6 +1,6 @@
 import { V2, PI, log10, max, min, clamp, floor, sign, abs, sqrt } from '@benzed/math'
 
-import { Body, Simulation } from '../simulation'
+import { Body, Simulation } from '../old/simulation'
 
 import { RADIUS_MIN } from '../simulation/constants'
 import Renderer, { RendererOptions } from './renderer'

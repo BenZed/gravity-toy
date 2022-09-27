@@ -1,6 +1,6 @@
 import { V2 } from '@benzed/math'
 import { Renderer as GravityToyRenderer } from '../renderer'
-import { Simulation as GravityToy } from '../simulation'
+import { Simulation as GravityToy } from '../old/simulation'
 
 /*** Main ***/
 

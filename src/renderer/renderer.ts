@@ -1,5 +1,5 @@
 import { clearCanvas, drawBodies } from './drawing'
-import { Simulation } from '../simulation'
+import { Simulation } from '../old/simulation'
 import Camera from './camera'
 
 /*** Options ***/

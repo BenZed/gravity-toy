@@ -1,540 +1,222 @@
-import is from '@benzed/is'
-import { min, clamp, V2 as Vector } from '@benzed/math'
-import { EventEmitter } from '@benzed/util'
-import { pluck } from '@benzed/array'
 
-import {
-    CACHED_VALUES_PER_TICK,
-    DEFAULT_PHYSICS,
-    DEFAULT_MAX_MB,
-    NUMBER_SIZE,
-    ONE_MB,
-    PhysicsSettings
-} from './constants'
+import { isFinite, isNaN } from '@benzed/is'
+import { V2, V2Json } from '@benzed/math'
 
-import Body, { BodyProps } from './body'
-import Integrator from './integrator'
-import { FromWorkerData } from './integrator/worker'
+import { DEFAULT_PHYSICS, PhysicsSettings } from './constants'
 
 /*** Types ***/
 
-interface SimulationEvents {
-    'tick': [number]
-    'cache-full': [number]
+interface BodyJson {
+
+    readonly id: number
+
+    readonly pos: V2Json
+    readonly vel: V2Json
+    mass: number
+
 }
 
-interface SimulationCache {
-
-    usedBytes: number
-    maxBytes: number
-
-    nextAssignId: number
-
-    readonly bodies: Map<number, Body>
+interface SimulationJson extends PhysicsSettings {
+    readonly bodies: readonly BodyJson[]
 }
 
-interface SimulationTick {
-    current: number
-    first: number
-    last: number
-}
-
-interface SimulationSettings extends PhysicsSettings {
-    maxCacheMemory: number
-}
+type BodyData = Partial<Omit<BodyJson, 'id'>>
 
 /*** Main ***/
 
-class Simulation extends EventEmitter<SimulationEvents> {
+/**
+ * Simulation base class. Responsible for body CRUD, iteration, serialization.
+ */
+abstract class Simulation<B extends BodyJson> implements SimulationJson {
 
-    static fromJson(json: any) {
-        //
-        if (typeof json === 'string')
-            json = JSON.parse(json)
+    // State
 
-        const { bodies, ...init } = json
+    protected readonly _bodies: Map<number, B> = new Map()
 
-        const sim = new Simulation(init)
-
-        const props = bodies.map((body: Body) => ({
-            pos: Vector.from(body.pos),
-            vel: Vector.from(body.vel),
-            mass: body.mass
-        }))
-
-        sim.createBodies(props)
-
-        return sim
+    public get bodies(): readonly B[] {
+        return [...this]
     }
 
-    public get g(): number {
-        return this._integrator.physics.g
-    }
-    public readonly _integrator: Integrator
-    public readonly _cache: SimulationCache
-    public readonly _tick: SimulationTick = {
-        current: 0,
-        first: 0,
-        last: 0
-    }
+    public readonly g: SimulationJson['g']
+    public readonly physicsSteps: SimulationJson['physicsSteps']
+    public readonly realMassThreshold: SimulationJson['realMassThreshold']
+    public readonly realBodiesMin: SimulationJson['realBodiesMin']
 
-    public constructor (settings: Partial<SimulationSettings> = {}) {
+    // Constructor
 
-        super()
+    public constructor (settings?: Partial<SimulationJson>) {
 
-        const {
-            maxCacheMemory = DEFAULT_MAX_MB,
-            ...physics
-        } = settings
+        const { bodies, g, physicsSteps, realMassThreshold, realBodiesMin } = { ...DEFAULT_PHYSICS, ...settings }
 
-        if (maxCacheMemory <= 0)
-            throw new Error('maxCacheMemory must be above zero')
+        this.g = g
+        this.physicsSteps = physicsSteps
+        this.realMassThreshold = realMassThreshold
+        this.realBodiesMin = realBodiesMin
 
-        this._cache = {
-            usedBytes: 0,
-            maxBytes: maxCacheMemory * ONE_MB,
-
-            nextAssignId: 0,
-
-            bodies: new Map()
-        }
-
-        this._integrator = new Integrator({
-            onTick: this._writeTick.bind(this),
-            ...DEFAULT_PHYSICS,
-            ...physics
-        })
-    }
-
-    public get currentTick(): number {
-        return this._tick.current
-    }
-
-    set currentTick(value) {
-        this.setCurrentTick(value, false)
-    }
-
-    public setCurrentTick(tick: number, autoClamp = true) {
-
-        if (autoClamp)
-            tick = clamp(tick, this.firstTick, this.lastTick)
-
-        this.assertTick(tick)
-
-        const bodies = this._cache
-
-        for (const body of bodies.bodies.values())
-            this._setBodyValuesFromCache(body, tick)
-
-        this._tick.current = tick
-    }
-
-    public get firstTick(): number {
-        return this._tick.first
-    }
-
-    public get lastTick(): number {
-        return this._tick.last
-    }
-
-    get running() {
-        return !!this._integrator.worker
-    }
-
-    get usedCacheMemory() {
-        return this._cache.usedBytes / ONE_MB
-    }
-
-    get maxCacheMemory() {
-        return this._cache.maxBytes / ONE_MB
-    }
-
-    public assertTick(tick: number) {
-
-        const { firstTick, lastTick } = this
-
-        if (!is.number(tick))
-            throw new TypeError('tick should be a number.')
-
-        if (tick < firstTick || (tick > lastTick))
-            throw new RangeError(`${tick} is out of range, ${firstTick} to ${lastTick}`)
-
-    }
-
-    public run(tick = this.currentTick) {
-
-        this.assertTick(tick)
-
-        if (tick < this.lastTick)
-            this.clearAfterTick(tick)
-
-        const bodies = this._cache
-
-        const stream = [
-            // The integrator expects the first value in the stream array to last id
-            // assigned to a new body
-            bodies.nextAssignId
-        ]
-
-        for (const body of bodies.bodies.values()) {
-            const cache = body['_cache']
-            if (tick < cache.birthTick || (cache.deathTick > -1 && tick >= cache.deathTick))
-                continue
-
-            stream.push(body.id)
-
-            // If this is the current tick, we want to take the values to
-            // send to the integrator from the body's current values, not
-            // not the cache. This way, if changes have been made, they'll
-            // be reflected in the integration results
-            if (tick === this.currentTick)
-                stream.push(
-                    body.mass,
-                    body.pos.x,
-                    body.pos.y,
-                    body.vel.x,
-                    body.vel.y
-                )
-            else {
-                // Otherwise, we want to take the values from the cache.
-                let index = body.getTickDataIndex(tick)
-                stream.push(
-                    cache.data[index++], // mass
-                    cache.data[index++], // posX
-                    cache.data[index++], // posY
-                    cache.data[index++], // velX
-                    cache.data[index++] /// velY
-                )
-            }
-        }
-
-        // If the only thing in the simulation is the last assigned id, then there must
-        // not be any bodies.
-        if (stream.length <= 1)
-            throw new Error(`Cannot start simulation. No bodies exist at tick ${tick}.`)
-
-        if (bodies.usedBytes === bodies.maxBytes)
-            throw new Error(`Cannot start simulation. Cache memory (${this.maxCacheMemory}mb) is full.`)
-
-        this._integrator.start(stream)
-    }
-
-    public runUntil(
-        condition: (...args: any[]) => boolean,
-        startTick = this.currentTick,
-        description = 'until condition met'
-    ) {
-        this.assertTick(startTick)
-
-        let resolver: (lastTick: number) => void
-        let rejecter: (lastTick: number) => void
-
-        return new Promise((resolve, reject) => {
-
-            resolver = lastTick => {
-                if (condition(lastTick))
-                    resolve(lastTick)
-            }
-
-            rejecter = lastTick => {
-                reject(new Error(`Could not run ${description}. Cache memory used up on tick ${lastTick}`))
-            }
-
-            this.on('tick', resolver)
-            this.once('cache-full', rejecter)
-
-            this.run(startTick)
-
-        }).then(lastTick => {
-            this.removeListener('tick', resolver)
-            this.removeListener('cache-full', rejecter)
-
-            this.stop()
-
-            return lastTick
-        })
-    }
-
-    public runForNumTicks(totalTicks: number, startTick = this.currentTick) {
-        if (totalTicks <= 0)
-            throw new Error('totalTicks must be a number above zero.')
-
-        let ticks = 0
-
-        const condition = () =>
-            ++ticks >= totalTicks
-
-        const description = `for ${totalTicks} ticks`
-
-        return this.runUntil(condition, startTick, description)
-    }
-
-
-    public runForOneTick(startTick = this.currentTick) {
-        return this.runForNumTicks(1, startTick)
-    }
-
-    public stop() {
-        this._integrator.stop()
-    }
-
-    public createBodies(props: Partial<BodyProps> | Partial<BodyProps>[], tick = this.currentTick): Body[] {
-
-        if (!is.array(props))
-            props = [props]
-
-        const cache = this._cache
-        const created: Body[] = []
-
-        for (const prop of props) {
-
-            const id = cache.nextAssignId++
-            const body = new Body(prop, tick, id)
-            cache.bodies.set(id, body)
-
-            // If we're not on the tick that we're adding the body
-            // to, it's current values should be changed.
-            this._setBodyValuesFromCache(body, this.currentTick)
-
-            created.push(body)
-        }
-
-        if (this.running)
-            this.run(tick)
-
-        else if (tick < this.lastTick)
-            this.clearAfterTick(tick)
-
-        return created
-    }
-
-    public clearAfterTick(tick = this.currentTick) {
-        this.assertTick(tick)
-
-        if (tick < this.currentTick)
-            this.setCurrentTick(tick)
-
-        this._tick.last = tick
-
-        const bodies = this._cache
-        for (const body of bodies.bodies.values()) {
-            const cache = body['_cache']
-
-            if (tick < cache.birthTick) {
-                bodies.bodies.delete(body.id)
-                continue
-            }
-
-            if (tick < cache.deathTick)
-                cache.deathTick = -1
-
-            const index = body.getTickDataIndex(tick) + CACHED_VALUES_PER_TICK
-            const { data } = cache
-
-            data.length = min(index, data.length)
-        }
-        this._updateUsedBytes()
-
-    }
-
-    public clearBeforeTick(tick = this.currentTick) {
-        this.assertTick(tick)
-
-        if (tick > this.currentTick)
-            this.setCurrentTick(tick)
-
-        this._tick.first = tick
-
-        const bodies = this._cache
-        for (const body of bodies.bodies.values()) {
-            const cache = body['_cache']
-
-            if (cache.deathTick > -1 && tick >= cache.deathTick) {
-                bodies.bodies.delete(body.id)
-                continue
-            }
-
-            if (tick > cache.birthTick) {
-                const delta = tick - cache.birthTick
-                const length = delta * CACHED_VALUES_PER_TICK
-
-                cache.data.splice(0, length)
-                cache.birthTick = tick
-            }
-        }
-        this._updateUsedBytes()
-    }
-
-    public body(id: number) {
-        return this._cache.bodies.get(id) ?? null
-    }
-
-    [Symbol.iterator]() {
-        return this._cache.bodies.values()
-    }
-
-    public * bodies(ids: number[] = []) {
-
-        if (is.defined(ids) && !is.array(ids))
-            ids = [ids]
-
-        ids = [...ids] // idArrayCheck mutates the array, so we'll prevent side effects
-
-        for (const body of this) {
-
-            const id = pluck(ids, id => id === body.id, 1).at(0)
-            if (id !== undefined)
-                yield body
+        if (bodies) {
+            this._assertBodyJsonValid(bodies)
+            this._applyBodyJson(bodies)
         }
     }
 
-    public get numBodies() {
-        return this._cache.bodies.size
+    // Interface
+
+    public abstract get isRunning(): boolean
+
+    public abstract start(): void
+
+    public abstract stop(): void
+
+    public addBody(data: BodyData): B {
+
+        let id = 0
+        while (this.hasBody(id))
+            id++
+
+        return this._upsertBody({ id, ...data }, true)
     }
 
-    public * livingBodies() {
-        for (const body of this)
-            if (body.exists)
-                yield body
+    public updateBody(id: number, data: BodyData): B {
+
+        if (!this.hasBody(id))
+            throw new Error(`No body with id ${id}`)
+
+        return this._upsertBody({ id, ...data }, true)
     }
 
-    public numLivingBodies() {
-        let count = 0
-        for (const body of this)
-            if (body.exists)
-                count++
+    public removeBody(id: number): B {
 
-        return count
+        const body = this.getBody(id)
+        if (!body)
+            throw new Error(`No body with id ${id}`)
+
+        this._deleteBody(id)
+        this._restart()
+
+        return body
     }
 
-    /*** Conversion ***/
-
-    public toArray(ids: number[]) {
-        return [...this.bodies(ids)]
+    public getBody(id: number): B | null {
+        return this._bodies.get(id) ?? null
     }
 
-    public toJSON() {
+    public hasBody(id: number): boolean {
+        return this._bodies.has(id)
+    }
 
-        const {
-            g, maxCacheMemory
-        } = this
+    // Iteration
 
-        const {
-            physicsSteps, realMassThreshold, realBodiesMin
-        } = this._integrator.physics
+    public *[Symbol.iterator]() {
+        for (const body of this._bodies.values())
+            yield body
+    }
 
-        const bodies = []
-        for (const body of this.livingBodies()) {
+    public * ids() {
+        yield* this._bodies.keys()
+    }
 
-            const { pos, vel, mass, id } = body
+    // Helper
 
-            bodies.push({
+    protected abstract _createBody(json: BodyJson): B
+
+    protected _applyBodyJson(jsons: SimulationJson['bodies']): void {
+
+        const survivorIds = jsons.map(json => this._upsertBody(json, false).id)
+
+        // remove destroyed bodies
+
+        for (const id of [...this.ids()]) {
+            if (!survivorIds.includes(id))
+                this._deleteBody(id)
+        }
+    }
+
+    protected _assertBodyJsonValid(jsons: SimulationJson['bodies']): void {
+
+        const usedIds: number[] = []
+
+        for (const { id } of jsons) {
+
+            if (isNaN(id) || !isFinite(id) || id < 0)
+                throw new Error(`State corrupt: "${id}" is not a valid id.`)
+
+            else if (usedIds.includes(id))
+                throw new Error(`State corrupt: "${id}" is used multiple times as an id.`)
+
+            usedIds.push(id)
+        }
+    }
+
+    protected _upsertBody(data: BodyData & { id: number }, restart: boolean): B {
+        let body = this._bodies.get(data.id)
+
+        if (!body) {
+
+            const {
                 id,
-                pos: { x: pos.x, y: pos.y },
-                vel: { x: vel.x, y: vel.y },
-                mass
-            })
+                pos = V2.ZERO,
+                vel = V2.ZERO,
+                mass = 1
+            } = data
+
+            body = this._createBody({ id, pos, vel, mass })
+
+            this._bodies.set(id, body)
+
+        } else {
+
+            if (data.pos !== undefined) {
+                body.pos.x = data.pos.x
+                body.pos.y = data.pos.y
+            }
+
+            if (data.vel !== undefined) {
+                body.vel.x = data.vel.x
+                body.vel.y = data.vel.y
+            }
+
+            if (data.mass !== undefined)
+                body.mass = data.mass
         }
+
+        if (restart)
+            this._restart()
+
+        return body
+    }
+
+    protected _deleteBody(id: number): void {
+        this._bodies.delete(id)
+    }
+
+    private _restart() {
+        if (this.isRunning) {
+            this.start()
+        }
+    }
+
+    // toJSON
+
+    public toJSON(): SimulationJson {
+
+        const { g, physicsSteps, realMassThreshold, realBodiesMin, bodies } = this
 
         return {
-            bodies,
             g,
             physicsSteps,
             realMassThreshold,
             realBodiesMin,
-            maxCacheMemory
+
+            bodies
         }
     }
-
-    /*** Helper ***/
-
-    private _updateUsedBytes() {
-        const cache = this._cache
-
-        let allocations = 0
-        for (const body of cache.bodies.values())
-            allocations += body['_cache'].data.length
-
-        cache.usedBytes = min(cache.maxBytes, allocations * NUMBER_SIZE)
-    }
-
-    private _setBodyValuesFromCache(body: Body, tick: number) {
-
-        const { data } = body['_cache']
-
-        let index = body.getTickDataIndex(tick)
-
-        body.mass = data[index++] || 0
-        body.pos.x = data[index++]
-        body.pos.y = data[index++]
-        body.vel.x = data[index++]
-        body.vel.y = data[index++]
-        body.linkId = data[index++]
-
-    }
-
-    private _writeTick(data: FromWorkerData) {
-
-        if (!this.running)
-            return
-
-        const bodies = this._cache
-        const tick = this._tick
-
-        tick.last++
-
-        bodies.nextAssignId = data.nextAssignId
-
-        for (const { id, mergeId } of data.destroyed) {
-            const body = bodies.bodies.get(id) as Body
-            body.mergeId = mergeId
-
-            const cache = body['_cache']
-            cache.deathTick = tick.last
-        }
-
-        for (const id of data.created) {
-            const body = new Body({}, tick.last, id)
-
-            // ignore initial values as they will be defined by the stream
-            body['_cache'].data.length = 0
-
-            bodies.bodies.set(id, body)
-        }
-
-        const { stream } = data
-        let i = 0
-        while (i < stream.length) {
-            const id = stream[i++]
-            const body = bodies.bodies.get(id) as Body
-
-            const cache = body['_cache']
-            cache.data.push(
-                stream[i++], // mass
-                stream[i++], // posX
-                stream[i++], // posY
-                stream[i++], // velX
-                stream[i++], // velY
-                stream[i++] // linkId
-            )
-        }
-
-        this.emit('tick', tick.last)
-
-        this._updateUsedBytes()
-        if (bodies.usedBytes === bodies.maxBytes) {
-            this.stop()
-            this.emit('cache-full', tick.last)
-        }
-    }
-
 }
 
 /*** Exports ***/
 
-export default Simulation
-
 export {
     Simulation,
-    SimulationSettings
+    SimulationJson,
+    BodyJson,
+    BodyData
 }

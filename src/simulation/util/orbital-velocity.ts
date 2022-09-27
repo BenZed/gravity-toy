@@ -1,20 +1,18 @@
-import { V2, sqrt } from '@benzed/math'
-import is from '@benzed/is'
+import { V2, sqrt, V2Json } from '@benzed/math'
 
 import { DEFAULT_PHYSICS } from '../constants'
-import Body from '../body'
 
 /*** Main ***/
 
 function orbitalVelocity(
-    bodyOrPos: Body | V2,
-    parent: Body,
+    child: { pos: V2Json } | V2Json,
+    parent: { pos: V2Json, vel: V2Json, mass: number },
     g = DEFAULT_PHYSICS.g
 ) {
 
-    const pos = is(bodyOrPos, V2) ? bodyOrPos : bodyOrPos.pos
+    const pos = 'pos' in child ? child.pos : child
 
-    const relative = pos.sub(parent.pos)
+    const relative = V2.from(pos).sub(parent.pos)
     const dist = relative.magnitude
 
     // I'm not sure why I have to divide by 10. According to Google

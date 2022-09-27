@@ -6,30 +6,29 @@ export interface PhysicsSettings {
     /**
      * Gravitational Constant. Higher values, faster bodies.
      */
-    g: number
+    readonly g: number
 
     /**
      * Higher steps mean more calclation time, but more precision.
      */
-    physicsSteps: number
+    readonly physicsSteps: number
 
     /**
      * As a lossy optimization, bodies below a certain mass threshold can be considered
      * seudo bodies and excluded from the primary integration loop. This speeds 
      * up the simulation at a cost of accuracy.
      */
-    realMassThreshold: number,
+    readonly realMassThreshold: number,
 
     /**
      * There must be at least this many real bodies before bodies under the aforementioned
      * mass threshold are considered psuedo. Infinity means disabled.
      **/
-    realBodiesMin: number
+    readonly realBodiesMin: number
 
 }
 
-export const DEFAULT_PHYSICS = {
-
+export const DEFAULT_PHYSICS: PhysicsSettings = {
 
     g: 100,
 
@@ -39,7 +38,7 @@ export const DEFAULT_PHYSICS = {
 
     realBodiesMin: Infinity
 
-} as const
+}
 
 export const DEFAULT_MAX_MB = 256 // mb
 

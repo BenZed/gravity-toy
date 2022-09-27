@@ -1,23 +1,22 @@
 import { isNumber } from '@benzed/is'
 import { cbrt } from '@benzed/math'
 
-import type Body from '../body'
 
 import { MASS_MIN, RADIUS_MIN, RADIUS_FACTOR } from '../constants'
 
 /*** Exports ***/
 
-export function radiusFromMass(bodyOrMass: number | Body) {
+export function radiusFromMass(input: number | { mass: number }) {
 
-    const mass = isNumber(bodyOrMass) ? bodyOrMass : bodyOrMass.mass
+    const mass = isNumber(input) ? input : input.mass
 
     return RADIUS_MIN + cbrt(mass - MASS_MIN) * RADIUS_FACTOR
 
 }
 
-export function massFromRadius(bodyOrRadius: number | Body) {
+export function massFromRadius(input: number | { radius: number }) {
 
-    const radius = isNumber(bodyOrRadius) ? bodyOrRadius : bodyOrRadius.radius
+    const radius = isNumber(input) ? input : input.radius
 
     return ((radius - RADIUS_MIN) / RADIUS_FACTOR) ** 3 + MASS_MIN
 

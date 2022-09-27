@@ -1,5 +1,5 @@
-import Simulation, { Simulation as Simulation2, SimulationSettings } from './simulation'
-import { Body, BodyProps } from './body'
+import Simulation, { Simulation as Simulation2, SimulationSettings } from '../old/simulation/simulation'
+import { Body, BodyProps } from '../old/simulation/body'
 import { V2 as Vector } from '@benzed/math'
 
 /*** Helper ***/

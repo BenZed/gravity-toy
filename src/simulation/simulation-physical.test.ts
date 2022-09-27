@@ -1,15 +1,15 @@
 
-import Simulation from '../simulation'
-import PhysicsBody from './body'
-import { BodyProps } from '../body'
+import Simulation from '../old/simulation/simulation'
+import PhysicsBody from '../old/simulation/integrator/body'
+import { BodyProps } from '../old/simulation/body'
 
 import is from '@benzed/is'
 import { V2 } from '@benzed/math'
 
-import * as worker from './worker'
-import { MASS_MIN, DEFAULT_PHYSICS, PhysicsSettings } from '../constants'
+import * as worker from '../old/simulation/integrator/worker'
+import { MASS_MIN, DEFAULT_PHYSICS, PhysicsSettings } from './constants'
 
-import { massFromRadius } from '../util'
+import { massFromRadius } from './util'
 
 /**
  * Similar api as simulation, doesnt cache data or use a child process
