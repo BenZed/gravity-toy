@@ -1,13 +1,8 @@
 
-import Simulation from '../old/simulation/simulation'
-import PhysicsBody from '../old/simulation/integrator/body'
-import { BodyProps } from '../old/simulation/body'
+import BodyPhysical from './body-physical'
+import { SimulationPhysical } from './simulation-physical'
 
-import is from '@benzed/is'
 import { V2 } from '@benzed/math'
-
-import * as worker from '../old/simulation/integrator/worker'
-import { MASS_MIN, DEFAULT_PHYSICS, PhysicsSettings } from './constants'
 
 import { massFromRadius } from './util'
 
@@ -15,163 +10,20 @@ import { massFromRadius } from './util'
  * Similar api as simulation, doesnt cache data or use a child process
  */
 
-class TestSimulation {
-
-    public g: number
-
-    constructor (input: Partial<PhysicsSettings>) {
-
-        const physics = { ...DEFAULT_PHYSICS, ...input }
-
-        this.g = physics.g
-
-        for (const key in physics)
-            worker.physics[key as keyof PhysicsSettings] = physics[key as keyof PhysicsSettings]
-
-        worker.bodies.living.length = 0
-        worker.bodies.created.length = 0
-        worker.bodies.destroyed.length = 0
-        worker.bodies.nextAssignId = 0
-
-        for (const key in worker.bodies.overlaps)
-            delete worker.bodies.overlaps[key as `${number}-${number}`]
-    }
-
-    public createBodies(props: Partial<BodyProps> | (Partial<BodyProps>)[]) {
-        if (!is(props, Array))
-            props = [props]
-
-
-        const created = props.map(({ mass = MASS_MIN, pos = V2.ZERO, vel = V2.ZERO }) => {
-
-            const id = worker.bodies.nextAssignId++
-            const body = new PhysicsBody(id, mass, pos, vel)
-
-            return body
-        })
-
-        worker.bodies.setBodies(created, worker.physics)
-
-        return created
-    }
-
-    public runUntil(condition: () => boolean, doEveryTick: () => void = () => void 0) {
-        if (worker.bodies.living.length === 0)
-            throw new Error('Cannot start without any bodies.')
-
-        worker.bodies.sort(worker.physics)
-
-        return new Promise<void>(resolve => {
-            const interval = setInterval(() => {
-
-                worker.tick(false)
-                doEveryTick()
-
-                if (condition()) {
-                    clearInterval(interval)
-                    resolve()
-                }
-
-            }, 1)
-        })
-    }
-
-    public runForNumTicks(totalTicks: number, doEveryTick?: () => void) {
-        let ticks = 0
-        const totalTicksAdjusted = totalTicks * worker.physics.physicsSteps
-        const condition = () => ++ticks >= totalTicksAdjusted
-
-        return this.runUntil(condition, doEveryTick)
-    }
-
-    public runForOneTick(doEveryTick?: () => void) {
-        return this.runUntil(() => true, doEveryTick)
-    }
-
-}
-
 /*** Tests ***/
 
-describe('Integration', function () {
-
-    describe('meta', () => {
-
-        it('TestSimulation gives same results as Simulation', async function () {
-
-            const smallAndBig = () => {
-                return [{
-                    mass: 500,
-                    pos: new V2(0, 50),
-                }, {
-                    mass: 1000,
-                    pos: new V2(0, 0)
-                }]
-            }
-
-            let g = 0.5
-            for (const physicsSteps of [1, 2, 4, 8]) {
-
-                const rSim = new Simulation({ g, physicsSteps })
-                const tSim = new TestSimulation({ g, physicsSteps })
-
-                const [rSmall, rBig] = rSim.createBodies(smallAndBig())
-                const [tSmall, tBig] = tSim.createBodies(smallAndBig())
-
-                expect(rSmall.pos).toEqual(tSmall.pos)
-                expect(rBig.pos).toEqual(tBig.pos)
-
-                await rSim.runForNumTicks(5)
-                rSim.currentTick = 5
-
-                await tSim.runForNumTicks(5)
-
-                expect(rSmall.pos).toEqual(tSmall.pos)
-                expect(rSmall.vel).toEqual(tSmall.vel)
-                expect(rBig.pos).toEqual(tBig.pos)
-                expect(rBig.vel).toEqual(tBig.vel)
-
-                g += 0.25
-            }
-        }, 2000)
-
-        it('instancing TestSimulation resets worker state', () => {
-            const sim1 = new TestSimulation({})
-            sim1.createBodies({ mass: 100 })
-
-            expect(worker.bodies.living).toHaveLength(1)
-
-            // eslint-disable-next-line no-new
-            new TestSimulation({})
-
-            expect(worker.bodies.living).toHaveLength(0)
-        })
-
-        it('propeties fed to TestSimulation set worker.physics', () => {
-            const config = {
-                g: 2,
-                physicsSteps: 1,
-                realBodiesMin: 1000,
-                realMassThreshold: 125
-            }
-
-            // eslint-disable-next-line no-new
-            new TestSimulation(config)
-
-            for (const key in config)
-                expect(worker.physics[key as keyof PhysicsSettings]).toEqual(config[key as keyof PhysicsSettings])
-        })
-    })
+describe('SimulationPhysical', function () {
 
     describe('sorting', () => {
 
         it('psuedo bodies must be under the props.realMassThreshold', () => {
             for (const threshold of [100, 200, 300]) {
-                const sim = new TestSimulation({
+                const sim = new SimulationPhysical({
                     realBodiesMin: 0,
                     realMassThreshold: threshold
                 })
 
-                const bodies = sim.createBodies([{ mass: 100 }, { mass: 200 }, { mass: 300 }])
+                const bodies = sim.addBodies([{ mass: 100 }, { mass: 200 }, { mass: 300 }])
                 worker.bodies.sort(worker.physics)
                 const numRealBodiesShouldBe = 4 - threshold / 100 // circumstantial
                 expect(bodies.filter(body => body.real)).toHaveLength(numRealBodiesShouldBe)
@@ -180,11 +32,11 @@ describe('Integration', function () {
 
         it('there must be at least props.realBodiesMin before any pseudo bodies are made', () => {
             for (const count of [4, 8, 12]) {
-                const sim = new TestSimulation({
+                const sim = new SimulationPhysical({
                     realBodiesMin: count,
                     realMassThreshold: 100
                 })
-                const bodies = sim.createBodies(Array(15).fill({ mass: 99 }))
+                const bodies = sim.addBodies(Array(15).fill({ mass: 99 }))
                 worker.bodies.sort(worker.physics)
                 expect(bodies.filter(body => body.real)).toHaveLength(count)
             }
@@ -194,8 +46,8 @@ describe('Integration', function () {
     describe('attraction', () => {
 
         it('real bodies are attracted to each other', async () => {
-            const sim = new TestSimulation({})
-            const [small, big] = sim.createBodies([
+            const sim = new SimulationPhysical({})
+            const [small, big] = sim.addBodies([
                 { mass: 100, pos: new V2(0, 0) },
                 { mass: 1000, pos: new V2(50, 0) }
             ])
@@ -208,13 +60,13 @@ describe('Integration', function () {
         })
 
         it('real bodies are not attracted to pseudo bodies', async () => {
-            const sim = new TestSimulation({
+            const sim = new SimulationPhysical({
                 physicsSteps: 1,
                 realBodiesMin: 1,
                 realMassThreshold: 100
             })
 
-            const [psuedo, real] = sim.createBodies([
+            const [psuedo, real] = sim.addBodies([
                 { mass: 99, pos: V2.ZERO },
                 { mass: 100, pos: new V2(50, 0) }
             ])
@@ -232,13 +84,13 @@ describe('Integration', function () {
         })
 
         it('pseudo bodies are not attracted to each other', async () => {
-            const sim = new TestSimulation({
+            const sim = new SimulationPhysical({
                 physicsSteps: 1,
                 realBodiesMin: 0,
                 realMassThreshold: 100
             })
 
-            const [p1, p2] = sim.createBodies([
+            const [p1, p2] = sim.addBodies([
                 { mass: 99, pos: V2.ZERO },
                 { mass: 99, pos: new V2(20, 0) }
             ])
@@ -259,13 +111,13 @@ describe('Integration', function () {
         })
 
         it('pseudo bodies are attracted to real bodies', async () => {
-            const sim = new TestSimulation({
+            const sim = new SimulationPhysical({
                 physicsSteps: 1,
                 realBodiesMin: 0,
                 realMassThreshold: 100
             })
 
-            const [psuedo, real] = sim.createBodies([
+            const [psuedo, real] = sim.addBodies([
                 { mass: 99, pos: new V2(50, 0) },
                 { mass: 1000, pos: new V2(0, 0) }
             ])
@@ -286,13 +138,13 @@ describe('Integration', function () {
         })
 
         it('real bodies inherit the mass of pseudo bodies linked to them', async () => {
-            const sim = new TestSimulation({
+            const sim = new SimulationPhysical({
                 realBodiesMin: 0,
                 realMassThreshold: 101,
                 physicsSteps: 1
             })
 
-            const [p1, p2, p3, r1] = sim.createBodies([
+            const [p1, p2, p3, r1] = sim.addBodies([
                 { mass: 100, pos: new V2(50, 50) },
                 { mass: 100, pos: new V2(50, 0) },
                 { mass: 100, pos: new V2(0, 50) },
@@ -328,9 +180,9 @@ describe('Integration', function () {
 
                 it('describes a bounding box around a body accounting for radius and velocity', () => {
 
-                    const sim = new TestSimulation({ physicsSteps: 1 })
+                    const sim = new SimulationPhysical({ physicsSteps: 1 })
 
-                    const [body] = sim.createBodies({
+                    const [body] = sim.addBodies({
                         mass: massFromRadius(1),
                         pos: new V2(0, 0),
                         vel: new V2(0, 0)
@@ -375,17 +227,17 @@ describe('Integration', function () {
 
             describe('bodies.overlaps', () => {
 
-                let sim: TestSimulation
-                let b1: PhysicsBody
-                let b2: PhysicsBody
+                let sim: SimulationPhysical
+                let b1: BodyPhysical
+                let b2: BodyPhysical
                 const tests: { [key: string]: unknown } = {}
                 beforeAll(async () => {
 
-                    sim = new TestSimulation({
+                    sim = new SimulationPhysical({
                         physicsSteps: 1
                     });
 
-                    ([b1, b2] = sim.createBodies([
+                    ([b1, b2] = sim.addBodies([
                         { mass: 1000, pos: new V2(0, 0), vel: new V2(40, 40) },
                         { mass: 1000, pos: new V2(25, 0), vel: new V2(40, 40) }
                     ]))
@@ -418,13 +270,13 @@ describe('Integration', function () {
 
                 it('bodies starting in overlapping positions are considered', async () => {
 
-                    const sim = new TestSimulation({
+                    const sim = new SimulationPhysical({
                         physicsSteps: 1
                     })
 
                     // These props were curated from randomly generated bodies in a test
                     // bed.
-                    const [small, big] = sim.createBodies([{
+                    const [small, big] = sim.addBodies([{
                         mass: 135.5901425892382,
                         pos: new V2(740.6651471853203, 345.9131687796196)
                     }, {
@@ -458,13 +310,13 @@ describe('Integration', function () {
 
             describe('on body destroyed', () => {
 
-                let big: PhysicsBody
-                let small: PhysicsBody
+                let big: BodyPhysical
+                let small: BodyPhysical
                 beforeAll(async () => {
 
-                    const sim = new TestSimulation({});
+                    const sim = new SimulationPhysical({});
 
-                    [big, small] = sim.createBodies([{
+                    [big, small] = sim.addBodies([{
                         mass: 1000
                     }, {
                         mass: 500,

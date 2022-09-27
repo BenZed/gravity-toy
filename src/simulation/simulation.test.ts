@@ -1,22 +1,22 @@
-import Simulation, { Simulation as Simulation2, SimulationSettings } from '../old/simulation/simulation'
-import { Body, BodyProps } from '../old/simulation/body'
+import { BodyData } from './simulation'
+import { SimulationTimeline as GravityToy } from './simulation-timeline'
 import { V2 as Vector } from '@benzed/math'
 
 /*** Helper ***/
 
-function createBodies(count = 1): Partial<BodyProps>[] {
-    const props: Partial<BodyProps>[] = []
+function createBodyData(count = 1): Partial<BodyData>[] {
+    const data: Partial<BodyData>[] = []
     let x = 0
     let y = 0
 
     for (let i = 0; i < count; i++)
-        props.push({
+        data.push({
             mass: 100,
             pos: new Vector(x += 1, y += 1),
             vel: new Vector(0.125, 0)
         })
 
-    return props
+    return data
 }
 
 /*** Test ***/
@@ -24,39 +24,36 @@ function createBodies(count = 1): Partial<BodyProps>[] {
 describe('Simulation', () => {
 
     it('is a class', () => {
-        expect(() => new Simulation()).not.toThrow()
+        expect(() => new GravityToy()).not.toThrow()
         // @ts-expect-error no new keyword
-        expect(() => Simulation()).toThrow('cannot be invoked without \'new\'')
+        expect(() => GravityToy()).toThrow('cannot be invoked without \'new\'')
     })
 
-    it('has a default and named module export', () =>
-        expect(Simulation === Simulation2).toBe(true)
-    )
 
     describe('constructor()', () => {
         describe('properties argument', () => {
 
             it('props.g must be above zero', () => {
-                expect(() => new Simulation({ g: 0 })).toThrow('g must be above zero')
-                expect(() => new Simulation({ g: -1 })).toThrow('g must be above zero')
+                expect(() => new GravityToy({ g: 0 })).toThrow('g must be above zero')
+                expect(() => new GravityToy({ g: -1 })).toThrow('g must be above zero')
             })
 
             it('props.realBodiesMin must be above zero', () => {
-                expect(() => new Simulation({ realBodiesMin: -1 })).toThrow('realBodiesMin must not be negative')
+                expect(() => new GravityToy({ realBodiesMin: -1 })).toThrow('realBodiesMin must not be negative')
             })
 
             it('props.realMassThreshold must be above zero', () => {
-                expect(() => new Simulation({ realMassThreshold: -1 })).toThrow('realMassThreshold must not be negative')
+                expect(() => new GravityToy({ realMassThreshold: -1 })).toThrow('realMassThreshold must not be negative')
             })
 
             it('props.physicsSteps must be above zero', () => {
-                expect(() => new Simulation({ physicsSteps: 0 })).toThrow('physicsSteps must be above zero')
-                expect(() => new Simulation({ physicsSteps: -1 })).toThrow('physicsSteps must be above zero')
+                expect(() => new GravityToy({ physicsSteps: 0 })).toThrow('physicsSteps must be above zero')
+                expect(() => new GravityToy({ physicsSteps: -1 })).toThrow('physicsSteps must be above zero')
             })
 
             it('props.maxCacheMemory must be above zero', () => {
-                expect(() => new Simulation({ maxCacheMemory: 0 })).toThrow('maxCacheMemory must be above zero')
-                expect(() => new Simulation({ maxCacheMemory: -1 })).toThrow('maxCacheMemory must be above zero')
+                expect(() => new GravityToy({ maxCacheMemory: 0 })).toThrow('maxCacheMemory must be above zero')
+                expect(() => new GravityToy({ maxCacheMemory: -1 })).toThrow('maxCacheMemory must be above zero')
             })
 
         })
@@ -65,20 +62,20 @@ describe('Simulation', () => {
 
     describe('Methods', () => {
 
-        let sim: Simulation
+        let sim: GravityToy
         beforeEach(() => {
-            sim = new Simulation()
+            sim = new GravityToy()
         })
 
         afterEach(() => {
-            if (sim.running)
+            if (sim.isRunning)
                 sim.stop()
         })
 
         describe('run()', () => {
 
             it('Starts the simulation', () => {
-                sim.createBodies(createBodies(1))
+                sim.addBodies(createBodyData(1))
                 sim.run()
                 expect(sim).toHaveProperty('running', true)
             })
@@ -88,21 +85,21 @@ describe('Simulation', () => {
             })
 
             it('invalidates cache after provided tick', async () => {
-                sim.createBodies(createBodies(1))
+                sim.addBodies(createBodyData(1))
                 await sim.runForNumTicks(10)
-                sim.run(5)
+                sim.startAtTick(5)
                 sim.stop()
                 expect(sim).toHaveProperty('lastTick', 5)
             })
 
             it('throws if provided tick is out of range', () => {
-                sim.createBodies(createBodies(1))
-                expect(() => sim.run(1)).toThrow(RangeError)
+                sim.addBodies(createBodyData(1))
+                expect(() => sim.startAtTick(1)).toThrow(RangeError)
             })
 
             it('uses body current values if starting from current tick', async () => {
-                const sim = new Simulation()
-                const [body] = sim.createBodies({
+                const sim = new GravityToy({})
+                const body = sim.addBody({
                     mass: 100,
                     vel: new Vector(0.0125, 0),
                     pos: Vector.ZERO
@@ -112,13 +109,14 @@ describe('Simulation', () => {
 
                 await sim.runForNumTicks(10)
 
-                sim.currentTick = 1
+                sim.tick = 1
                 // Proves that body.pos.x = 10 was used instead of the originally cached 0
                 expect(body.pos.x).toBeGreaterThan(10)
 
                 body.pos.x = 1000
-                await sim.runForNumTicks(10, 10)
-                sim.currentTick = 20
+                sim.setTick(10)
+                await sim.runForNumTicks(10)
+                sim.tick = 20
                 // Proves that body.pos.x = 1000 was not used because simulation wasn;t
                 // started from currentTick
                 expect(body.pos.x).toBeLessThan(1000)
@@ -126,17 +124,17 @@ describe('Simulation', () => {
 
             it('throws if cache memory is full', async function () {
 
-                const sim = new Simulation({
+                const sim = new GravityToy({
                     maxCacheMemory: 0.1
                 })
-                sim.createBodies(createBodies(100))
+                sim.addBodies(createBodyData(100))
                 sim.run()
-                await new Promise(resolve => sim.on('cache-full', resolve))
+                await new Promise(resolve => sim.on('tick-error', resolve))
 
-                expect(() => sim.run(sim.lastTick)).toThrow('Cannot start simulation. Cache memory')
+                expect(() => sim.startAtTick(sim.lastTick)).toThrow('Cannot start simulation. Cache memory')
 
                 // Once cache is cleared, start should work again
-                expect(() => sim.run(0)).not.toThrow()
+                expect(() => sim.startAtTick(0)).not.toThrow()
                 sim.stop()
             }, 10000)
 
@@ -153,7 +151,7 @@ describe('Simulation', () => {
         describe('runForNumTicks()', () => {
 
             it('starts the simulation for a fixed amount of ticks and then stops it', async () => {
-                sim.createBodies(createBodies(1))
+                sim.addBodies(createBodyData(1))
 
                 await sim.runForNumTicks(10)
                 expect(sim).toHaveProperty('lastTick', 10)
@@ -161,13 +159,13 @@ describe('Simulation', () => {
             })
 
             it('returns a promise', () => {
-                sim.createBodies(createBodies(1))
+                sim.addBodies(createBodyData(1))
                 return expect(sim.runForNumTicks(1) instanceof Promise).toBe(true)
             })
 
             it('rejects if cache fills up before all ticks executed', async function () {
-                const sim = new Simulation({ maxCacheMemory: 0.1 })
-                sim.createBodies(createBodies(100))
+                const sim = new GravityToy({ maxCacheMemory: 0.1 })
+                sim.addBodies(createBodyData(100))
 
                 let err: Error | null = null
                 try {
@@ -182,12 +180,12 @@ describe('Simulation', () => {
             }, 10000)
 
             it('throws if totalTicks is below 0', () => {
-                sim.createBodies(createBodies(1))
+                sim.addBodies(createBodyData(1))
                 expect(() => sim.runForNumTicks(-1)).toThrow('totalTicks must be a number above zero')
             })
 
             it('optionally takes a startTick argument', async () => {
-                sim.createBodies(createBodies(1))
+                sim.addBodies(createBodyData(1))
                 await sim.runForNumTicks(10)
                 const final = await sim.runForNumTicks(5, 2)
                 expect(final).toEqual(7)
@@ -198,7 +196,7 @@ describe('Simulation', () => {
             })
 
             it('returns stopped tick index', async () => {
-                sim.createBodies(createBodies(1))
+                sim.addBodies(createBodyData(1))
                 const final = await sim.runForNumTicks(10)
                 expect(final).toEqual(10)
             })
@@ -215,7 +213,7 @@ describe('Simulation', () => {
         describe('stop()', () => {
 
             it('Stops the simulation', async () => {
-                sim.createBodies(createBodies(10))
+                sim.addBodies(createBodyData(10))
                 await sim.runForNumTicks(10)
                 expect(sim).toHaveProperty('running', false)
             })
@@ -225,18 +223,18 @@ describe('Simulation', () => {
         describe('setCurrentTick()', () => {
 
             it('sets the current tick', async () => {
-                sim.createBodies(createBodies(10))
+                sim.addBodies(createBodyData(10))
                 await sim.runForNumTicks(10)
 
                 expect(sim).toHaveProperty('currentTick', 0)
 
-                sim.setCurrentTick(10)
+                sim.setTick(10)
                 expect(sim).toHaveProperty('currentTick', 10)
 
             })
 
             it('sets body properties to their values at that tick', async () => {
-                const [body] = sim.createBodies({
+                const body = sim.addBody({
                     mass: 1000,
                     pos: new Vector(1, 1),
                     vel: new Vector(0, 1)
@@ -245,86 +243,77 @@ describe('Simulation', () => {
                 const posY = body.pos.y
 
                 await sim.runForNumTicks(10)
-                sim.setCurrentTick(5)
+                sim.setTick(5)
                 expect(body.pos.y).toBeGreaterThan(posY)
             })
 
             it('clips given tick to valid range', async () => {
-                sim.createBodies(createBodies(5))
+                sim.addBodies(createBodyData(5))
                 await sim.runForNumTicks(4)
-                sim.setCurrentTick(5)
-                expect(sim.currentTick).toEqual(4)
+                sim.setTick(5)
+                expect(sim.tick).toEqual(4)
             })
 
             it('non existant bodies are given a 0 mass', async () => {
-                sim.createBodies(createBodies(1))
+                sim.addBodies(createBodyData(1))
                 await sim.runForNumTicks(10)
 
-                const [body] = sim.createBodies(createBodies(1), 5)
+                const [body] = sim.addBodies(createBodyData(1), 5)
 
-                sim.setCurrentTick(5)
+                sim.setTick(5)
                 expect(body.mass).toEqual(100)
 
-                sim.setCurrentTick(2)
+                sim.setTick(2)
                 return expect(body.mass).toBe(0)
             })
 
         })
 
-        describe('createBodies()', () => {
+        describe('addBodies()', () => {
 
             it('Creates one or multiple bodies at a given tick index', () => {
-                const [body] = sim.createBodies(createBodies(1))
+                const [body] = sim.addBodies(createBodyData(1))
                 return expect(body instanceof Body).toBe(true)
             })
 
             it('invalidates data after given tick', async () => {
-                sim.createBodies(createBodies(1), 0)
+                sim.setTick(0)
+                sim.addBodies(createBodyData(1))
                 await sim.runForNumTicks(10)
 
                 expect(sim).toHaveProperty('lastTick', 10)
 
-                sim.createBodies(createBodies(1), 5)
+                sim.setTick(5)
+                sim.addBodies(createBodyData(1))
                 expect(sim).toHaveProperty('lastTick', 5)
             })
 
             it('ensures body current values are correct', async () => {
-                sim.createBodies(createBodies(1), 0)
+                sim.setTick(0)
+                sim.addBodies(createBodyData(1))
                 await sim.runForNumTicks(10)
 
-                const [body] = sim.createBodies(createBodies(1), 5)
+                sim.setTick(5)
+                const [body] = sim.addBodies(createBodyData(1))
 
-                expect(sim.currentTick).toEqual(0)
-                return expect(body.exists).toBe(false)
+                expect(sim.tick).toEqual(0)
+                return expect(body.mass <= 0).toBe(false)
             })
 
             it('doesnt halt the simulation if it is running', () => {
-                sim.createBodies(createBodies(1), 0)
+                sim.setTick(0)
+                sim.addBodies(createBodyData(1))
                 sim.run()
-                sim.createBodies(createBodies(2), 0)
-                expect(sim).toHaveProperty('running', true)
-            })
-        })
-
-        describe('numLivingBodies()', () => {
-
-            it('returns the number of living bodies at current tick', async () => {
-                sim.createBodies(createBodies(1))
-                await sim.runForNumTicks(10)
-                sim.createBodies(createBodies(1), 5)
-
-                sim.currentTick = 5
-                expect(sim.numLivingBodies()).toEqual(2)
-
-                sim.currentTick = 2
-                expect(sim.numLivingBodies()).toEqual(1)
+                sim.setTick(0)
+                sim.addBodies(createBodyData(2))
+                expect(sim).toHaveProperty('isRunning', true)
             })
         })
 
         describe('clearAfterTick()', () => {
 
             it('invalidates the cache after given tick', async () => {
-                const [body] = sim.createBodies(createBodies(1))
+                const [body] = sim.addBodies(createBodyData(1))
 
                 await sim.runForNumTicks(10)
 
@@ -343,10 +332,10 @@ describe('Simulation', () => {
             })
 
             it('deletes bodies that were created after the provided tick', async () => {
-                sim.createBodies(createBodies(1))
+                sim.addBodies(createBodyData(1))
                 await sim.runForNumTicks(10)
 
-                sim.createBodies(createBodies(1), 10)
+                sim.addBodies(createBodyData(1), 10)
                 expect([...sim]).toHaveProperty('length', 2)
 
                 sim.clearAfterTick(5)
@@ -354,7 +343,7 @@ describe('Simulation', () => {
             })
 
             it('clears body._cache.deathTick if it is out of range', async () => {
-                const [body] = sim.createBodies(createBodies(1))
+                const [body] = sim.addBodies(createBodyData(1))
                 await sim.runForNumTicks(10)
 
                 // Fake death
@@ -367,8 +356,8 @@ describe('Simulation', () => {
             })
 
             it('updates usedCacheMemory', async () => {
-                const sim = new Simulation({ maxCacheMemory: 0.1 })
-                sim.createBodies(createBodies(100))
+                const sim = new GravityToy({ maxCacheMemory: 0.1 })
+                sim.addBodies(createBodyData(100))
 
                 await sim.runForNumTicks(10)
                 const used = sim.usedCacheMemory
@@ -383,7 +372,7 @@ describe('Simulation', () => {
         describe('clearBeforeTick()', () => {
 
             it('invalidates the cache before a given tick', async () => {
-                const [body] = sim.createBodies(createBodies(1))
+                const [body] = sim.addBodies(createBodyData(1))
 
                 await sim.runForNumTicks(10)
 
@@ -397,24 +386,24 @@ describe('Simulation', () => {
             })
 
             it('body._cache.data is spliced correctly and birthTick is set', async () => {
-                const [body] = sim.createBodies(createBodies(1))
+                const [body] = sim.addBodies(createBodyData(1))
 
                 await sim.runForNumTicks(10)
-                sim.setCurrentTick(10)
+                sim.setTick(10)
 
                 const x = body.pos.x
 
-                sim.setCurrentTick(0)
+                sim.setTick(0)
                 sim.clearBeforeTick(5)
 
-                sim.setCurrentTick(10)
+                sim.setTick(10)
 
                 expect(body.pos.x).toEqual(x)
                 expect(body['_cache'].birthTick).toEqual(5)
             })
 
             it('bodies killed before given tick are deleted', async () => {
-                const [body] = sim.createBodies(createBodies(1))
+                const [body] = sim.addBodies(createBodyData(1))
 
                 await sim.runForNumTicks(10)
 
@@ -427,7 +416,7 @@ describe('Simulation', () => {
             })
 
             it('sets current tick if it would be out of range', async () => {
-                sim.createBodies(createBodies(1))
+                sim.addBodies(createBodyData(1))
                 await sim.runForNumTicks(10)
 
                 expect(sim).toHaveProperty('currentTick', 0)
@@ -440,8 +429,8 @@ describe('Simulation', () => {
             })
 
             it('updates usedCacheMemory', async () => {
-                const sim = new Simulation({ maxCacheMemory: 0.1 })
-                sim.createBodies(createBodies(100))
+                const sim = new GravityToy({ maxCacheMemory: 0.1 })
+                sim.addBodies(createBodyData(100))
 
                 await sim.runForNumTicks(10)
                 const used = sim.usedCacheMemory
@@ -462,11 +451,11 @@ describe('Simulation', () => {
 
         describe('toJSON', () => {
 
-            let sim: Simulation
+            let sim: GravityToy
             let json: SimulationSettings
             beforeAll(async () => {
-                sim = new Simulation()
-                sim.createBodies(createBodies(10))
+                sim = new GravityToy()
+                sim.addBodies(createBodyData(10))
                 await sim.runForNumTicks(10)
                 json = sim.toJSON()
             })
@@ -493,18 +482,18 @@ describe('Simulation', () => {
 
         it('g', () => {
             const STRONG_GRAVITY = 2
-            expect(new Simulation({ g: STRONG_GRAVITY }))
+            expect(new GravityToy({ g: STRONG_GRAVITY }))
                 .toHaveProperty('g', STRONG_GRAVITY)
         })
 
         it('maxCacheMemory', () => {
             const SMALL_SIM = 64
-            expect(new Simulation({ maxCacheMemory: SMALL_SIM }))
+            expect(new GravityToy({ maxCacheMemory: SMALL_SIM }))
                 .toHaveProperty('maxCacheMemory', SMALL_SIM)
         })
 
         it('usedCacheMemory', () => {
-            expect(new Simulation())
+            expect(new GravityToy())
                 .toHaveProperty('usedCacheMemory', 0)
         })
 
@@ -519,22 +508,22 @@ describe('Simulation', () => {
         })
 
         it('firstTick', () => {
-            expect(new Simulation())
+            expect(new GravityToy())
                 .toHaveProperty('firstTick', 0)
         })
 
         it('lastTick', () => {
-            expect(new Simulation())
+            expect(new GravityToy())
                 .toHaveProperty('lastTick', 0)
         })
 
         it('numBodies', () => {
-            expect(new Simulation())
+            expect(new GravityToy())
                 .toHaveProperty('numBodies', 0)
         })
 
         it('running', () => {
-            expect(new Simulation())
+            expect(new GravityToy())
                 .toHaveProperty('running', false)
         })
 
@@ -544,8 +533,8 @@ describe('Simulation', () => {
 
         describe('tick', () => {
             it('emits when data received from integrator', async () => {
-                const sim = new Simulation()
-                sim.createBodies({ mass: 100 })
+                const sim = new GravityToy()
+                sim.addBody({ mass: 100 })
 
                 let ticks = 0
                 sim.on('tick', () => { ticks++ })
@@ -553,9 +542,9 @@ describe('Simulation', () => {
 
                 expect(ticks).toEqual(10)
             })
-            it('emits with tick number', async () => {
-                const sim = new Simulation()
-                sim.createBodies({ mass: 100 })
+            it('emits with body json', async () => {
+                const sim = new GravityToy()
+                sim.addBody({ mass: 100 })
 
                 let lastTick
                 sim.on('tick', lt => { lastTick = lt })
@@ -566,18 +555,18 @@ describe('Simulation', () => {
             })
         })
 
-        describe('cache-full', () => {
+        describe('cache full', () => {
 
-            it('emits when cache memory is used up', async function () {
+            it('tick-error emits when cache is full', async function () {
 
-                const sim = new Simulation({
+                const sim = new GravityToy({
                     maxCacheMemory: 0.1
                 })
 
-                sim.createBodies(createBodies(100))
+                sim.addBodies(createBodyData(100))
 
                 await new Promise(resolve => {
-                    sim.once('cache-full', resolve)
+                    sim.once('tick-error', resolve)
                     sim.run()
                 })
 
@@ -592,8 +581,8 @@ describe('Simulation', () => {
 
             it('yields every body in simulation', () => {
 
-                const sim = new Simulation()
-                const [body] = sim.createBodies({
+                const sim = new GravityToy()
+                const body = sim.addBody({
                     mass: 100,
                     pos: new Vector(10, 10)
                 })
@@ -607,13 +596,13 @@ describe('Simulation', () => {
 
         describe('* bodies()', () => {
             it('same as Symbol.iterator', () => {
-                const sim = new Simulation()
-                const [body] = sim.createBodies({
+                const sim = new GravityToy()
+                const body = sim.addBody({
                     mass: 100,
                     pos: new Vector(10, 10)
                 })
 
-                for (const otherBody of sim.bodies())
+                for (const otherBody of sim)
                     expect(body).toEqual(otherBody)
             })
 
@@ -623,22 +612,5 @@ describe('Simulation', () => {
 
         })
 
-        describe('* livingBodies()', () => {
-            it('yields every body alive at current tick', async () => {
-                const sim = new Simulation()
-
-                const [body] = sim.createBodies(createBodies(1))
-                await sim.runForNumTicks(10)
-
-                sim.createBodies(createBodies(1), 5)
-
-                for (const otherBody of sim.livingBodies())
-                    expect(body).toEqual(otherBody)
-
-                sim.currentTick = 5
-
-                expect([...sim.livingBodies()]).toHaveLength(2)
-            })
-        })
     })
 })

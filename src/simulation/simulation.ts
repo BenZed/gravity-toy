@@ -1,6 +1,7 @@
 
 import { isFinite, isNaN } from '@benzed/is'
 import { V2, V2Json } from '@benzed/math'
+import { EventEmitter } from '@benzed/util'
 
 import { DEFAULT_PHYSICS, PhysicsSettings } from './constants'
 
@@ -20,6 +21,15 @@ interface SimulationJson extends PhysicsSettings {
     readonly bodies: readonly BodyJson[]
 }
 
+interface SimulationSettings extends SimulationJson {
+    readonly maxListeners: number
+}
+
+interface SimulationEvents {
+    'tick': [SimulationJson['bodies']],
+    'tick-error': [Error]
+}
+
 type BodyData = Partial<Omit<BodyJson, 'id'>>
 
 /*** Main ***/
@@ -27,7 +37,7 @@ type BodyData = Partial<Omit<BodyJson, 'id'>>
 /**
  * Simulation base class. Responsible for body CRUD, iteration, serialization.
  */
-abstract class Simulation<B extends BodyJson> implements SimulationJson {
+abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEvents> implements SimulationJson {
 
     // State
 
@@ -44,9 +54,12 @@ abstract class Simulation<B extends BodyJson> implements SimulationJson {
 
     // Constructor
 
-    public constructor (settings?: Partial<SimulationJson>) {
+    public constructor (settings?: Partial<SimulationSettings>) {
 
-        const { bodies, g, physicsSteps, realMassThreshold, realBodiesMin } = { ...DEFAULT_PHYSICS, ...settings }
+        const { bodies, g, physicsSteps, realMassThreshold, realBodiesMin, maxListeners } =
+            { ...DEFAULT_PHYSICS, ...settings }
+
+        super(maxListeners)
 
         this.g = g
         this.physicsSteps = physicsSteps
@@ -59,13 +72,57 @@ abstract class Simulation<B extends BodyJson> implements SimulationJson {
         }
     }
 
-    // Interface
+    // Run Interface
 
     public abstract get isRunning(): boolean
 
-    public abstract start(): void
+    public abstract run(): void
+
+    public async runForNumTicks(ticks: number): Promise<void> {
+        let target = 0
+        return this.runUntil(() => target++ >= ticks)
+    }
+
+    public runForOneTick() {
+        return this.runForNumTicks(1)
+    }
+
+    public runUntil(condition: () => boolean): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+
+            const checkCondition = (input: Error | SimulationJson['bodies']) => {
+
+                if (!this.isRunning && !('message' in input))
+                    input = new Error('Simulation has been stopped.')
+
+                const isError = 'message' in input
+                if (!isError && !condition())
+                    return
+
+                this._removeListener('tick', checkCondition)
+                this._removeListener('tick-error', checkCondition)
+                this.stop()
+
+                if (isError)
+                    reject(input)
+                else
+                    resolve()
+            }
+
+            this._addListener('tick', checkCondition, { internal: true })
+            this._addListener('tick-error', checkCondition, { internal: true })
+
+            this.run()
+        })
+    }
 
     public abstract stop(): void
+
+    // Body CRUD interface
+
+    public addBodies(data: BodyData[]): B[] {
+        return data.map(datum => this.addBody(datum))
+    }
 
     public addBody(data: BodyData): B {
 
@@ -119,9 +176,13 @@ abstract class Simulation<B extends BodyJson> implements SimulationJson {
 
     protected abstract _createBody(json: BodyJson): B
 
-    protected _applyBodyJson(jsons: SimulationJson['bodies']): void {
+    protected _update(bodies: SimulationJson['bodies']) {
+        this.emit('tick', bodies)
+    }
 
-        const survivorIds = jsons.map(json => this._upsertBody(json, false).id)
+    protected _applyBodyJson(bodies: SimulationJson['bodies']): void {
+
+        const survivorIds = bodies.map(body => this._upsertBody(body, false).id)
 
         // remove destroyed bodies
 
@@ -191,7 +252,8 @@ abstract class Simulation<B extends BodyJson> implements SimulationJson {
 
     private _restart() {
         if (this.isRunning) {
-            this.start()
+            this.stop()
+            this.run()
         }
     }
 
@@ -217,6 +279,7 @@ abstract class Simulation<B extends BodyJson> implements SimulationJson {
 export {
     Simulation,
     SimulationJson,
+    SimulationSettings,
     BodyJson,
     BodyData
 }

@@ -9,14 +9,13 @@ import { BodyJson, Simulation, SimulationJson } from './simulation'
 
 type OverlapId = `${number}:${number}`
 
-// Move Me
+// TODO Move Me
 
 const byMass = (a: BodyPhysical, b: BodyPhysical) => a.mass > b.mass
     ? -1
     : a.mass < b.mass
         ? 1
         : 0
-
 
 /*** Main ***/
 
@@ -54,8 +53,14 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
         return this._isRunning
     }
 
-    public start(): void {
+    public run(): void {
         this._isRunning = true
+
+        this._livingBodies.length = 0
+        this._livingBodies.push(
+            ...this.bodies
+        )
+
         void this._update()
     }
 
@@ -63,14 +68,13 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
         this._isRunning = false
     }
 
-
     // Helper
 
     protected _createBody(json: BodyJson): BodyPhysical {
         return new BodyPhysical(json)
     }
 
-    protected _update() {
+    protected override _update(): void {
 
         for (let i = 0; i < this.physicsSteps; i++) {
             this._updateBodyBoundsAndOverlaps()
@@ -78,6 +82,8 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
             this._calculateForces()
             this._applyForces()
         }
+
+        super._update(this._livingBodies)
 
         if (this._isRunning)
             setTimeout(this._update, 0)
@@ -169,15 +175,12 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
         const { _bodyBounds: bodyBounds } = this
 
         for (const edge of small) {
-
             const edges = bodyBounds[edge.axis]
-
             edges.splice(
                 edges.indexOf(edge),
                 1
             )
         }
-
     }
 
     private _calculateForces() {
@@ -288,6 +291,7 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
         const minRealIndex = min(realBodiesMin, this._livingBodies.length)
 
         for (let i = 0; i < this._livingBodies.length; i++) {
+            //
             const livingBody = this._livingBodies[i]
 
             // If we encounter a destroyed body, then all future bodies will also be

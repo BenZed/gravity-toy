@@ -9,15 +9,16 @@ import { SimulationPhysical } from './simulation-physical'
 
 const IS_NODE = typeof process === 'object'
 const IS_BROWSER = !IS_NODE
-const IS_PARENT = IS_NODE ? process.send === undefined : typeof self !== 'object'
-const IS_CHILD = !IS_PARENT
+const IS_CHILD = IS_NODE
+    ? typeof process.send === 'function'
+    : typeof self === 'object'
 
 /*** Override ***/
 
 /**
  * Forks the physics integration into a seperate child process
  */
-class SimulationFork extends Simulation<BodyJson> {
+abstract class SimulationFork extends Simulation<BodyJson> {
 
     private _childProcess: any = null
 
@@ -25,9 +26,11 @@ class SimulationFork extends Simulation<BodyJson> {
         return !!this._childProcess
     }
 
-    public override start() {
+    // Override
 
-        if (this._childProcess)
+    public override run() {
+
+        if (this.isRunning)
             this.stop()
 
         if (IS_BROWSER) {
@@ -35,20 +38,22 @@ class SimulationFork extends Simulation<BodyJson> {
             const { default: WebWorker } = require('worker-loader!' + __filename)
 
             this._childProcess = new WebWorker()
-            this._childProcess.onmessage = (msg: { data: SimulationJson['bodies'] }) => this._onChildProcess(msg.data)
+            this._childProcess.onmessage = (msg: MessageEvent<SimulationJson['bodies']>) => this._update(msg.data)
             this._childProcess.postMessage(this.toJSON())
         }
 
         if (IS_NODE) {
 
             const { fork } = require('child_process')
+
             const FORK_PATH = __filename
                 .replace('/src/', '/lib/')
                 .replace(/\.ts$/, '.js')
+
             const FORK_MEMORY = { execArgv: [`--max-old-space-size=${DEFAULT_MAX_MB}`] }
 
             this._childProcess = fork(FORK_PATH, FORK_MEMORY)
-            this._childProcess.on('message', (bodies: SimulationJson['bodies']) => this._onChildProcess(bodies))
+            this._childProcess.on('message', (bodies: SimulationJson['bodies']) => this._update(bodies))
             this._childProcess.send(this.toJSON())
         }
 
@@ -66,44 +71,42 @@ class SimulationFork extends Simulation<BodyJson> {
         this._childProcess = null
     }
 
-    protected _onChildProcess(state: SimulationJson['bodies']): void {
-        this._applyBodyJson(state)
+    // Helpers
+
+    protected override _update(bodies: SimulationJson['bodies']) {
+        super._update(bodies)
+        this._applyBodyJson(bodies)
     }
 
-    protected _createBody(json: BodyJson): BodyJson {
+    protected override _createBody(json: BodyJson): BodyJson {
         return json
     }
-
 }
 
 /*** Execute ***/
 
 if (IS_CHILD) {
 
-    /**
-     * This class only ever exists on a forked process. 
-     */
-    class SimulationChildProcess extends SimulationPhysical {
-
-        protected override _update() {
-            super._update()
-
-            if (IS_BROWSER)
-                self.postMessage(this.bodies)
-
-            if (IS_NODE)
-                process.send?.(this.bodies)
-        }
-
+    const runSimulation = (input: SimulationJson, onTick: (output: SimulationJson['bodies']) => void) => {
+        const simulation = new SimulationPhysical(input)
+        simulation.on('tick', onTick)
+        simulation.run()
     }
 
     if (IS_BROWSER)
-        self.onmessage = ({ data }: MessageEvent<SimulationJson>) =>
-            new SimulationChildProcess(data).start()
+        self.onmessage = ({ data: input }: MessageEvent<SimulationJson>) =>
+            runSimulation(
+                input,
+                output => self.postMessage(output)
+            )
 
     if (IS_NODE)
-        process.on('message', (data: SimulationJson) =>
-            new SimulationChildProcess(data).start()
+        process.on(
+            'message',
+            input => runSimulation(
+                input,
+                output => process.send?.(output)
+            )
         )
 
 }

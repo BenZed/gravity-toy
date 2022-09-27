@@ -29,7 +29,7 @@ function startGravityToyRenderer(toy: GravityToy, renderer: GravityToyRenderer) 
         renderer.canvas.width = document.body.clientWidth
         renderer.canvas.height = document.body.clientHeight
 
-        if (toy.lastTick > toy.currentTick)
+        if (toy.lastTick > toy.tick)
             toy.tick++
 
         // Update
@@ -60,7 +60,7 @@ const useGravityToy = (setupGravityToy: SimulationProps['setup']) => {
         const renderer = new GravityToyRenderer({}, canvas)
 
         setupGravityToy(toy, renderer)
-        toy.start()
+        toy.run()
 
         startGravityToyRenderer(toy, renderer)
 
