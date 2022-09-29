@@ -74,7 +74,7 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
         return new BodyPhysical(json)
     }
 
-    protected override _update(): void {
+    protected _update(): void {
 
         for (let i = 0; i < this.physicsSteps; i++) {
             this._updateBodyBoundsAndOverlaps()
@@ -83,7 +83,7 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
             this._applyForces()
         }
 
-        super._update(this._livingBodies)
+        this.emit('tick', this._livingBodies)
 
         if (this._isRunning)
             setTimeout(this._update, 0)

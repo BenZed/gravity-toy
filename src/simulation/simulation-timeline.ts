@@ -1,11 +1,12 @@
-import { max } from '@benzed/math'
+
 import { DEFAULT_MAX_MB } from './constants'
 
-import { BodyJson, SimulationSettings } from './simulation'
+import { BodyJson, SimulationJson, SimulationSettings } from './simulation'
 
 import { SimulationFork } from './simulation-fork'
+import { Timeline, TickIndex } from './util'
 
-/*** Settings ***/
+/*** Types ***/
 
 interface SimulationTimelineSettings extends SimulationSettings {
 
@@ -18,10 +19,10 @@ interface SimulationTimelineSettings extends SimulationSettings {
 /**
  * Caches data created from a forked simulation into a timeline
  */
-class SimulationTimeline extends SimulationFork implements SimulationTimelineSettings {
+abstract class SimulationTimeline<B extends BodyJson> extends SimulationFork<B> implements SimulationTimelineSettings {
 
     // Cache
-    private readonly _timeline: (readonly BodyJson[])[] = []
+    private readonly _timeline = new Timeline<BodyJson>(({ pos, vel, mass }) => [{ pos, vel }, { mass }])
 
     public readonly maxCacheMemory: number
 
@@ -31,35 +32,28 @@ class SimulationTimeline extends SimulationFork implements SimulationTimelineSet
     }
 
     // State 
-    private readonly _firstTick = 0
-    public get firstTick() {
-        return this._firstTick
+    public get firstTickIndex() {
+        return this._timeline.firstTickIndex
     }
 
-    private _tick = 0
-    public get tick(): number {
-        return this._tick
+    public get tickIndex(): TickIndex {
+        return this._timeline.tickIndex
     }
-    public set tick(value: number) {
-
-        const state = this._timeline.at(value - this._firstTick)
-        if (state)
-            this._applyBodyJson(state)
-
-        else if (value !== this._firstTick)
-            throw new Error(
-                `Tick ${value} is not in range: ${this._firstTick} - ${this.lastTick}`
-            )
-
-        this._tick = value
+    public set tickIndex(value: TickIndex) {
+        this.applyStateAtTick(value)
     }
 
-    public get lastTick() {
-        return this._firstTick + max(this._timeline.length - 1, 0)
+    public get lastTickIndex() {
+        return this._timeline.tickIndex
     }
 
-    public setTick(tick: number) {
-        this.tick = tick
+    public applyStateAtTick(tickIndex: TickIndex) {
+        this._timeline.applyStateAtTick(tickIndex)
+        this._applyBodyJson(this._timeline.state)
+    }
+
+    public getStateAtTick(tickIndex: TickIndex): BodyJson[] {
+        return this._timeline.getStateAtTick(tickIndex)
     }
 
     // Construction
@@ -74,23 +68,32 @@ class SimulationTimeline extends SimulationFork implements SimulationTimelineSet
         super(rest)
 
         this.maxCacheMemory = maxCacheMemory
-
-        this._addListener(
-            'tick',
-            state => void this._timeline.push(state),
-            { internal: true }
-        )
     }
 
     // Methods
 
-    public startAtTick(tick: number) {
-        this.tick = tick
+    /**
+     * Runs the simulation from a given tick in the cache.
+     */
+    public runAtTick(tickIndex: TickIndex) {
+        this.applyStateAtTick(tickIndex)
         this.run()
     }
 
+    // Implementation
 
+    protected _update(state: SimulationJson['bodies']) {
 
+        const tooMucMemoryBeingUsed = false // TODO 
+        if (tooMucMemoryBeingUsed) {
+            this.emit('tick-error', new Error('Cache is full.'))
+            this.stop()
+
+        } else {
+            this._timeline.pushState(state)
+            this.emit('tick', state)
+        }
+    }
 
 }
 
@@ -99,5 +102,6 @@ class SimulationTimeline extends SimulationFork implements SimulationTimelineSet
 export default SimulationTimeline
 
 export {
-    SimulationTimeline
+    SimulationTimeline,
+    SimulationTimelineSettings
 }

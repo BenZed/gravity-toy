@@ -1,6 +1,6 @@
 
 import { isFinite, isNaN } from '@benzed/is'
-import { V2, V2Json } from '@benzed/math'
+import { max, V2, V2Json } from '@benzed/math'
 import { EventEmitter } from '@benzed/util'
 
 import { DEFAULT_PHYSICS, PhysicsSettings } from './constants'
@@ -26,7 +26,16 @@ interface SimulationSettings extends SimulationJson {
 }
 
 interface SimulationEvents {
+
+    /**
+     * Emitted for each iteration on the simulation.
+     */
     'tick': [SimulationJson['bodies']],
+
+    /**
+     * Emitted when there is an error during the simulation.
+     * The simulation will also be stopped.
+     */
     'tick-error': [Error]
 }
 
@@ -52,6 +61,8 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
     public readonly realMassThreshold: SimulationJson['realMassThreshold']
     public readonly realBodiesMin: SimulationJson['realBodiesMin']
 
+    private _bodyId = 0
+
     // Constructor
 
     public constructor (settings?: Partial<SimulationSettings>) {
@@ -74,39 +85,62 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
 
     // Run Interface
 
+    /**
+     * Returns true if the simulation is running.
+     */
     public abstract get isRunning(): boolean
 
+    /**
+     * Starts the simulation. While the simulation is running,
+     * it will emit 'tick' events for each phsyics update. 
+     * Simulation will run until it encounters and error or
+     * is manually stopped.
+     */
     public abstract run(): void
 
+    /**
+     * Starts the simulations, runs it for the specified number
+     * of ticks or until it encounters an error.
+     */
     public async runForNumTicks(ticks: number): Promise<void> {
         let target = 0
         return this.runUntil(() => target++ >= ticks)
     }
 
+    /**
+     * Runs the simulation for one tick.
+     */
     public runForOneTick() {
         return this.runForNumTicks(1)
     }
 
-    public runUntil(condition: () => boolean): Promise<void> {
+    /**
+     * Runs the simulation until a specified condition
+     */
+    public runUntil(condition: (bodies: SimulationJson['bodies']) => boolean): Promise<void> {
         return new Promise<void>((resolve, reject) => {
 
             const checkCondition = (input: Error | SimulationJson['bodies']) => {
 
-                if (!this.isRunning && !('message' in input))
+                let isError = 'message' in input && 'name' in input
+                if (!this.isRunning && !isError) {
                     input = new Error('Simulation has been stopped.')
+                    isError = true
+                }
 
-                const isError = 'message' in input
-                if (!isError && !condition())
+                if (!isError && !condition(input as SimulationJson['bodies']))
                     return
 
                 this._removeListener('tick', checkCondition)
                 this._removeListener('tick-error', checkCondition)
-                this.stop()
 
                 if (isError)
                     reject(input)
                 else
                     resolve()
+
+                this.stop()
+
             }
 
             this._addListener('tick', checkCondition, { internal: true })
@@ -126,9 +160,7 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
 
     public addBody(data: BodyData): B {
 
-        let id = 0
-        while (this.hasBody(id))
-            id++
+        const id = this._bodyId++
 
         return this._upsertBody({ id, ...data }, true)
     }
@@ -147,8 +179,7 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
         if (!body)
             throw new Error(`No body with id ${id}`)
 
-        this._deleteBody(id)
-        this._restart()
+        this._deleteBody(id, true)
 
         return body
     }
@@ -174,22 +205,36 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
 
     // Helper
 
+    /**
+     * Should be called on every update when the simulation is running. 
+     * Receives the previous state of the simulation, and it should call
+     * the 'emit' event with the next state of the simulation.
+     */
+    protected abstract _update(bodies: SimulationJson['bodies']): void
+
+    /**
+     * Return a body given it's state, in json. 
+     */
     protected abstract _createBody(json: BodyJson): B
 
-    protected _update(bodies: SimulationJson['bodies']) {
-        this.emit('tick', bodies)
-    }
-
+    /**
+     * Apply a given simulation state to the current simulation.
+     */
     protected _applyBodyJson(bodies: SimulationJson['bodies']): void {
 
+        //
         const survivorIds = bodies.map(body => this._upsertBody(body, false).id)
 
-        // remove destroyed bodies
+        // Keep id in sync with the new state
+        this._bodyId = survivorIds.reduce((a, b) => max(a, b), 0)
 
+        // remove destroyed bodies
         for (const id of [...this.ids()]) {
             if (!survivorIds.includes(id))
-                this._deleteBody(id)
+                this._deleteBody(id, false)
         }
+
+        this._restart()
     }
 
     protected _assertBodyJsonValid(jsons: SimulationJson['bodies']): void {
@@ -205,10 +250,14 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
                 throw new Error(`State corrupt: "${id}" is used multiple times as an id.`)
 
             usedIds.push(id)
+
+            // TODO Assert Valid Masses
+            // TODO Assert Valid Vectors
         }
     }
 
     protected _upsertBody(data: BodyData & { id: number }, restart: boolean): B {
+
         let body = this._bodies.get(data.id)
 
         if (!body) {
@@ -222,7 +271,7 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
 
             body = this._createBody({ id, pos, vel, mass })
 
-            this._bodies.set(id, body)
+            this._bodies.set(body.id, body)
 
         } else {
 
@@ -246,8 +295,11 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
         return body
     }
 
-    protected _deleteBody(id: number): void {
+    protected _deleteBody(id: number, restart: boolean): void {
         this._bodies.delete(id)
+
+        if (restart)
+            this._restart()
     }
 
     private _restart() {

@@ -15,7 +15,7 @@ export interface PhysicsSettings {
 
     /**
      * As a lossy optimization, bodies below a certain mass threshold can be considered
-     * seudo bodies and excluded from the primary integration loop. This speeds 
+     * pseudo bodies and excluded from the primary integration loop. This speeds 
      * up the simulation at a cost of accuracy.
      */
     readonly realMassThreshold: number,
@@ -32,7 +32,7 @@ export const DEFAULT_PHYSICS: PhysicsSettings = {
 
     g: 100,
 
-    physicsSteps: 1,
+    physicsSteps: 4,
 
     realMassThreshold: 10,
 
@@ -40,18 +40,19 @@ export const DEFAULT_PHYSICS: PhysicsSettings = {
 
 }
 
-export const DEFAULT_MAX_MB = 256 // mb
+export const DEFAULT_MAX_MB = 256 // MB
 
-export const ONE_MB = 1024 ** 2 // bytes
+export const ONE_MB = 1024 ** 2 // Bytes
 
-// size of a javascript number value, in bytes
+
+/**
+ * Size of a number in JS, in bytes.
+ */
 export const NUMBER_SIZE = 8
 
-// A link is a body id. A body's "link" is simply the body that it is
-// Most attracted to. "Parent" would be a misnomer, becase a large body could
-// have a smaller body that is exerting more force on it than any other body.
-// If a body was just created, it will have no link for it's initial tick, so
-// It gets this value as it's "linkId"
+/**
+ * A body's link is it's 
+ */
 export const NO_LINK = -1
 
 // Each body stores 6 numbers per tick: posX, posY, velX, velY, mass, linkId.

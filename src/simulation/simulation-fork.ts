@@ -18,7 +18,7 @@ const IS_CHILD = IS_NODE
 /**
  * Forks the physics integration into a seperate child process
  */
-abstract class SimulationFork extends Simulation<BodyJson> {
+abstract class SimulationFork<B extends BodyJson> extends Simulation<B> {
 
     private _childProcess: any = null
 
@@ -71,16 +71,6 @@ abstract class SimulationFork extends Simulation<BodyJson> {
         this._childProcess = null
     }
 
-    // Helpers
-
-    protected override _update(bodies: SimulationJson['bodies']) {
-        super._update(bodies)
-        this._applyBodyJson(bodies)
-    }
-
-    protected override _createBody(json: BodyJson): BodyJson {
-        return json
-    }
 }
 
 /*** Execute ***/

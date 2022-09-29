@@ -54,6 +54,8 @@ class BodyPhysical implements BodyJson {
     public readonly vel: V2
     public mass: number
 
+    // Physics
+
     public psuedoMass = 0
 
     public readonly force: V2 = V2.ZERO
@@ -63,13 +65,13 @@ class BodyPhysical implements BodyJson {
     public readonly top: BodyPhysicalEdge
     public readonly bottom: BodyPhysicalEdge
 
-    // Physics
 
     public get radius() {
-        return radiusFromMass(this.mass)
+        return radiusFromMass(this)
     }
 
     public constructor (input: BodyJson) {
+
         this.id = input.id
         this.pos = V2.from(input.pos)
         this.vel = V2.from(input.vel)
