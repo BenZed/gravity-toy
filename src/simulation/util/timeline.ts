@@ -1,5 +1,6 @@
 import SortedArray from '@benzed/array/sorted-array'
-import { equals } from '@benzed/immutable'
+import { $$copy, $$equals, copy, CopyComparable, equals } from '@benzed/immutable'
+import { Constructor } from '@benzed/is'
 
 /*** TODO ***/
 
@@ -13,18 +14,37 @@ type TickData<T> = Partial<T>
 
 type RawTickData<T> = Array<TickData<T>>
 
-type SortedTickData<T> = SortedArray<{ valueOf(): TickIndex, tickIndex: TickIndex, tickData: TickData<T> }>
+type KeyTickData<T> = SortedArray<{ valueOf(): TickIndex, tickIndex: TickIndex, tickData: TickData<T> }>
 
 type Cache<T> = {
     rawTickData: RawTickData<T>,
-    sortedTickDatas: SortedTickData<T>[]
+    keyedTickDatas: KeyTickData<T>[]
 }
 
 type CacheTickDataPayload<T> = [raw: TickData<T>, ...key: TickData<T>[]]
+type ToCacheTickDataPayload<T> = (input: Readonly<T>) => CacheTickDataPayload<T>
+
+/*** Helper ***/
+
+function $$copyTimelineState<T extends {
+    constructor: Constructor<any>,
+    _state: any,
+    state: any,
+    _toCacheTickDataPayload: ToCacheTickDataPayload<any>
+}>(this: T) {
+
+    const TimelineLike = this.constructor
+
+    const newTimeline = new TimelineLike()
+    newTimeline._state = copy(this.state)
+    newTimeline._toCacheTickDataPayload = this._toCacheTickDataPayload
+
+    return newTimeline
+}
 
 /*** Template ***/
 
-abstract class _TimelineTemplate<T> {
+abstract class _TimelineLike<T> implements CopyComparable<_TimelineLike<T>> {
 
     // Tick 
 
@@ -49,11 +69,18 @@ abstract class _TimelineTemplate<T> {
     public abstract clearStatesBeforeTick(tickIndex: TickIndex): void
     public abstract clearStatesAfterTick(tickIndex: TickIndex): void
 
+    public abstract [$$copy](): this
+
+    public [$$equals](other: unknown): other is this {
+        const ThisTimeline = this.constructor as new () => this
+
+        return other instanceof ThisTimeline && equals(this.state, other.state)
+    }
 }
 
 /*** Abstract ***/
 
-abstract class _Timeline<T> extends _TimelineTemplate<T>{
+abstract class _Timeline<T> extends _TimelineLike<T>{
 
     // Tick 
 
@@ -74,7 +101,7 @@ abstract class _Timeline<T> extends _TimelineTemplate<T>{
 
     private readonly _cache: Cache<T> = {
         rawTickData: [],
-        sortedTickDatas: []
+        keyedTickDatas: []
     }
 
     // State
@@ -98,10 +125,10 @@ abstract class _Timeline<T> extends _TimelineTemplate<T>{
         for (let i = 0; i < keyDatas.length; i++) {
             const keyData = keyDatas[i]
 
-            let keyTickData = this._cache.sortedTickDatas.at(i)
+            let keyTickData = this._cache.keyedTickDatas.at(i)
             if (!keyTickData) {
                 keyTickData = new SortedArray()
-                this._cache.sortedTickDatas[i] = keyTickData
+                this._cache.keyedTickDatas[i] = keyTickData
             }
 
             const tickIndexValue = {
@@ -132,7 +159,7 @@ abstract class _Timeline<T> extends _TimelineTemplate<T>{
 
     public getStateAtTick(tickIndex: TickIndex): T | null {
 
-        const { rawTickData, sortedTickDatas } = this._cache
+        const { rawTickData, keyedTickDatas } = this._cache
 
         const rawState = rawTickData.at(tickIndex - this._firstTickIndex)
         if (!rawState)
@@ -144,19 +171,19 @@ abstract class _Timeline<T> extends _TimelineTemplate<T>{
             tickData: {} as unknown as TickData<T>
         }
 
-        const state = {} as TickData<T>
+        const keyedState = {} as TickData<T>
 
-        for (const sortedTickData of sortedTickDatas) {
-            const { tickData } = sortedTickData[sortedTickData.closestIndexOf(tickIndexValue)]
+        for (const keyedTickData of keyedTickDatas) {
+            const { tickData } = keyedTickData[keyedTickData.closestIndexOf(tickIndexValue)]
 
-            for (const key in tickData) {
-                const tickDataKey = key as keyof TickData<T>
+            for (const p in tickData) {
+                const property = p as keyof TickData<T>
 
-                state[tickDataKey] = tickData[tickDataKey]
+                keyedState[property] = tickData[property]
             }
         }
 
-        return { ...rawState, ...state } as T
+        return { ...rawState, ...keyedState } as T
     }
 
     public clearStatesBeforeTick(tickIndex: TickIndex): void { /* Not Yet Implementeed */ }
@@ -167,6 +194,8 @@ abstract class _Timeline<T> extends _TimelineTemplate<T>{
 
     protected abstract _toCacheTickDataPayload(input: T): CacheTickDataPayload<T>
 
+    public [$$copy] = $$copyTimelineState
+
 }
 
 /*** Main ***/
@@ -174,7 +203,7 @@ abstract class _Timeline<T> extends _TimelineTemplate<T>{
 class Timeline<T> extends _Timeline<T> {
 
     public constructor (
-        protected _toCacheTickDataPayload: (input: Readonly<T>) => CacheTickDataPayload<T>
+        protected _toCacheTickDataPayload: ToCacheTickDataPayload<T>
     ) {
         super()
     }
@@ -183,16 +212,14 @@ class Timeline<T> extends _Timeline<T> {
 
 /*** MultiTimeline ***/
 
-abstract class _MultiTimeline<T extends { id: number | string }> extends _TimelineTemplate<readonly T[]> {
+abstract class _MultiTimeline<T extends { id: number | string }> extends _TimelineLike<readonly T[]> {
 
     public get firstTickIndex() {
         return this._firstCache?.firstTickIndex ?? 0
     }
-
     public get tickIndex(): TickIndex {
         return this._firstCache?.tickIndex ?? 0
     }
-
     public get lastTickIndex() {
         return this._firstCache?.lastTickIndex ?? 0
     }
@@ -253,6 +280,8 @@ abstract class _MultiTimeline<T extends { id: number | string }> extends _Timeli
 
     protected abstract _toCacheTickDataPayload(input: T): CacheTickDataPayload<T>
 
+    public [$$copy] = $$copyTimelineState
+
 }
 
 class MultiTimeline<T extends { id: string | number }> extends _MultiTimeline<T> {
@@ -278,6 +307,5 @@ export {
 
     TickIndex,
     TickData,
-
     CacheTickDataPayload
 }
