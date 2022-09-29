@@ -4,7 +4,7 @@ import { DEFAULT_MAX_MB } from './constants'
 import { BodyJson, SimulationJson, SimulationSettings } from './simulation'
 
 import { SimulationFork } from './simulation-fork'
-import { Timeline, TickIndex } from './util'
+import { MultiTimeline, TickIndex } from './util'
 
 /*** Types ***/
 
@@ -22,7 +22,7 @@ interface SimulationTimelineSettings extends SimulationSettings {
 abstract class SimulationTimeline<B extends BodyJson> extends SimulationFork<B> implements SimulationTimelineSettings {
 
     // Cache
-    private readonly _timeline = new Timeline<BodyJson>(({ pos, vel, mass }) => [{ pos, vel }, { mass }])
+    private readonly _timeline = new MultiTimeline<BodyJson>(({ pos, vel, mass }) => [{ pos, vel }, { mass }])
 
     public readonly maxCacheMemory: number
 
@@ -94,7 +94,6 @@ abstract class SimulationTimeline<B extends BodyJson> extends SimulationFork<B> 
             this.emit('tick', state)
         }
     }
-
 }
 
 /*** Exports ***/

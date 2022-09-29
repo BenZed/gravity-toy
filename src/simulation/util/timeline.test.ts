@@ -1,5 +1,5 @@
 import { V2Json } from '@benzed/math'
-import { Timeline } from './timeline'
+import { MultiTimeline } from './timeline'
 
 it('Caches timeline data', () => {
 
@@ -8,7 +8,7 @@ it('Caches timeline data', () => {
         z: number
     }
 
-    const vectorTimeline = new Timeline<Coords>(({ x, y, z }) => [{ x, y }, { z }])
+    const vectorTimeline = new MultiTimeline<Coords>(({ x, y, z }) => [{ x, y }, { z }])
 
     vectorTimeline.pushState([{ id: 'ace', x: 0, y: 0, z: 0 }])
 
