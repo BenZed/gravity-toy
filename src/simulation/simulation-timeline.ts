@@ -22,7 +22,7 @@ interface SimulationTimelineSettings extends SimulationSettings {
 abstract class SimulationTimeline<B extends BodyJson> extends SimulationFork<B> implements SimulationTimelineSettings {
 
     // Cache
-    private readonly _timeline = new MultiTimeline<BodyJson>(({ pos, vel, mass }) => [{ pos, vel }, { mass }])
+    private readonly _timeline = new MultiTimeline<BodyJson>(({ mass }) => [{ mass }])
 
     public readonly maxCacheMemory: number
 

@@ -1,50 +1,51 @@
 import SortedArray from '@benzed/array/sorted-array'
 import { $$copy, $$equals, copy, CopyComparable, equals } from '@benzed/immutable'
-import { Constructor } from '@benzed/is'
-
-/*** TODO ***/
-
-// Move this to somewhere in the @benzed/* namespace
 
 /*** Types ***/
 
 type TickIndex = number
 
-type TickData<T> = Partial<T>
+type State<T> = Partial<T>
 
-type RawTickData<T> = Array<TickData<T>>
+/**
+ * Raw states are data that changes every tick.
+ */
+type RawStates<T> = Array<State<T>>
 
-type KeyTickData<T> = SortedArray<{ valueOf(): TickIndex, tickIndex: TickIndex, tickData: TickData<T> }>
+/**
+ * Keyed states are data that does not change every tick.
+ */
+type KeyedStates<T> = SortedArray<{ valueOf(): TickIndex, tickIndex: TickIndex, state: State<T> }>
 
 type Cache<T> = {
-    rawTickData: RawTickData<T>,
-    keyedTickDatas: KeyTickData<T>[]
+    rawStates: RawStates<T>,
+    keyedStates: KeyedStates<T>[]
 }
 
-type CacheTickDataPayload<T> = [raw: TickData<T>, ...key: TickData<T>[]]
-type ToCacheTickDataPayload<T> = (input: Readonly<T>) => CacheTickDataPayload<T>
+/**
+ * An array of objects containing values that should
+ * be keyed seperately.
+ * 
+ * Given a Vector { x: number, y: number }
+ * ```ts 
+ * 
+ * // assuming only x has changed since last tick
+ * const { x, y } = vector
+ * 
+ * // creates a new key state containing x and y, despite
+ * // that y is the same value
+ * const vp1: KeyedStatePayload<Vector> = [{x, y}] 
+ * 
+ * // only creates a new keystate for x
+ * const vp2: KeyedStatePayload<Vector> = [{x}, {y}]
+ * 
+ * ```
+ */
+type KeyedStatePayload<T> = State<T>[]
 
-/*** Helper ***/
+/*** Base ***/
 
-function $$copyTimelineState<T extends {
-    constructor: Constructor<any>,
-    _state: any,
-    state: any,
-    _toCacheTickDataPayload: ToCacheTickDataPayload<any>
-}>(this: T) {
-
-    const TimelineLike = this.constructor
-
-    const newTimeline = new TimelineLike()
-    newTimeline._state = copy(this.state)
-    newTimeline._toCacheTickDataPayload = this._toCacheTickDataPayload
-
-    return newTimeline
-}
-
-/*** Template ***/
-
-abstract class _TimelineLike<T> implements CopyComparable<_TimelineLike<T>> {
+abstract class _TimelineLike<T extends object> implements CopyComparable<_TimelineLike<T>> {
 
     // Tick 
 
@@ -78,9 +79,9 @@ abstract class _TimelineLike<T> implements CopyComparable<_TimelineLike<T>> {
     }
 }
 
-/*** Abstract ***/
+/*** Timeline ***/
 
-abstract class _Timeline<T> extends _TimelineLike<T>{
+abstract class _Timeline<T extends object> extends _TimelineLike<T>{
 
     // Tick 
 
@@ -100,8 +101,8 @@ abstract class _Timeline<T> extends _TimelineLike<T>{
     }
 
     private readonly _cache: Cache<T> = {
-        rawTickData: [],
-        keyedTickDatas: []
+        rawStates: [],
+        keyedStates: []
     }
 
     // State
@@ -118,37 +119,50 @@ abstract class _Timeline<T> extends _TimelineLike<T>{
 
         const birthTickIndex = this._lastTickIndex++
 
-        const [rawData, ...keyDatas] = this._toCacheTickDataPayload(state)
+        const [...keyedStates] = this._toKeyedStatePayload?.(state) ?? []
 
-        this._cache.rawTickData.push(rawData)
+        const rawState: T = { ...state }
 
-        for (let i = 0; i < keyDatas.length; i++) {
-            const keyData = keyDatas[i]
+        for (let i = 0; i < keyedStates.length; i++) {
+            const keyedState = keyedStates[i]
 
-            let keyTickData = this._cache.keyedTickDatas.at(i)
+            // Any state that is not keyed is raw,
+            // so we remove any properties we find in 
+            // keyed state, leaving only properties
+            // that update every tick.
+            for (const property in keyedState)
+                delete rawState[property]
+
+            let keyTickData = this._cache.keyedStates.at(i)
             if (!keyTickData) {
                 keyTickData = new SortedArray()
-                this._cache.keyedTickDatas[i] = keyTickData
+                this._cache.keyedStates[i] = keyTickData
             }
 
             const tickIndexValue = {
-                tickData: keyData as TickData<T>,
+                state: keyedState as State<T>,
                 tickIndex: birthTickIndex,
                 valueOf: this.valueOf
             }
 
             const prevKeyIndex = keyTickData.closestIndexOf(tickIndexValue)
             const prevKeyData = keyTickData[prevKeyIndex]
-            if (!equals(keyData, prevKeyData))
+            if (!equals(keyedState, prevKeyData))
                 keyTickData.push(tickIndexValue)
         }
+
+        // Only push rawState array if there are keys remaining.
+        const numRawKeys = Object.keys(rawState).length
+        if (numRawKeys > 0)
+            this._cache.rawStates.push(rawState)
+        else if (this._cache.rawStates.length !== 0)
+            throw new Error(
+                'Timeline raw state consumption must be consistent. ' +
+                'Raw data must be pushed every tick or not at all.'
+            )
     }
 
     public applyStateAtTick(tickIndex: TickIndex) {
-
-        if (tickIndex < this._firstTickIndex || tickIndex > this._lastTickIndex)
-            throw new Error(`${tickIndex} out of range.`)
-
         this._state = this.getStateAtTick(tickIndex)
         this._tickIndex = tickIndex
     }
@@ -159,27 +173,30 @@ abstract class _Timeline<T> extends _TimelineLike<T>{
 
     public getStateAtTick(tickIndex: TickIndex): T | null {
 
-        const { rawTickData, keyedTickDatas } = this._cache
+        if (tickIndex < this._firstTickIndex || tickIndex > this._lastTickIndex)
+            throw new Error(`${tickIndex} out of range.`)
 
-        const rawState = rawTickData.at(tickIndex - this._firstTickIndex)
-        if (!rawState)
-            return null
+        const { rawStates, keyedStates } = this._cache
 
-        const tickIndexValue = {
+        const rawState = rawStates.at(tickIndex - this._firstTickIndex)
+        //    ^ rawState would only be undefined if these timeline doesn't
+        //      have any properties that are updated every tick.
+
+        const keyedState: State<T> = {}
+
+        const sortableTickIndex = {
             tickIndex,
             valueOf: this.valueOf,
-            tickData: {} as unknown as TickData<T>
+            state: keyedState
         }
 
-        const keyedState = {} as TickData<T>
+        for (const keyedTickData of keyedStates) {
+            const { state: lastKeyedState } = keyedTickData[keyedTickData.closestIndexOf(sortableTickIndex)]
 
-        for (const keyedTickData of keyedTickDatas) {
-            const { tickData } = keyedTickData[keyedTickData.closestIndexOf(tickIndexValue)]
+            for (const p in lastKeyedState) {
+                const property = p as keyof T
 
-            for (const p in tickData) {
-                const property = p as keyof TickData<T>
-
-                keyedState[property] = tickData[property]
+                keyedState[property] = lastKeyedState[property]
             }
         }
 
@@ -190,20 +207,31 @@ abstract class _Timeline<T> extends _TimelineLike<T>{
 
     public clearStatesAfterTick(tickIndex: TickIndex): void {/* Not Yet Implementeed */ }
 
+    // Copyable implementation
+
+    public [$$copy]() {
+
+        const TimelineLike = this.constructor as new () => this
+
+        const newTimeline = new TimelineLike()
+        newTimeline._state = copy(this.state)
+        newTimeline._toKeyedStatePayload = this._toKeyedStatePayload
+
+        return newTimeline
+    }
+
     // 
 
-    protected abstract _toCacheTickDataPayload(input: T): CacheTickDataPayload<T>
-
-    public [$$copy] = $$copyTimelineState
+    protected abstract _toKeyedStatePayload?: (input: T) => KeyedStatePayload<T>
 
 }
 
 /*** Main ***/
 
-class Timeline<T> extends _Timeline<T> {
+class Timeline<T extends object> extends _Timeline<T> {
 
     public constructor (
-        protected _toCacheTickDataPayload: ToCacheTickDataPayload<T>
+        protected _toKeyedStatePayload?: (state: T) => KeyedStatePayload<T>
     ) {
         super()
     }
@@ -215,28 +243,30 @@ class Timeline<T> extends _Timeline<T> {
 abstract class _MultiTimeline<T extends { id: number | string }> extends _TimelineLike<readonly T[]> {
 
     public get firstTickIndex() {
-        return this._firstCache?.firstTickIndex ?? 0
+        return this._getTickIndex('firstTickIndex')
     }
     public get tickIndex(): TickIndex {
-        return this._firstCache?.tickIndex ?? 0
+        return this._getTickIndex('tickIndex')
     }
     public get lastTickIndex() {
-        return this._firstCache?.lastTickIndex ?? 0
+        return this._getTickIndex('lastTickIndex')
     }
 
-    // Cache
+    private _getTickIndex(key: 'firstTickIndex' | 'tickIndex' | 'lastTickIndex') {
+        for (const cache of this._cache.values())
+            // return the tick index of the first timeline in the cache 
+            // as they'll all be synced anyway
+            return cache[key]
 
-    private get _firstCache() {
-        for (const cache of this._cacheMap.values())
-            return cache
-
-        return null
+        return 0 // no timelines in the cache
     }
 
-    private readonly _cacheMap: Map<T['id'], Timeline<T>> = new Map()
+    // Cache 
+
+    private readonly _cache: Map<T['id'], Timeline<Omit<T, 'id'>>> = new Map()
 
     // State
-    private _state: readonly T[] = []
+    private _state: T[] = []
     public get state(): readonly T[] {
         return this._state
     }
@@ -244,10 +274,10 @@ abstract class _MultiTimeline<T extends { id: number | string }> extends _Timeli
     public pushState(states: readonly T[]) {
 
         for (const state of states) {
-            let timeline = this._cacheMap.get(state.id)
+            let timeline = this._cache.get(state.id)
             if (!timeline) {
-                timeline = new Timeline(this._toCacheTickDataPayload)
-                this._cacheMap.set(state.id, timeline)
+                timeline = new Timeline<Omit<T, 'id'>>(this._toKeyedStatePayload)
+                this._cache.set(state.id, timeline)
             }
 
             timeline.pushState(state)
@@ -264,11 +294,13 @@ abstract class _MultiTimeline<T extends { id: number | string }> extends _Timeli
 
     public getStateAtTick(tickIndex: TickIndex): T[] {
         const states: T[] = []
-        for (const [id, timeline] of this._cacheMap) {
+
+        for (const [id, timeline] of this._cache) {
             const state = timeline.getStateAtTick(tickIndex)
             if (state)
                 states.push({ ...state, id } as T)
         }
+
         return states
     }
 
@@ -278,16 +310,16 @@ abstract class _MultiTimeline<T extends { id: number | string }> extends _Timeli
 
     // 
 
-    protected abstract _toCacheTickDataPayload(input: T): CacheTickDataPayload<T>
+    protected abstract _toKeyedStatePayload?: (input: Omit<T, 'id'>) => KeyedStatePayload<T>
 
-    public [$$copy] = $$copyTimelineState
+    public [$$copy] = _Timeline.prototype[$$copy] as unknown as () => this
 
 }
 
 class MultiTimeline<T extends { id: string | number }> extends _MultiTimeline<T> {
 
     public constructor (
-        protected _toCacheTickDataPayload: (input: Readonly<T>) => CacheTickDataPayload<T>
+        protected _toKeyedStatePayload?: (state: Omit<T, 'id'>) => KeyedStatePayload<T>
     ) {
         super()
     }
@@ -306,6 +338,7 @@ export {
     _MultiTimeline,
 
     TickIndex,
-    TickData,
-    CacheTickDataPayload
+
+    State,
+    KeyedStatePayload
 }
