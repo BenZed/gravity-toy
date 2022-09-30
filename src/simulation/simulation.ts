@@ -27,6 +27,7 @@ interface SimulationSettings extends SimulationJson {
 
 interface SimulationEvents {
 
+    [key: string]: any[]
     /**
      * Emitted for each iteration on the simulation.
      */

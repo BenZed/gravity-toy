@@ -4,7 +4,7 @@ import { DEFAULT_MAX_MB } from './constants'
 import { BodyJson, SimulationJson, SimulationSettings } from './simulation'
 
 import { SimulationFork } from './simulation-fork'
-import { MultiTimeline, TickIndex } from './util'
+import { MultiTimeline, Tick } from './util'
 
 /*** Types ***/
 
@@ -33,27 +33,27 @@ abstract class SimulationTimeline<B extends BodyJson> extends SimulationFork<B> 
 
     // State 
     public get firstTickIndex() {
-        return this._timeline.firstTickIndex
+        return this._timeline.firstIndex
     }
 
-    public get tickIndex(): TickIndex {
-        return this._timeline.tickIndex
+    public get tickIndex(): Tick {
+        return this._timeline.index
     }
-    public set tickIndex(value: TickIndex) {
+    public set tickIndex(value: Tick) {
         this.applyStateAtTick(value)
     }
 
     public get lastTickIndex() {
-        return this._timeline.tickIndex
+        return this._timeline.index
     }
 
-    public applyStateAtTick(tickIndex: TickIndex) {
-        this._timeline.applyStateAtTick(tickIndex)
+    public applyStateAtTick(tickIndex: Tick) {
+        this._timeline.applyStateAtIndex(tickIndex)
         this._applyBodyJson(this._timeline.state)
     }
 
-    public getStateAtTick(tickIndex: TickIndex): BodyJson[] {
-        return this._timeline.getStateAtTick(tickIndex)
+    public getStateAtTick(tickIndex: Tick): BodyJson[] {
+        return this._timeline.getStateAtIndex(tickIndex)
     }
 
     // Construction
@@ -75,7 +75,7 @@ abstract class SimulationTimeline<B extends BodyJson> extends SimulationFork<B> 
     /**
      * Runs the simulation from a given tick in the cache.
      */
-    public runAtTick(tickIndex: TickIndex) {
+    public runAtTick(tickIndex: Tick) {
         this.applyStateAtTick(tickIndex)
         this.run()
     }
