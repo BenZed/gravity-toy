@@ -1,6 +1,6 @@
 import { copy, equals } from '@benzed/immutable'
 import { V2Json } from '@benzed/math'
-import { Timeline } from './timeline'
+import { Timeline } from './index'
 
 interface V3Json extends V2Json {
     z: number

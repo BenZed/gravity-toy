@@ -60,7 +60,7 @@ function _getSortedArrayHack<T extends Sortable>(arr = new SortedArray<T>()) {
     return arr
 }
 
-/*** Base ***/
+/*** _TimelineLike ***/
 
 abstract class _TimelineLike<T extends object> implements CopyComparable<_TimelineLike<T>> {
 
@@ -118,7 +118,7 @@ abstract class _TimelineLike<T extends object> implements CopyComparable<_Timeli
 
 }
 
-/*** Timeline ***/
+/*** _Timeline ***/
 
 abstract class _Timeline<T extends object> extends _TimelineLike<T>{
 
@@ -215,13 +215,12 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T>{
                 'Timeline raw state consumption must be consistent. ' +
                 'Raw data must be pushed every tick or not at all.'
             )
-
     }
 
     public applyStateAtTick(tick: Tick): Readonly<T> {
 
         this._assertNotEmpty(this._state)
-        this._assertStateTick(tick)
+        this._assertTick(tick)
 
         this._state = this.getStateAtTick(tick)
 
@@ -320,14 +319,14 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T>{
             throw new Error('Timeline is empty.')
     }
 
-    protected _assertStateTick(tick: Tick) {
+    protected _assertTick(tick: Tick) {
         if (!this.hasStateAtTick(tick))
             throw new Error(`${tick} out of range: ${this._firstTick} - ${this._lastTick}`)
     }
 
 }
 
-/*** Main ***/
+/*** Timeline ***/
 
 class Timeline<T extends object> extends _Timeline<T> {
 
@@ -339,113 +338,15 @@ class Timeline<T extends object> extends _Timeline<T> {
 
 }
 
-/*** MultiTimeline ***/
-
-abstract class _MultiTimeline<T extends { id: number | string }> extends _TimelineLike<readonly T[]> {
-
-    public get firstTick() {
-        return this._getStateTick('firstTick')
-    }
-    public get tick(): Tick {
-        return this._getStateTick('tick')
-    }
-    public get lastTick() {
-        return this._getStateTick('lastTick')
-    }
-
-    public get numStates() {
-        return this._getStateTick('numStates')
-    }
-
-    private _getStateTick(key: 'firstTick' | 'tick' | 'lastTick' | 'numStates') {
-        for (const cache of this._cache.values())
-            // return the tick tick of the first timeline in the cache 
-            // as they'll all be synced anyway
-            return cache[key]
-
-        return 0 // no timelines in the cache
-    }
-
-    // Cache 
-
-    private readonly _cache: Map<T['id'], Timeline<Omit<T, 'id'>>> = new Map()
-
-    // State
-    private _state: T[] = []
-    public get state(): readonly T[] {
-        return this._state
-    }
-
-    public pushState(states: readonly T[]) {
-
-        for (const state of states) {
-            let timeline = this._cache.get(state.id)
-            if (!timeline) {
-                timeline = new Timeline<Omit<T, 'id'>>(this._toKeyedStatePayload)
-                this._cache.set(state.id, timeline)
-            }
-
-            timeline.pushState(state)
-        }
-    }
-
-    public applyStateAtTick(tick: Tick) {
-        this._state = this.getStateAtTick(tick)
-    }
-
-    public hasStateAtTick(tick: number): boolean {
-        return this.getStateAtTick(tick).length > 0
-    }
-
-    public getStateAtTick(tick: Tick): T[] {
-        const states: T[] = []
-
-        for (const [id, timeline] of this._cache) {
-            const state = timeline.getStateAtTick(tick)
-            if (state)
-                states.push({ ...state, id } as T)
-        }
-
-        return states
-    }
-
-    public clearStatesBeforeTick(tick: Tick): void { /* Not Yet Implementeed */ }
-
-    public clearStatesAfterTick(tick: Tick): void {/* Not Yet Implementeed */ }
-
-    // 
-
-    protected abstract _toKeyedStatePayload?: (input: Omit<T, 'id'>) => KeyedStatePayload<T>
-
-    public [$$copy](): this {
-        throw new Error('Not yet implemented.')
-    }
-
-}
-
-class MultiTimeline<T extends { id: string | number }> extends _MultiTimeline<T> {
-
-    public constructor (
-        protected _toKeyedStatePayload?: (state: Omit<T, 'id'>) => KeyedStatePayload<T>
-    ) {
-        super()
-    }
-
-}
-
 /*** Exports ***/
-
-export default MultiTimeline
 
 export {
     Timeline,
     _Timeline,
-
-    MultiTimeline,
-    _MultiTimeline,
+    _TimelineLike,
 
     Tick,
-
     State,
+
     KeyedStatePayload
 }
