@@ -48,18 +48,18 @@ it('current state matches state at index', () => {
 })
 
 it('states match at other tick indexes', () => {
-    expect(vectorTimeline.getStateAtTick(0)).toEqual({ x: 0, y: 0, z: 0 })
-    expect(vectorTimeline.getStateAtTick(1)).toEqual({ x: 0, y: 0, z: 1 })
-    expect(vectorTimeline.getStateAtTick(2)).toEqual({ x: 0, y: 0, z: 2 })
-    expect(vectorTimeline.getStateAtTick(3)).toEqual({ x: 1, y: 0, z: 2 })
+    expect(vectorTimeline.getState(0)).toEqual({ x: 0, y: 0, z: 0 })
+    expect(vectorTimeline.getState(1)).toEqual({ x: 0, y: 0, z: 1 })
+    expect(vectorTimeline.getState(2)).toEqual({ x: 0, y: 0, z: 2 })
+    expect(vectorTimeline.getState(3)).toEqual({ x: 1, y: 0, z: 2 })
 })
 
 it('throws an error trying to get non-existant states', () => {
 
     const emptyTimeline = new Timeline()
 
-    expect(() => emptyTimeline.applyStateAtTick(0)).toThrow('Timeline is empty')
-    expect(() => vectorTimeline.applyStateAtTick(4)).toThrow('4 out of range: 0 - 3')
+    expect(() => emptyTimeline.applyState(0)).toThrow('Timeline is empty')
+    expect(() => vectorTimeline.applyState(4)).toThrow('4 out of range: 0 - 3')
 })
 
 it('is iterable', () => {
@@ -72,18 +72,18 @@ it('is iterable', () => {
 
 it('gets state at tick', () => {
     for (const index of vectorTimeline.ticks())
-        expect(vectorTimeline.getStateAtTick(index)).toEqual(vectorTimelineInput[index])
+        expect(vectorTimeline.getState(index)).toEqual(vectorTimelineInput[index])
 })
 
 it('gets null for states at invalid indexes', () => {
-    expect(vectorTimeline.getStateAtTick(-1)).toEqual(null)
-    expect(vectorTimeline.getStateAtTick(5)).toEqual(null)
+    expect(vectorTimeline.getState(-1)).toEqual(null)
+    expect(vectorTimeline.getState(5)).toEqual(null)
 })
 
 it('has state at index', () => {
-    expect(vectorTimeline.hasStateAtTick(-1)).toEqual(false)
-    expect(vectorTimeline.hasStateAtTick(0)).toEqual(true)
-    expect(vectorTimeline.hasStateAtTick(4)).toEqual(false)
+    expect(vectorTimeline.hasState(-1)).toEqual(false)
+    expect(vectorTimeline.hasState(0)).toEqual(true)
+    expect(vectorTimeline.hasState(4)).toEqual(false)
 })
 
 it('implments CopyCompare', () => {

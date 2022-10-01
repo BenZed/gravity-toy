@@ -3,23 +3,26 @@ import { KeyedStatePayload, Tick, Timeline, _TimelineLike } from './timeline'
 
 /*** MultiTimeline ***/
 
-abstract class _MultiTimeline<T extends { id: number | string }> extends _TimelineLike<readonly T[]> {
+abstract class _MultiTimeline<T extends { id: number | string }>
+    extends _TimelineLike<readonly T[]> {
 
-    public get firstTick() {
+    public get firstTick(): Tick {
         return this._getFirstCacheProperty('firstTick')
     }
     public get tick(): Tick {
         return this._getFirstCacheProperty('tick')
     }
-    public get lastTick() {
+    public get lastTick(): Tick {
         return this._getFirstCacheProperty('lastTick')
     }
 
-    public get numStates() {
+    public get numStates(): number {
         return this._getFirstCacheProperty('numStates')
     }
 
-    private _getFirstCacheProperty(key: 'firstTick' | 'tick' | 'lastTick' | 'numStates') {
+    private _getFirstCacheProperty(
+        key: 'firstTick' | 'tick' | 'lastTick' | 'numStates'
+    ): Tick | number {
         for (const cache of this._cache.values())
             // return the key value of the first timeline in the cache 
             // as they'll all be synced anyway
@@ -38,7 +41,7 @@ abstract class _MultiTimeline<T extends { id: number | string }> extends _Timeli
         return this._state
     }
 
-    public pushState(states: readonly T[]) {
+    public pushState(states: readonly T[]): void {
 
         for (const state of states) {
             let timeline = this._cache.get(state.id)
@@ -51,19 +54,20 @@ abstract class _MultiTimeline<T extends { id: number | string }> extends _Timeli
         }
     }
 
-    public applyStateAtTick(tick: Tick) {
-        this._state = this.getStateAtTick(tick)
+    public applyState(tick: Tick): T[] {
+        this._state = this.getState(tick)
+        return this._state
     }
 
-    public hasStateAtTick(tick: number): boolean {
-        return this.getStateAtTick(tick).length > 0
+    public hasState(tick: number): boolean {
+        return this.getState(tick).length > 0
     }
 
-    public getStateAtTick(tick: Tick): T[] {
+    public getState(tick: Tick): T[] {
         const states: T[] = []
 
         for (const [id, timeline] of this._cache) {
-            const state = timeline.getStateAtTick(tick)
+            const state = timeline.getState(tick)
             if (state)
                 states.push({ ...state, id } as T)
         }
@@ -71,9 +75,9 @@ abstract class _MultiTimeline<T extends { id: number | string }> extends _Timeli
         return states
     }
 
-    public clearStatesBeforeTick(tick: Tick): void { /* Not Yet Implementeed */ }
+    public clearPreviousStates(tick: Tick): void { /* Not Yet Implementeed */ }
 
-    public clearStatesAfterTick(tick: Tick): void {/* Not Yet Implementeed */ }
+    public clearStates(tick: Tick): void {/* Not Yet Implementeed */ }
 
     // 
 

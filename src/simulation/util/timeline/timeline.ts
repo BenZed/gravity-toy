@@ -1,4 +1,5 @@
-import SortedArray, { Sortable } from '@benzed/array/sorted-array'
+import { Sortable } from '@benzed/array'
+import SortedArray from '@benzed/array/sorted-array'
 import { $$copy, $$equals, CopyComparable, equals } from '@benzed/immutable'
 
 /*** Types ***/
@@ -18,7 +19,7 @@ type RawStates<T> = Array<Readonly<State<T>>>
 type KeyedStates<T> = SortedArray<{ valueOf(): Tick, tick: Tick, state: Readonly<State<T>> }>
 
 type Cache<T> = {
-    rawStates: RawStates<T>,
+    rawStates: RawStates<T>
     keyedStates: KeyedStates<T>[]
 }
 
@@ -50,7 +51,7 @@ type KeyedStatePayload<T> = State<T>[]
  * the compiler is targeting. 
  * I'll have to find away around that, or use a newer target.
  */
-function _getSortedArrayHack<T extends Sortable>(arr = new SortedArray<T>()) {
+function _getSortedArrayHack<T extends Sortable>(arr = new SortedArray<T>()): SortedArray<T> {
 
     // @ts-expect-error hack
     arr._getIndexViaBinarySearch = SortedArray.prototype._getIndexViaBinarySearch
@@ -72,7 +73,7 @@ abstract class _TimelineLike<T extends object> implements CopyComparable<_Timeli
 
     public abstract get numStates(): number
 
-    public valueOf() {
+    public valueOf(): Tick {
         return this.tick
     }
 
@@ -81,13 +82,23 @@ abstract class _TimelineLike<T extends object> implements CopyComparable<_Timeli
     public abstract get state(): T
 
     public abstract pushState(state: Readonly<T>): void
-    public abstract applyStateAtTick(tick: Tick): void
+    public abstract applyState(tick: Tick): T
+    public applyLatestState(): T {
+        return this.applyState(this.lastTick)
+    }
+    public applyFirstState(): T {
+        return this.applyState(this.firstTick)
+    }
 
-    public abstract hasStateAtTick(tick: Tick): boolean
-    public abstract getStateAtTick(tick: Tick): T | null
+    public abstract hasState(tick: Tick): boolean
+    public abstract getState(tick: Tick): T | null
+    public setState(tick: Tick, state: Readonly<T>): void {
+        this.clearStates(tick)
+        this.pushState(state)
+    }
 
-    public abstract clearStatesBeforeTick(tick: Tick): void
-    public abstract clearStatesAfterTick(tick: Tick): void
+    public abstract clearPreviousStates(tick: Tick): void
+    public abstract clearStates(tick: Tick): void
 
     // Copyable Implementation
 
@@ -96,7 +107,10 @@ abstract class _TimelineLike<T extends object> implements CopyComparable<_Timeli
     public [$$equals](other: unknown): other is this {
         const ThisTimeline = this.constructor as new () => this
 
-        return other instanceof ThisTimeline && equals(this.state, other.state)
+        return (
+            other instanceof ThisTimeline &&
+            equals(this.state, other.state)
+        )
     }
 
     // Iterable Implementation
@@ -109,7 +123,7 @@ abstract class _TimelineLike<T extends object> implements CopyComparable<_Timeli
 
     public * states(): Generator<T> {
         for (const tick of this.ticks())
-            yield this.getStateAtTick(tick) as T
+            yield this.getState(tick) as T
     }
 
     public *[Symbol.iterator](): Generator<T> {
@@ -125,7 +139,7 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T>{
     // Tick 
 
     protected _firstTick = 0
-    public get firstTick() {
+    public get firstTick(): Tick {
         return this._firstTick
     }
 
@@ -135,13 +149,13 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T>{
     }
 
     protected _lastTick = 0
-    public get lastTick() {
+    public get lastTick(): Tick {
         return this._lastTick
     }
 
-    public get numStates() {
+    public get numStates(): Tick {
         return this._state
-            ? (this._lastTick - this._firstTick) + 1
+            ? this._lastTick - this._firstTick + 1
             : 0
     }
 
@@ -158,7 +172,7 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T>{
         return this._state
     }
 
-    public pushState(state: Readonly<T>) {
+    public pushState(state: Readonly<T>): void {
 
         const birthTick = this._lastTick
 
@@ -168,10 +182,8 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T>{
         else
             this._lastTick++
 
-        const [...keyedStates] = this._toKeyedStatePayload?.(state) ?? []
-
         const rawState: T = { ...state }
-
+        const keyedStates = this._toKeyedStatePayload?.(state) ?? []
 
         for (let i = 0; i < keyedStates.length; i++) {
             const keyedState = keyedStates[i]
@@ -186,8 +198,6 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T>{
             let keyStateData = this._cache.keyedStates.at(i)
             if (!keyStateData) {
                 keyStateData = _getSortedArrayHack()
-
-                // eslint-disable-next-line no-unused-labels
 
                 this._cache.keyedStates[i] = keyStateData
             }
@@ -205,38 +215,39 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T>{
                 keyStateData.push(tickValue)
         }
 
-
         // Only push rawState array if there are keys remaining.
         const numRawKeys = Object.keys(rawState).length
         if (numRawKeys > 0)
             this._cache.rawStates.push(rawState)
-        else if (this._cache.rawStates.length !== 0)
+        else if (this._cache.rawStates.length !== 0) {
             throw new Error(
                 'Timeline raw state consumption must be consistent. ' +
                 'Raw data must be pushed every tick or not at all.'
             )
+        }
     }
 
-    public applyStateAtTick(tick: Tick): Readonly<T> {
+    public applyState(tick: Tick): Readonly<T> {
 
         this._assertNotEmpty(this._state)
         this._assertTick(tick)
 
-        this._state = this.getStateAtTick(tick)
-
+        this._state = this.getState(tick)
         this._tick = tick
-
         return this._state as T
+
     }
 
-    public hasStateAtTick(tick: Tick): boolean {
-        return tick >= this._firstTick && tick <= this._lastTick
+    public hasState(tick: Tick): boolean {
+        return (
+            tick >= this._firstTick &&
+            tick <= this._lastTick
+        )
     }
 
+    public getState(tick: Tick): T | null {
 
-    public getStateAtTick(tick: Tick): T | null {
-
-        if (!this.hasStateAtTick(tick))
+        if (!this.hasState(tick))
             return null
 
         const { rawStates, keyedStates } = this._cache
@@ -287,13 +298,27 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T>{
             .map(keyState => keyState.length)
     }
 
-    public clearStatesBeforeTick(tick: Tick): void { /* Not Yet Implementeed */ }
+    public clearPreviousStates(tick: Tick): void { /* Not Yet Implementeed */ }
 
-    public clearStatesAfterTick(tick: Tick): void {/* Not Yet Implementeed */ }
+    public clearStates(tick: Tick): void {/* Not Yet Implementeed */ }
+
+    // Helper
+
+    protected abstract _toKeyedStatePayload?: (input: T) => KeyedStatePayload<T>
+
+    protected _assertNotEmpty(state: T | null): asserts state is T {
+        if (!state)
+            throw new Error('Timeline is empty.')
+    }
+
+    protected _assertTick(tick: Tick): void {
+        if (!this.hasState(tick))
+            throw new Error(`${tick} out of range: ${this._firstTick} - ${this._lastTick}`)
+    }
 
     // Copyable implementation
 
-    public [$$copy]() {
+    public [$$copy](): this {
 
         const TimelineLike = this.constructor as new () => this
 
@@ -308,20 +333,6 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T>{
         newTimeline._state = this._state
 
         return newTimeline
-    }
-
-    // Helper
-
-    protected abstract _toKeyedStatePayload?: (input: T) => KeyedStatePayload<T>
-
-    protected _assertNotEmpty(state: T | null): asserts state is T {
-        if (!state)
-            throw new Error('Timeline is empty.')
-    }
-
-    protected _assertTick(tick: Tick) {
-        if (!this.hasStateAtTick(tick))
-            throw new Error(`${tick} out of range: ${this._firstTick} - ${this._lastTick}`)
     }
 
 }
@@ -341,6 +352,7 @@ class Timeline<T extends object> extends _Timeline<T> {
 /*** Exports ***/
 
 export {
+
     Timeline,
     _Timeline,
     _TimelineLike,

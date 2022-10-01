@@ -9,9 +9,7 @@ import { MultiTimeline, Tick } from './util'
 /*** Types ***/
 
 interface SimulationTimelineSettings extends SimulationSettings {
-
     readonly maxCacheMemory: number
-
 }
 
 /*** Main ***/
@@ -32,28 +30,28 @@ abstract class SimulationTimeline<B extends BodyJson> extends SimulationFork<B> 
     }
 
     // State 
-    public get firstTickIndex() {
-        return this._timeline.firstIndex
+    public get firstTick() {
+        return this._timeline.firstTick
     }
 
-    public get tickIndex(): Tick {
-        return this._timeline.index
+    public get tick(): Tick {
+        return this._timeline.tick
     }
-    public set tickIndex(value: Tick) {
-        this.applyStateAtTick(value)
-    }
-
-    public get lastTickIndex() {
-        return this._timeline.index
+    public set tick(tick: Tick) {
+        this.applyState(tick)
     }
 
-    public applyStateAtTick(tickIndex: Tick) {
-        this._timeline.applyStateAtIndex(tickIndex)
+    public get lastTick() {
+        return this._timeline.lastTick
+    }
+
+    public applyState(tick: Tick) {
+        this._timeline.applyState(tick)
         this._applyBodyJson(this._timeline.state)
     }
 
-    public getStateAtTick(tickIndex: Tick): BodyJson[] {
-        return this._timeline.getStateAtIndex(tickIndex)
+    public getState(tick: Tick): BodyJson[] {
+        return this._timeline.getState(tick)
     }
 
     // Construction
@@ -75,8 +73,8 @@ abstract class SimulationTimeline<B extends BodyJson> extends SimulationFork<B> 
     /**
      * Runs the simulation from a given tick in the cache.
      */
-    public runAtTick(tickIndex: Tick) {
-        this.applyStateAtTick(tickIndex)
+    public runAtTick(tick: Tick) {
+        this.applyState(tick)
         this.run()
     }
 
