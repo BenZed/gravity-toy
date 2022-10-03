@@ -16,7 +16,7 @@ abstract class _MultiTimeline<T extends { id: number | string }>
         return this._getFirstCacheProperty('lastTick')
     }
 
-    public get numStates(): number {
+    public get stateCount(): number {
         return this._getFirstCacheProperty('numStates')
     }
 
@@ -75,9 +75,9 @@ abstract class _MultiTimeline<T extends { id: number | string }>
         return states
     }
 
-    public clearPreviousStates(tick: Tick): void { /* Not Yet Implementeed */ }
+    public clearStatesBefore(tick: Tick): void { /* Not Yet Implementeed */ }
 
-    public clearStates(tick: Tick): void {/* Not Yet Implementeed */ }
+    public clearStatesFrom(tick: Tick): void {/* Not Yet Implementeed */ }
 
     // 
 
