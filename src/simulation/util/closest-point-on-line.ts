@@ -1,6 +1,6 @@
 import { V2 } from '@benzed/math'
 
-/*** Main ***/
+//// Main ////
 
 function closestPointOnLine(lineStart: V2, lineEnd: V2, point: V2): V2 {
 
@@ -23,7 +23,7 @@ function closestPointOnLine(lineStart: V2, lineEnd: V2, point: V2): V2 {
 
 }
 
-/*** Exports ***/
+//// Exports ////
 
 export default closestPointOnLine
 

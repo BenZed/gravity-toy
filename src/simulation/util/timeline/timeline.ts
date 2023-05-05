@@ -2,7 +2,7 @@ import { Sortable, SortedArray } from '@benzed/array'
 import { $$copy, $$equals, copy, CopyComparable, equals } from '@benzed/immutable'
 import { max  } from '@benzed/math'
 
-/*** Types ***/
+//// Types ////
 
 type Tick = number
 
@@ -52,7 +52,7 @@ type Cache<T> = {
  */
 type KeyedStatePayload<T> = State<T>[]
 
-/*** Util ***/
+//// Util ////
 
 /**
  * KeyedState ValueOf
@@ -94,7 +94,7 @@ function _ensureSortedArrayMethodsHack<
 }
 
 
-/*** _TimelineLike ***/
+//// _TimelineLike ////
 
 abstract class _TimelineLike<T extends object>  implements CopyComparable<_TimelineLike<T>>, Iterable<T>  {
 
@@ -171,7 +171,7 @@ abstract class _TimelineLike<T extends object>  implements CopyComparable<_Timel
     }
 }
 
-/*** _Timeline ***/
+//// _Timeline ////
 
 abstract class _Timeline<T extends object> extends _TimelineLike<T>{
 
@@ -362,7 +362,7 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T>{
 
             const [keyedState, closestIndex] = getClosestKeyState(keyedStates, tick)
 
-            // the first keystate tick should not be lower than this._firstTick
+            // the first key state tick should not be lower than this._firstTick
             keyedState.tick = tick 
             keyedStates.splice(0, closestIndex)
         }
@@ -412,7 +412,7 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T>{
 
 }
 
-/*** Timeline ***/
+//// Timeline ////
 
 class Timeline<T extends object> extends _Timeline<T> {
 
@@ -424,7 +424,7 @@ class Timeline<T extends object> extends _Timeline<T> {
 
 }
 
-/*** Exports ***/
+//// Exports ////
 
 export {
 

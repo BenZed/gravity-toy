@@ -1,29 +1,29 @@
 import 'normalize.css'
 import './assets/gravity-toy.css'
 
-/*** Chunk Loaded Dependencies ***/
+//// Chunk Loaded Dependencies ////
 
 const dependencies = [
     import('react'),
     import('react-dom/client'),
-    import('./components/simulation'),
-    import('./setup-gravity-toy')
 ] as const
 
 const mainTag = document.getElementById('gravity-toy')
 
-/*** Main ***/
+//// Main ////
 
 Promise.all(dependencies).then(([
-    { default: React },
+    { default: React, StrictMode },
     { createRoot },
-    { Simulation },
-    { setupGravityToy }
 ]) => {
 
     if (!mainTag)
         throw new Error('No <main id="gravity-toy"/> tag.')
 
     createRoot(mainTag)
-        .render(<Simulation setup={setupGravityToy} />)
+        .render(
+            <StrictMode>
+                <h1>Gravity Toy</h1>
+            </StrictMode>
+        )
 })

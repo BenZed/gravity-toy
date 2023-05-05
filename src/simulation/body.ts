@@ -1,32 +1,29 @@
-import { V2 } from '@benzed/math'
+import { V2, V2Json } from '@benzed/math'
 
 import { closestPointOnLine, radiusFromMass } from './util'
-import { BodyJson } from './simulation'
+import { RELATIVE_VELOCITY_EPSILON } from './constants'
+import { bySpeed } from './util/timeline/by-speed'
 
-/*** Constants ***/
+//// Types ////
 
-const RELATIVE_VELOCITY_EPSILON = 1
+interface BodyJson {
 
-const bySpeed = (a: BodyPhysical, b: BodyPhysical) => {
+    readonly id: number
 
-    const aSqrVel = a.vel.sqrMagnitude
-    const bSqrVel = b.vel.sqrMagnitude
+    readonly pos: V2Json
+    readonly vel: V2Json
+    mass: number
 
-    return aSqrVel > bSqrVel
-        ? -1
-        : aSqrVel < bSqrVel
-            ? 1
-            : 0
 }
 
-/*** Helper ***/
+//// Helper Classes ////
 
-class BodyPhysicalEdge {
+class BodyEdge {
 
     public value = 0
 
     constructor (
-        public readonly body: BodyPhysical,
+        public readonly body: Body,
         public readonly axis: 'x' | 'y',
         public readonly isMin: boolean,
 
@@ -42,11 +39,11 @@ class BodyPhysicalEdge {
 
 }
 
-/*** Main ***/
+//// Main ////
 
-class BodyPhysical implements BodyJson {
+class Body implements BodyJson, Iterable<BodyEdge> {
 
-    // BodyJSON implementation 
+    // BodyJSON implementation
 
     readonly id: number
 
@@ -56,14 +53,14 @@ class BodyPhysical implements BodyJson {
 
     // Physics
 
-    public psuedoMass = 0
+    public pseudoMass = 0
 
     public readonly force: V2 = V2.ZERO
 
-    public readonly left: BodyPhysicalEdge
-    public readonly right: BodyPhysicalEdge
-    public readonly top: BodyPhysicalEdge
-    public readonly bottom: BodyPhysicalEdge
+    public readonly left: BodyEdge
+    public readonly right: BodyEdge
+    public readonly top: BodyEdge
+    public readonly bottom: BodyEdge
 
 
     public get radius() {
@@ -77,15 +74,15 @@ class BodyPhysical implements BodyJson {
         this.vel = V2.from(input.vel)
         this.mass = input.mass
 
-        this.left = new BodyPhysicalEdge(this, 'x', true)
-        this.right = new BodyPhysicalEdge(this, 'x', false)
-        this.top = new BodyPhysicalEdge(this, 'y', true)
-        this.bottom = new BodyPhysicalEdge(this, 'y', false)
+        this.left = new BodyEdge(this, 'x', true)
+        this.right = new BodyEdge(this, 'x', false)
+        this.top = new BodyEdge(this, 'y', true)
+        this.bottom = new BodyEdge(this, 'y', false)
     }
 
-    /*** Interface ***/
+    //// Interface ////
 
-    public isOverlapping(other: BodyPhysical) {
+    public isOverlapping(other: Body) {
 
         if (this.left > other.right || other.left > this.right)
             return false
@@ -96,7 +93,7 @@ class BodyPhysical implements BodyJson {
         return true
     }
 
-    public isColliding(other: BodyPhysical) {
+    public isColliding(other: Body) {
 
         const [fast, slow] = [this, other].sort(bySpeed)
 
@@ -111,9 +108,9 @@ class BodyPhysical implements BodyJson {
         if (relativeVel.sqrMagnitude >= RELATIVE_VELOCITY_EPSILON) {
             const closest = closestPointOnLine(
                 fast.pos.copy().sub(relativeVel),
-                fast.pos, slow.pos
+                fast.pos,
+                slow.pos
             )
-
             distance = closest.copy().sub(slow.pos).magnitude
         } else
             distance = fast.pos.copy().sub(slow.pos).magnitude
@@ -137,8 +134,14 @@ class BodyPhysical implements BodyJson {
         }
     }
 
+    //// Object Overloads ////
 
-    /*** Serialize ***/
+    /**
+     * So it may be sorted by mass.
+     */
+    public valueOf() {
+        return this.mass
+    }
 
     public toJSON(): BodyJson {
         return {
@@ -149,26 +152,24 @@ class BodyPhysical implements BodyJson {
         }
     }
 
-    public *[Symbol.iterator](): Generator<BodyPhysicalEdge> {
+    //// Iterable Implementation ////
+
+    public *[Symbol.iterator](): Generator<BodyEdge> {
         yield this.left
         yield this.right
         yield this.top
         yield this.bottom
     }
 
-    /**
-     * So it may be sorted by mass.
-     */
-    public valueOf() {
-        return this.mass
-    }
+
 }
 
-/*** Exports ***/
+//// Exports ////
 
-export default BodyPhysical
+export default Body
 
 export {
-    BodyPhysical,
-    BodyPhysicalEdge,
+    BodyJson,
+    Body,
+    BodyEdge,
 }

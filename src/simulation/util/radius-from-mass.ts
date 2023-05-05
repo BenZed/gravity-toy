@@ -1,10 +1,8 @@
 import { isNumber } from '@benzed/is'
 import { cbrt } from '@benzed/math'
-
-
 import { MASS_MIN, RADIUS_MIN, RADIUS_FACTOR } from '../constants'
 
-/*** Exports ***/
+//// Exports ////
 
 export function radiusFromMass(input: number | { mass: number }) {
 

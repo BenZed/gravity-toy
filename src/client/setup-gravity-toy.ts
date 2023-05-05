@@ -2,7 +2,7 @@ import { V2 } from '@benzed/math'
 import { Renderer as GravityToyRenderer } from '../renderer'
 import { Simulation as GravityToy } from '../old/simulation'
 
-/*** Main ***/
+//// Main ////
 
 function setupGravityToy(
     toy: GravityToy,
@@ -22,7 +22,7 @@ function setupGravityToy(
     rend.camera.target.zoom = 1
 }
 
-/*** Exports ***/
+//// Exports ////
 
 export default setupGravityToy
 

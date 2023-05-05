@@ -5,7 +5,7 @@ import { SimulationPhysical } from './simulation-physical'
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 
-/*** Constants ***/
+//// Constants ////
 
 const IS_NODE = typeof process === 'object'
 const IS_BROWSER = !IS_NODE
@@ -13,10 +13,10 @@ const IS_CHILD = IS_NODE
     ? typeof process.send === 'function'
     : typeof self === 'object'
 
-/*** Override ***/
+//// Override ////
 
 /**
- * Forks the physics integration into a seperate child process
+ * Forks the physics integration into a separate child process
  */
 abstract class SimulationFork<B extends BodyJson> extends Simulation<B> {
 
@@ -73,7 +73,7 @@ abstract class SimulationFork<B extends BodyJson> extends Simulation<B> {
 
 }
 
-/*** Execute ***/
+//// Execute ////
 
 if (IS_CHILD) {
 
@@ -101,7 +101,7 @@ if (IS_CHILD) {
 
 }
 
-/*** Exports ***/
+//// Exports ////
 
 export default SimulationFork
 

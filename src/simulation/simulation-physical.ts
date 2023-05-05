@@ -2,8 +2,8 @@ import SortedArray from '@benzed/array/sorted-array'
 import { min, V2 } from '@benzed/math'
 import { TICK_DURATION } from './constants'
 
-import BodyPhysical, { BodyPhysicalEdge } from './body-physical'
-import { BodyJson, Simulation, SimulationJson } from './simulation'
+import Body, { BodyJson, BodyEdge } from './body'
+import { Simulation, SimulationJson } from './simulation'
 
 /* eslint-disable @typescript-eslint/no-var-requires */
 
@@ -11,29 +11,29 @@ type OverlapId = `${number}:${number}`
 
 // TODO Move Me
 
-const byMass = (a: BodyPhysical, b: BodyPhysical) => a.mass > b.mass
+const byMass = (a: Body, b: Body) => a.mass > b.mass
     ? -1
     : a.mass < b.mass
         ? 1
         : 0
 
-/*** Main ***/
+//// Main ////
 
 /**
  * Does the actual magic of integrating bodies and colliding them
  */
-class SimulationPhysical extends Simulation<BodyPhysical> {
+class SimulationPhysical extends Simulation<Body> {
 
-    private readonly _psuedoBodies = new SortedArray<BodyPhysical>()
-    private readonly _realBodies = new SortedArray<BodyPhysical>()
+    private readonly _pseudoBodies = new SortedArray<Body>()
+    private readonly _realBodies = new SortedArray<Body>()
 
-    private readonly _livingBodies = new SortedArray<BodyPhysical>()
+    private readonly _livingBodies = new SortedArray<Body>()
 
     private readonly _bodyBounds = {
 
-        x: new SortedArray<BodyPhysicalEdge>(),
-        y: new SortedArray<BodyPhysicalEdge>(),
-        overlaps: new Map<OverlapId, [BodyPhysical, BodyPhysical]>()
+        x: new SortedArray<BodyEdge>(),
+        y: new SortedArray<BodyEdge>(),
+        overlaps: new Map<OverlapId, [Body, Body]>()
 
     } as const
 
@@ -70,8 +70,8 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
 
     // Helper
 
-    protected _createBody(json: BodyJson): BodyPhysical {
-        return new BodyPhysical(json)
+    protected _createBody(json: BodyJson): Body {
+        return new Body(json)
     }
 
     protected _update(): void {
@@ -107,7 +107,7 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
         }
     }
 
-    private _updateOverlap(b1: BodyPhysical, b2: BodyPhysical) {
+    private _updateOverlap(b1: Body, b2: Body) {
 
         if (b1 === b2)
             return
@@ -152,7 +152,7 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
 
     }
 
-    private _applyCollision(...bodies: [BodyPhysical, BodyPhysical]) {
+    private _applyCollision(...bodies: [Body, Body]) {
 
         const [big, small] = bodies.sort(byMass)
 
@@ -186,17 +186,17 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
     private _calculateForces() {
         const {
             _livingBodies: livingBodies,
-            _psuedoBodies: psuedoBodies,
+            _pseudoBodies: pseudoBodies,
             _realBodies: realBodies
         } = this
 
         for (const body of livingBodies)
-            body.psuedoMass = 0
+            body.pseudoMass = 0
 
-        for (const body of psuedoBodies)
+        for (const body of pseudoBodies)
             this._calculateForce(body, false, true)
 
-        for (const body of psuedoBodies)
+        for (const body of pseudoBodies)
             this._calculateForce(body, false, false)
 
         for (const body of realBodies)
@@ -204,18 +204,18 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
     }
 
     private _calculateForce(
-        body: BodyPhysical,
+        body: Body,
         isReal: boolean,
-        addPsuedoMassOnly: boolean
+        addPseudoMassOnly: boolean
     ) {
 
         const { _realBodies: realBodies } = this
 
         // Reset Forces
-        if (!addPsuedoMassOnly)
+        if (!addPseudoMassOnly)
             body.force.set(V2.ZERO)
 
-        let mostAttracted: BodyPhysical | null = null
+        let mostAttracted: Body | null = null
         let highestAttraction = -Infinity
 
         for (const other of realBodies) {
@@ -225,11 +225,11 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
 
             const relative = other.pos.copy().sub(body.pos)
 
-            const mass = addPsuedoMassOnly
+            const mass = addPseudoMassOnly
                 ? other.mass
                 : (
                     other.mass +
-                    other.psuedoMass
+                    other.pseudoMass
                 )
 
             const attraction = this.g * mass / relative.sqrMagnitude
@@ -238,7 +238,7 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
                 mostAttracted = other
             }
 
-            if (!addPsuedoMassOnly) {
+            if (!addPseudoMassOnly) {
                 const dist = relative.magnitude
                 body.force.add(
                     relative
@@ -248,8 +248,8 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
             }
         }
 
-        if (addPsuedoMassOnly && !isReal && mostAttracted)
-            mostAttracted.psuedoMass += body.mass
+        if (addPseudoMassOnly && !isReal && mostAttracted)
+            mostAttracted.pseudoMass += body.mass
     }
 
     private _applyForces() {
@@ -274,14 +274,14 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
         const {
             _livingBodies: livingBodies,
             _realBodies: realBodies,
-            _psuedoBodies: psuedoBodies,
+            _pseudoBodies: pseudoBodies,
 
             realBodiesMin,
             realMassThreshold
         } = this
 
         realBodies.length = 0
-        psuedoBodies.length = 0
+        pseudoBodies.length = 0
         if (livingBodies.length === 0)
             return
 
@@ -295,30 +295,30 @@ class SimulationPhysical extends Simulation<BodyPhysical> {
             const livingBody = this._livingBodies[i]
 
             // If we encounter a destroyed body, then all future bodies will also be
-            // destroyed, and they shouldn't be added to the real or psuedo arrays
+            // destroyed, and they shouldn't be added to the real or pseudo arrays
             if (livingBody.mass <= 0)
                 break
 
-            // if we havent gotten to the minRealIndex yet, then this is considered
+            // if we haven't gotten to the minRealIndex yet, then this is considered
             // a real body. If we have, then this body's mass must be under the
             // realMassThreshold
             const isReal = i < minRealIndex || livingBody.mass >= realMassThreshold
             if (isReal)
                 realBodies.push(livingBody)
             else
-                psuedoBodies.push(livingBody)
+                pseudoBodies.push(livingBody)
         }
 
         // destroyed bodies have zero mass and since we're sorted by mass they'll
         // all be at the end of the array. While there are still destroyed bodies at
         // the end of the all array, pop them and place them in the destroyed array
-        while ((livingBodies.at(-1) as BodyPhysical).mass <= 0) {
+        while ((livingBodies.at(-1) as Body).mass <= 0) {
             livingBodies.pop()
         }
     }
 }
 
-/*** Exports ***/
+//// Exports ////
 
 export {
     SimulationPhysical

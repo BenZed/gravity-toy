@@ -2,13 +2,13 @@ import { V2, V2Json } from '@benzed/math'
 import { BodyJson } from './simulation'
 import { SimulationTimelineSettings, SimulationTimeline } from './simulation-timeline'
 
-/*** Types ***/
+//// Types ////
 
 interface GravityToySettings extends SimulationTimelineSettings {
 
 }
 
-/*** Help ***/
+//// Help ////
 
 class Body implements BodyJson {
 
@@ -32,7 +32,7 @@ class GravityToy extends SimulationTimeline<Body> {
     }
 }
 
-/*** Exports ***/
+//// Exports ////
 
 export default GravityToy
 

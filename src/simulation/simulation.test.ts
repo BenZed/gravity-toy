@@ -2,7 +2,7 @@
 // import { SimulationTimeline as GravityToy } from './simulation-timeline'
 // import { V2 as Vector } from '@benzed/math'
 
-// /*** Helper ***/
+// //// Helper ////
 
 // function createBodyData(count = 1): Partial<BodyData>[] {
 //     const data: Partial<BodyData>[] = []
@@ -19,10 +19,9 @@
 //     return data
 // }
 
-// /*** Test ***/
+// //// Test ////
 
 // describe('Simulation', () => {
-it.todo('fuckoff')
 
 //     it('is a class', () => {
 //         expect(() => new GravityToy()).not.toThrow()

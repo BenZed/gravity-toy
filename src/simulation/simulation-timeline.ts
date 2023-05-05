@@ -6,13 +6,13 @@ import { BodyJson, SimulationJson, SimulationSettings } from './simulation'
 import { SimulationFork } from './simulation-fork'
 import { MultiTimeline, Tick } from './util'
 
-/*** Types ***/
+//// Types ////
 
 interface SimulationTimelineSettings extends SimulationSettings {
     readonly maxCacheMemory: number
 }
 
-/*** Main ***/
+//// Main ////
 
 /**
  * Caches data created from a forked simulation into a timeline
@@ -94,7 +94,7 @@ abstract class SimulationTimeline<B extends BodyJson> extends SimulationFork<B> 
     }
 }
 
-/*** Exports ***/
+//// Exports ////
 
 export default SimulationTimeline
 

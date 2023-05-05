@@ -1,7 +1,7 @@
 import { $$copy } from '@benzed/immutable'
 import { KeyedStatePayload, Tick, Timeline, _TimelineLike } from './timeline'
 
-/*** MultiTimeline ***/
+//// MultiTimeline ////
 
 abstract class _MultiTimeline<T extends { id: number | string }>
     extends _TimelineLike<readonly T[]> {
@@ -22,7 +22,7 @@ abstract class _MultiTimeline<T extends { id: number | string }>
 
     private _getFirstCacheProperty(
         key: 'firstTick' | 'tick' | 'lastTick' | 'numStates'
-    ): Tick | number {
+    ): Tick {
         for (const cache of this._cache.values())
             // return the key value of the first timeline in the cache 
             // as they'll all be synced anyway
@@ -89,7 +89,7 @@ abstract class _MultiTimeline<T extends { id: number | string }>
 
 }
 
-/*** MultiTimline ***/
+//// MultiTimeline ////
 
 class MultiTimeline<T extends { id: string | number }> extends _MultiTimeline<T> {
 
@@ -101,7 +101,7 @@ class MultiTimeline<T extends { id: string | number }> extends _MultiTimeline<T>
 
 }
 
-/*** Exports ***/
+//// Exports ////
 
 export default _MultiTimeline
 

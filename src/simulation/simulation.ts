@@ -1,19 +1,36 @@
 
 import { isFinite, isNaN } from '@benzed/is'
-import { max, V2, V2Json } from '@benzed/math'
+import { max, V2 } from '@benzed/math'
 import { EventEmitter } from '@benzed/util'
 
-import { DEFAULT_PHYSICS, PhysicsSettings } from './constants'
+import { DEFAULT_PHYSICS } from './constants'
 
-/*** Types ***/
+//// Types ////
 
-interface BodyJson {
+interface PhysicsSettings {
 
-    readonly id: number
+    /**
+     * Gravitational Constant. Higher values, faster bodies.
+     */
+    readonly g: number
 
-    readonly pos: V2Json
-    readonly vel: V2Json
-    mass: number
+    /**
+     * Higher steps mean more calculation time, but more precision.
+     */
+    readonly physicsSteps: number
+
+    /**
+     * As a lossy optimization, bodies below a certain mass threshold can be considered
+     * pseudo bodies and excluded from the primary integration loop. This speeds 
+     * up the simulation at a cost of accuracy.
+     */
+    readonly realMassThreshold: number,
+
+    /**
+     * There must be at least this many real bodies before bodies under the aforementioned
+     * mass threshold are considered pseudo. Infinity means disabled.
+     **/
+    readonly realBodiesMin: number
 
 }
 
@@ -42,7 +59,7 @@ interface SimulationEvents {
 
 type BodyData = Partial<Omit<BodyJson, 'id'>>
 
-/*** Main ***/
+//// Main ////
 
 /**
  * Simulation base class. Responsible for body CRUD, iteration, serialization.
@@ -93,7 +110,7 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
 
     /**
      * Starts the simulation. While the simulation is running,
-     * it will emit 'tick' events for each phsyics update. 
+     * it will emit 'tick' events for each physics update.
      * Simulation will run until it encounters and error or
      * is manually stopped.
      */
@@ -214,7 +231,7 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
     protected abstract _update(bodies: SimulationJson['bodies']): void
 
     /**
-     * Return a body given it's state, in json. 
+     * Return a body given it's state, in json.
      */
     protected abstract _createBody(json: BodyJson): B
 
@@ -238,11 +255,11 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
         this._restart()
     }
 
-    protected _assertBodyJsonValid(jsons: SimulationJson['bodies']): void {
+    protected _assertBodyJsonValid(bodies: SimulationJson['bodies']): void {
 
         const usedIds: number[] = []
 
-        for (const { id } of jsons) {
+        for (const { id } of bodies) {
 
             if (isNaN(id) || !isFinite(id) || id < 0)
                 throw new Error(`State corrupt: "${id}" is not a valid id.`)
@@ -327,12 +344,12 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
     }
 }
 
-/*** Exports ***/
+//// Exports ////
 
 export {
     Simulation,
     SimulationJson,
     SimulationSettings,
-    BodyJson,
+    PhysicsSettings,
     BodyData
 }

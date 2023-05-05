@@ -2,7 +2,7 @@ import { V2, sqrt, V2Json } from '@benzed/math'
 
 import { DEFAULT_PHYSICS } from '../constants'
 
-/*** Main ***/
+//// Main ////
 
 function orbitalVelocity(
     child: { pos: V2Json } | V2Json,
@@ -26,7 +26,7 @@ function orbitalVelocity(
 
 }
 
-/*** Exports ***/
+//// Exports ////
 
 export default orbitalVelocity
 

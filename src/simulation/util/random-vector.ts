@@ -1,6 +1,6 @@
 import { random, sqrt, cos, sin, PI, V2 } from '@benzed/math'
 
-/*** Main ***/
+//// Main ////
 
 function randomVector(radius: number) {
 
@@ -11,7 +11,7 @@ function randomVector(radius: number) {
     return new V2(rRadius * cos(angle), rRadius * sin(angle))
 }
 
-/*** Exports ***/
+//// Exports ////
 
 export default randomVector
 
