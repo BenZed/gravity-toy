@@ -3,7 +3,6 @@ import { V2 } from '@benzed/math'
 //// Main ////
 
 function closestPointOnLine(lineStart: V2, lineEnd: V2, point: V2): V2 {
-
     const a = lineEnd.y - lineStart.y
     const b = lineStart.x - lineEnd.x
 
@@ -20,13 +19,10 @@ function closestPointOnLine(lineStart: V2, lineEnd: V2, point: V2): V2 {
     }
 
     return closest
-
 }
 
 //// Exports ////
 
 export default closestPointOnLine
 
-export {
-    closestPointOnLine
-}
+export { closestPointOnLine }

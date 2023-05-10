@@ -1,14 +1,13 @@
-
 import { isFinite, isNaN } from '@benzed/is'
 import { max, V2 } from '@benzed/math'
 import { EventEmitter } from '@benzed/util'
 
 import { DEFAULT_PHYSICS } from './constants'
+import { BodyData, BodyDataWithId } from './body'
 
 //// Types ////
 
 interface PhysicsSettings {
-
     /**
      * Gravitational Constant. Higher values, faster bodies.
      */
@@ -21,34 +20,32 @@ interface PhysicsSettings {
 
     /**
      * As a lossy optimization, bodies below a certain mass threshold can be considered
-     * pseudo bodies and excluded from the primary integration loop. This speeds 
+     * pseudo bodies and excluded from the primary integration loop. This speeds
      * up the simulation at a cost of accuracy.
      */
-    readonly realMassThreshold: number,
+    readonly realMassThreshold: number
 
     /**
      * There must be at least this many real bodies before bodies under the aforementioned
      * mass threshold are considered pseudo. Infinity means disabled.
      **/
     readonly realBodiesMin: number
-
 }
 
-interface SimulationJson extends PhysicsSettings {
-    readonly bodies: readonly BodyJson[]
+interface SimulationData extends PhysicsSettings {
+    readonly bodies: readonly BodyDataWithId[]
 }
 
-interface SimulationSettings extends SimulationJson {
+interface SimulationSettings extends SimulationData {
     readonly maxListeners: number
 }
 
 interface SimulationEvents {
-
     [key: string]: any[]
     /**
      * Emitted for each iteration on the simulation.
      */
-    'tick': [SimulationJson['bodies']],
+    tick: [SimulationData['bodies']]
 
     /**
      * Emitted when there is an error during the simulation.
@@ -57,15 +54,15 @@ interface SimulationEvents {
     'tick-error': [Error]
 }
 
-type BodyData = Partial<Omit<BodyJson, 'id'>>
-
 //// Main ////
 
 /**
  * Simulation base class. Responsible for body CRUD, iteration, serialization.
  */
-abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEvents> implements SimulationJson {
-
+abstract class Simulation<B extends BodyDataWithId>
+    extends EventEmitter<SimulationEvents>
+    implements SimulationData
+{
     // State
 
     protected readonly _bodies: Map<number, B> = new Map()
@@ -74,19 +71,24 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
         return [...this]
     }
 
-    public readonly g: SimulationJson['g']
-    public readonly physicsSteps: SimulationJson['physicsSteps']
-    public readonly realMassThreshold: SimulationJson['realMassThreshold']
-    public readonly realBodiesMin: SimulationJson['realBodiesMin']
+    public readonly g: SimulationData['g']
+    public readonly physicsSteps: SimulationData['physicsSteps']
+    public readonly realMassThreshold: SimulationData['realMassThreshold']
+    public readonly realBodiesMin: SimulationData['realBodiesMin']
 
     private _bodyId = 0
 
     // Constructor
 
-    public constructor (settings?: Partial<SimulationSettings>) {
-
-        const { bodies, g, physicsSteps, realMassThreshold, realBodiesMin, maxListeners } =
-            { ...DEFAULT_PHYSICS, ...settings }
+    public constructor(settings?: Partial<SimulationSettings>) {
+        const {
+            bodies,
+            g,
+            physicsSteps,
+            realMassThreshold,
+            realBodiesMin,
+            maxListeners
+        } = { ...DEFAULT_PHYSICS, ...settings }
 
         super(maxListeners)
 
@@ -135,30 +137,29 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
     /**
      * Runs the simulation until a specified condition
      */
-    public runUntil(condition: (bodies: SimulationJson['bodies']) => boolean): Promise<void> {
+    public runUntil(
+        condition: (bodies: SimulationData['bodies']) => boolean
+    ): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-
-            const checkCondition = (input: Error | SimulationJson['bodies']) => {
-
+            const checkCondition = (
+                input: Error | SimulationData['bodies']
+            ) => {
                 let isError = 'message' in input && 'name' in input
                 if (!this.isRunning && !isError) {
                     input = new Error('Simulation has been stopped.')
                     isError = true
                 }
 
-                if (!isError && !condition(input as SimulationJson['bodies']))
+                if (!isError && !condition(input as SimulationData['bodies']))
                     return
 
                 this._removeListener('tick', checkCondition)
                 this._removeListener('tick-error', checkCondition)
 
-                if (isError)
-                    reject(input)
-                else
-                    resolve()
+                if (isError) reject(input)
+                else resolve()
 
                 this.stop()
-
             }
 
             this._addListener('tick', checkCondition, { internal: true })
@@ -177,25 +178,20 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
     }
 
     public addBody(data: BodyData): B {
-
         const id = this._bodyId++
 
         return this._upsertBody({ id, ...data }, true)
     }
 
     public updateBody(id: number, data: BodyData): B {
-
-        if (!this.hasBody(id))
-            throw new Error(`No body with id ${id}`)
+        if (!this.hasBody(id)) throw new Error(`No body with id ${id}`)
 
         return this._upsertBody({ id, ...data }, true)
     }
 
     public removeBody(id: number): B {
-
         const body = this.getBody(id)
-        if (!body)
-            throw new Error(`No body with id ${id}`)
+        if (!body) throw new Error(`No body with id ${id}`)
 
         this._deleteBody(id, true)
 
@@ -213,33 +209,31 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
     // Iteration
 
     public *[Symbol.iterator]() {
-        for (const body of this._bodies.values())
-            yield body
+        for (const body of this._bodies.values()) yield body
     }
 
-    public * ids() {
+    public *ids() {
         yield* this._bodies.keys()
     }
 
     // Helper
 
     /**
-     * Should be called on every update when the simulation is running. 
+     * Should be called on every update when the simulation is running.
      * Receives the previous state of the simulation, and it should call
      * the 'emit' event with the next state of the simulation.
      */
-    protected abstract _update(bodies: SimulationJson['bodies']): void
+    protected abstract _update(bodies: SimulationData['bodies']): void
 
     /**
      * Return a body given it's state, in json.
      */
-    protected abstract _createBody(json: BodyJson): B
+    protected abstract _createBody(json: BodyDataWithId): B
 
     /**
      * Apply a given simulation state to the current simulation.
      */
-    protected _applyBodyJson(bodies: SimulationJson['bodies']): void {
-
+    protected _applyBodyJson(bodies: SimulationData['bodies']): void {
         //
         const survivorIds = bodies.map(body => this._upsertBody(body, false).id)
 
@@ -248,24 +242,22 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
 
         // remove destroyed bodies
         for (const id of [...this.ids()]) {
-            if (!survivorIds.includes(id))
-                this._deleteBody(id, false)
+            if (!survivorIds.includes(id)) this._deleteBody(id, false)
         }
 
         this._restart()
     }
 
-    protected _assertBodyJsonValid(bodies: SimulationJson['bodies']): void {
-
+    protected _assertBodyJsonValid(bodies: SimulationData['bodies']): void {
         const usedIds: number[] = []
 
         for (const { id } of bodies) {
-
             if (isNaN(id) || !isFinite(id) || id < 0)
                 throw new Error(`State corrupt: "${id}" is not a valid id.`)
-
             else if (usedIds.includes(id))
-                throw new Error(`State corrupt: "${id}" is used multiple times as an id.`)
+                throw new Error(
+                    `State corrupt: "${id}" is used multiple times as an id.`
+                )
 
             usedIds.push(id)
 
@@ -274,25 +266,19 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
         }
     }
 
-    protected _upsertBody(data: BodyData & { id: number }, restart: boolean): B {
-
+    protected _upsertBody(
+        data: BodyData & { id: number },
+        restart: boolean
+    ): B {
         let body = this._bodies.get(data.id)
 
         if (!body) {
-
-            const {
-                id,
-                pos = V2.ZERO,
-                vel = V2.ZERO,
-                mass = 1
-            } = data
+            const { id, pos = V2.ZERO, vel = V2.ZERO, mass = 1 } = data
 
             body = this._createBody({ id, pos, vel, mass })
 
             this._bodies.set(body.id, body)
-
         } else {
-
             if (data.pos !== undefined) {
                 body.pos.x = data.pos.x
                 body.pos.y = data.pos.y
@@ -303,12 +289,10 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
                 body.vel.y = data.vel.y
             }
 
-            if (data.mass !== undefined)
-                body.mass = data.mass
+            if (data.mass !== undefined) body.mass = data.mass
         }
 
-        if (restart)
-            this._restart()
+        if (restart) this._restart()
 
         return body
     }
@@ -316,8 +300,7 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
     protected _deleteBody(id: number, restart: boolean): void {
         this._bodies.delete(id)
 
-        if (restart)
-            this._restart()
+        if (restart) this._restart()
     }
 
     private _restart() {
@@ -329,9 +312,9 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
 
     // toJSON
 
-    public toJSON(): SimulationJson {
-
-        const { g, physicsSteps, realMassThreshold, realBodiesMin, bodies } = this
+    public toJSON(): SimulationData {
+        const { g, physicsSteps, realMassThreshold, realBodiesMin, bodies } =
+            this
 
         return {
             g,
@@ -348,7 +331,7 @@ abstract class Simulation<B extends BodyJson> extends EventEmitter<SimulationEve
 
 export {
     Simulation,
-    SimulationJson,
+    SimulationData,
     SimulationSettings,
     PhysicsSettings,
     BodyData

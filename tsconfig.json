@@ -1,33 +1,27 @@
 {
-    "include": [
-        "src"
-    ],
-    "exclude": [
-        "*test.ts"
-    ],
     "compilerOptions": {
+        //
+        // Build Config
+        "target": "ES5",
+        "module": "commonjs",
+        "rootDir": "./src",
+        "outDir": "./lib",
         "lib": [
-            "ESNext",
-            "dom"
+            "ESNext"
         ],
-        "types": [
-            "node",
-            "jest"
-        ],
-        "build": true,
-        "target": "es5",
-        "outDir": "lib",
-        "declaration": true,
-        // Decorators are tight
-        "experimentalDecorators": true,
-        // Search under node_modules for non-relative imports.
-        "moduleResolution": "node",
-        // Enable strictest settings like strictNullChecks & noImplicitAny.
-        "strict": true,
-        "skipLibCheck": true,
-        "allowJs": false,
-        // Import non-ES modules as default imports.
+        //
+        // Type Config
+        "types": ["node"],
         "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "declaration": true,
+        //
+        // Language Config
+        "strict": true,
+        // I think the following should be true by default when "strict": true
+        "useUnknownInCatchVariables": true,
+        "noImplicitOverride": true,
         "downlevelIteration": true,
         "jsx": "react"
     }

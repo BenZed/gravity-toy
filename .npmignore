@@ -1,9 +1,3 @@
-src
-test
-example
-config
-.babelrc
-.eslintrc.yml
-.eslintignore
-*temp.js
-old
+*
+!lib/simulation/**/*
+*.test*

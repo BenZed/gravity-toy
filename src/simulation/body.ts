@@ -6,43 +6,37 @@ import { bySpeed } from './util/timeline/by-speed'
 
 //// Types ////
 
-interface BodyJson {
-
-    readonly id: number
-
+interface BodyData {
     readonly pos: V2Json
     readonly vel: V2Json
     mass: number
+}
 
+interface BodyDataWithId extends BodyData {
+    readonly id: number
 }
 
 //// Helper Classes ////
 
 class BodyEdge {
-
     public value = 0
 
-    constructor (
+    constructor(
         public readonly body: Body,
         public readonly axis: 'x' | 'y',
-        public readonly isMin: boolean,
-
+        public readonly isMin: boolean
     ) {
-        this.value = isMin
-            ? -Infinity
-            : Infinity
+        this.value = isMin ? -Infinity : Infinity
     }
 
     public valueOf() {
         return this.value
     }
-
 }
 
 //// Main ////
 
-class Body implements BodyJson, Iterable<BodyEdge> {
-
+class Body implements BodyDataWithId, Iterable<BodyEdge> {
     // BodyJSON implementation
 
     readonly id: number
@@ -62,13 +56,11 @@ class Body implements BodyJson, Iterable<BodyEdge> {
     public readonly top: BodyEdge
     public readonly bottom: BodyEdge
 
-
     public get radius() {
         return radiusFromMass(this)
     }
 
-    public constructor (input: BodyJson) {
-
+    public constructor(input: BodyDataWithId) {
         this.id = input.id
         this.pos = V2.from(input.pos)
         this.vel = V2.from(input.vel)
@@ -83,18 +75,14 @@ class Body implements BodyJson, Iterable<BodyEdge> {
     //// Interface ////
 
     public isOverlapping(other: Body) {
+        if (this.left > other.right || other.left > this.right) return false
 
-        if (this.left > other.right || other.left > this.right)
-            return false
-
-        if (this.top > other.bottom || other.top > this.bottom)
-            return false
+        if (this.top > other.bottom || other.top > this.bottom) return false
 
         return true
     }
 
     public isColliding(other: Body) {
-
         const [fast, slow] = [this, other].sort(bySpeed)
 
         const relativeVel = fast.vel.copy().sub(slow.vel)
@@ -112,23 +100,19 @@ class Body implements BodyJson, Iterable<BodyEdge> {
                 slow.pos
             )
             distance = closest.copy().sub(slow.pos).magnitude
-        } else
-            distance = fast.pos.copy().sub(slow.pos).magnitude
+        } else distance = fast.pos.copy().sub(slow.pos).magnitude
 
         return distance < fast.radius + slow.radius
     }
 
     public updateBounds() {
-
         for (const edge of this) {
-
             const vel = this.vel[edge.axis]
             const pos = this.pos[edge.axis]
 
             const radius = edge.isMin ? -this.radius : this.radius
-            const shift = (edge.isMin && vel > 0 || !edge.isMin && vel < 0)
-                ? -vel
-                : 0
+            const shift =
+                (edge.isMin && vel > 0) || (!edge.isMin && vel < 0) ? -vel : 0
 
             edge.value = pos + radius + shift
         }
@@ -143,7 +127,7 @@ class Body implements BodyJson, Iterable<BodyEdge> {
         return this.mass
     }
 
-    public toJSON(): BodyJson {
+    public toJSON(): BodyDataWithId {
         return {
             id: this.id,
             pos: this.pos.toJSON(),
@@ -160,16 +144,8 @@ class Body implements BodyJson, Iterable<BodyEdge> {
         yield this.top
         yield this.bottom
     }
-
-
 }
 
 //// Exports ////
 
-export default Body
-
-export {
-    BodyJson,
-    Body,
-    BodyEdge,
-}
+export { Body, BodyData, BodyDataWithId, BodyEdge }

@@ -1,7 +1,6 @@
-
 import { DEFAULT_MAX_MB } from './constants'
 
-import { BodyJson, SimulationJson, SimulationSettings } from './simulation'
+import { BodyJson, SimulationData, SimulationSettings } from './simulation'
 
 import { SimulationFork } from './simulation-fork'
 import { MultiTimeline, Tick } from './util'
@@ -17,10 +16,14 @@ interface SimulationTimelineSettings extends SimulationSettings {
 /**
  * Caches data created from a forked simulation into a timeline
  */
-abstract class SimulationTimeline<B extends BodyJson> extends SimulationFork<B> implements SimulationTimelineSettings {
-
+abstract class SimulationTimeline<B extends BodyJson>
+    extends SimulationFork<B>
+    implements SimulationTimelineSettings
+{
     // Cache
-    private readonly _timeline = new MultiTimeline<BodyJson>(({ mass }) => [{ mass }])
+    private readonly _timeline = new MultiTimeline<BodyJson>(({ mass }) => [
+        { mass }
+    ])
 
     public readonly maxCacheMemory: number
 
@@ -29,7 +32,7 @@ abstract class SimulationTimeline<B extends BodyJson> extends SimulationFork<B> 
         return this._usedCacheMemory
     }
 
-    // State 
+    // State
     public get firstTick() {
         return this._timeline.firstTick
     }
@@ -56,12 +59,8 @@ abstract class SimulationTimeline<B extends BodyJson> extends SimulationFork<B> 
 
     // Construction
 
-    public constructor (settings?: Partial<SimulationTimelineSettings>) {
-
-        const {
-            maxCacheMemory = DEFAULT_MAX_MB,
-            ...rest
-        } = settings ?? {}
+    public constructor(settings?: Partial<SimulationTimelineSettings>) {
+        const { maxCacheMemory = DEFAULT_MAX_MB, ...rest } = settings ?? {}
 
         super(rest)
 
@@ -80,13 +79,11 @@ abstract class SimulationTimeline<B extends BodyJson> extends SimulationFork<B> 
 
     // Implementation
 
-    protected _update(state: SimulationJson['bodies']) {
-
-        const tooMucMemoryBeingUsed = false // TODO 
+    protected _update(state: SimulationData['bodies']) {
+        const tooMucMemoryBeingUsed = false // TODO
         if (tooMucMemoryBeingUsed) {
             this.emit('tick-error', new Error('Cache is full.'))
             this.stop()
-
         } else {
             this._timeline.pushState(state)
             this.emit('tick', state)
@@ -98,7 +95,4 @@ abstract class SimulationTimeline<B extends BodyJson> extends SimulationFork<B> 
 
 export default SimulationTimeline
 
-export {
-    SimulationTimeline,
-    SimulationTimelineSettings
-}
+export { SimulationTimeline, SimulationTimelineSettings }

@@ -3,7 +3,6 @@ import type { PhysicsSettings } from './simulation'
 //// Simulation Constants ////
 
 export const DEFAULT_PHYSICS: PhysicsSettings = {
-
     g: 100,
 
     physicsSteps: 4,
@@ -11,7 +10,6 @@ export const DEFAULT_PHYSICS: PhysicsSettings = {
     realMassThreshold: 10,
 
     realBodiesMin: Infinity
-
 }
 
 export const DEFAULT_MAX_MB = 256 // MB
@@ -24,7 +22,7 @@ export const ONE_MB = 1024 ** 2 // Bytes
 export const NUMBER_SIZE = 8
 
 /**
- * A body's link is it's 
+ * A body's link is it's
  */
 export const NO_LINK = -1
 
@@ -56,4 +54,3 @@ export const RELATIVE_VELOCITY_EPSILON = 1
  * Number of ticks to represent one second.
  */
 export const TICK_DURATION = 1 / 60
-

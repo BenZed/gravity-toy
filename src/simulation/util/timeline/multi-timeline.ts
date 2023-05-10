@@ -3,9 +3,9 @@ import { KeyedStatePayload, Tick, Timeline, _TimelineLike } from './timeline'
 
 //// MultiTimeline ////
 
-abstract class _MultiTimeline<T extends { id: number | string }>
-    extends _TimelineLike<readonly T[]> {
-
+abstract class _MultiTimeline<
+    T extends { id: number | string }
+> extends _TimelineLike<readonly T[]> {
     public get firstTick(): Tick {
         return this._getFirstCacheProperty('firstTick')
     }
@@ -23,15 +23,14 @@ abstract class _MultiTimeline<T extends { id: number | string }>
     private _getFirstCacheProperty(
         key: 'firstTick' | 'tick' | 'lastTick' | 'numStates'
     ): Tick {
-        for (const cache of this._cache.values())
-            // return the key value of the first timeline in the cache 
-            // as they'll all be synced anyway
-            return cache[key]
+        // return the key value of the first timeline in the cache
+        // as they'll all be synced anyway
+        for (const cache of this._cache.values()) return cache[key]
 
         return 0 // no timelines in the cache
     }
 
-    // Cache 
+    // Cache
 
     private readonly _cache: Map<T['id'], Timeline<Omit<T, 'id'>>> = new Map()
 
@@ -42,11 +41,12 @@ abstract class _MultiTimeline<T extends { id: number | string }>
     }
 
     public pushState(states: readonly T[]): void {
-
         for (const state of states) {
             let timeline = this._cache.get(state.id)
             if (!timeline) {
-                timeline = new Timeline<Omit<T, 'id'>>(this._toKeyedStatePayload)
+                timeline = new Timeline<Omit<T, 'id'>>(
+                    this._toKeyedStatePayload
+                )
                 this._cache.set(state.id, timeline)
             }
 
@@ -68,44 +68,47 @@ abstract class _MultiTimeline<T extends { id: number | string }>
 
         for (const [id, timeline] of this._cache) {
             const state = timeline.getState(tick)
-            if (state)
-                states.push({ ...state, id } as T)
+            if (state) states.push({ ...state, id } as T)
         }
 
         return states
     }
 
-    public clearStatesBefore(tick: Tick): void { /* Not Yet Implementeed */ }
+    public clearStatesBefore(tick: Tick): void {
+        /* Not Yet Implementeed */
+    }
 
-    public clearStatesFrom(tick: Tick): void {/* Not Yet Implementeed */ }
+    public clearStatesFrom(tick: Tick): void {
+        /* Not Yet Implementeed */
+    }
 
-    // 
+    //
 
-    protected abstract _toKeyedStatePayload?: (input: Omit<T, 'id'>) => KeyedStatePayload<T>
+    protected abstract _toKeyedStatePayload?: (
+        input: Omit<T, 'id'>
+    ) => KeyedStatePayload<T>
 
     public [$$copy](): this {
         throw new Error('Not yet implemented.')
     }
-
 }
 
 //// MultiTimeline ////
 
-class MultiTimeline<T extends { id: string | number }> extends _MultiTimeline<T> {
-
-    public constructor (
-        protected _toKeyedStatePayload?: (state: Omit<T, 'id'>) => KeyedStatePayload<T>
+class MultiTimeline<
+    T extends { id: string | number }
+> extends _MultiTimeline<T> {
+    public constructor(
+        protected _toKeyedStatePayload?: (
+            state: Omit<T, 'id'>
+        ) => KeyedStatePayload<T>
     ) {
         super()
     }
-
 }
 
 //// Exports ////
 
 export default _MultiTimeline
 
-export {
-    _MultiTimeline,
-    MultiTimeline
-}
+export { _MultiTimeline, MultiTimeline }

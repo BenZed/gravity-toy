@@ -1,33 +1,32 @@
 import { V2, V2Json } from '@benzed/math'
-import { BodyJson } from './simulation'
-import { SimulationTimelineSettings, SimulationTimeline } from './simulation-timeline'
+
+import { BodyDataWithId } from './body'
+import {
+    SimulationTimelineSettings,
+    SimulationTimeline
+} from './simulation-timeline'
 
 //// Types ////
 
-interface GravityToySettings extends SimulationTimelineSettings {
-
-}
+type GravityToySettings = SimulationTimelineSettings
 
 //// Help ////
 
-class Body implements BodyJson {
-
-    public constructor (
+class Body implements BodyDataWithId {
+    public constructor(
         public id = 0,
         public pos: V2Json = V2.ZERO,
         public vel: V2Json = V2.ZERO,
         public mass = 1
-    ) { }
+    ) {}
 }
 
 class GravityToy extends SimulationTimeline<Body> {
-
-    public constructor (settings: GravityToySettings) {
+    public constructor(settings: GravityToySettings) {
         super(settings)
     }
 
-
-    protected _createBody(json: BodyJson): Body {
+    protected _createBody(json: BodyDataWithId): Body {
         return new Body(json.id, json.pos, json.vel, json.mass)
     }
 }
@@ -36,9 +35,4 @@ class GravityToy extends SimulationTimeline<Body> {
 
 export default GravityToy
 
-export {
-    GravityToy,
-    GravityToySettings,
-
-    Body
-}
+export { GravityToy, GravityToySettings, Body }

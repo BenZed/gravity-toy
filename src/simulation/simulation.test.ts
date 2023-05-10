@@ -29,7 +29,6 @@
 //         expect(() => GravityToy()).toThrow('cannot be invoked without \'new\'')
 //     })
 
-
 //     describe('constructor()', () => {
 //         describe('properties argument', () => {
 

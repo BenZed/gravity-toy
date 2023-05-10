@@ -1,20 +1,18 @@
 html {
-
-  background-color: black;
-  color: white;
-  font: Helvetica;
-
+    background-color: black;
+    color: white;
+    font: Helvetica;
 }
 
 body {
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
 }
 
 canvas {
-  width: 100vw;
-  height: 100vh;
-  box-sizing: border-box;
+    width: 100vw;
+    height: 100vh;
+    box-sizing: border-box;
 }

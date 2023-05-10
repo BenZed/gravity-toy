@@ -1,17 +1,15 @@
+import { Body } from './body'
+import { SimulationPhysical } from './simulation-physical'
 
-// import BodyPhysical from './body-physical'
-// import { SimulationPhysical } from './simulation-physical'
+import { V2 } from '@benzed/math'
 
-// import { V2 } from '@benzed/math'
+import { massFromRadius } from './util'
 
-// import { massFromRadius } from './util'
+/**
+ * Similar api as simulation, doesnt cache data or use a child process
+ */
 
-// /**
-//  * Similar api as simulation, doesnt cache data or use a child process
-//  */
-
-// //// Tests ////
-it.todo('fuckoff')
+//// Tests ////
 
 // describe('SimulationPhysical', function () {
 
@@ -104,7 +102,6 @@ it.todo('fuckoff')
 //             await sim.runForOneTick()
 
 //             await sim.runForNumTicks(5)
-
 
 //             // If psuedo bodies were attracted to each other, they would have moved
 //             expect(p1.pos.x).toEqual(0)
