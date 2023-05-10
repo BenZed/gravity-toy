@@ -4,7 +4,7 @@ import { DEFAULT_MAX_MB } from './constants'
 import { SimulationData, SimulationSettings } from './simulation'
 
 import { SimulationFork } from './simulation-fork'
-import { MultiTimeline, Tick } from './util'
+import { Tick, MultiTimeline } from './util'
 
 //// Types ////
 
@@ -21,11 +21,6 @@ abstract class SimulationTimeline<B extends BodyDataWithId>
     extends SimulationFork<B>
     implements SimulationTimelineSettings
 {
-    // Cache
-    private readonly _timeline = new MultiTimeline<BodyDataWithId>(
-        ({ mass }) => [{ mass }]
-    )
-
     readonly maxCacheMemory: number
 
     private readonly _usedCacheMemory = 0

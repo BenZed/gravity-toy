@@ -1,8 +1,7 @@
 import { V2, V2Json } from '@benzed/math'
 
-import { closestPointOnLine, radiusFromMass } from './util'
+import { closestPointOnLine, radiusFromMass, bySpeed } from './util'
 import { RELATIVE_VELOCITY_EPSILON } from './constants'
-import { bySpeed } from './util/by-speed'
 
 //// Types ////
 
