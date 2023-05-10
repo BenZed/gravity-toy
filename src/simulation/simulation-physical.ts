@@ -4,15 +4,11 @@ import { TICK_DURATION } from './constants'
 
 import { Body, BodyDataWithId, BodyEdge } from './body'
 import { Simulation, SimulationData } from './simulation'
+import { byMass } from './util'
 
-/* eslint-disable @typescript-eslint/no-var-requires */
+//// Types ////
 
 type OverlapId = `${number}:${number}`
-
-// TODO Move Me
-
-const byMass = (a: Body, b: Body) =>
-    a.mass > b.mass ? -1 : a.mass < b.mass ? 1 : 0
 
 //// Main ////
 
