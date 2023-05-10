@@ -1,47 +1,106 @@
-// const { WebpackConfig } = require('@benzed/dev')
+/* eslint-env node */
+/* eslint-disable @typescript-eslint/no-var-requires */
+
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+const MiniCssExtractPlugin = require('mini-css-extract-plugin')
+const { CleanWebpackPlugin } = require('clean-webpack-plugin')
+const { EnvironmentPlugin } = require('webpack')
 const path = require('path')
-
-/******************************************************************************/
-// Production
-/******************************************************************************/
-// const webpackConfig = new WebpackConfig({
-//   output: path.resolve(__dirname, '../example')
-// })
-
-/******************************************************************************/
-// DEV
-/******************************************************************************/
-
-// TODO Remove this once @benzed packages are all done
 const fs = require('fs')
 
-const BENZED = path.resolve(__dirname, '../benzed-mono')
-const BENZED_NM = path.resolve(BENZED, 'node_modules')
-const BENZED_BNM = path.resolve(BENZED, 'bootstrap', 'node_modules')
-const BENZED_PKG = path.resolve(BENZED, 'packages')
+//// Constants ////
 
-const names = fs.readdirSync(BENZED_PKG)
+const WEBPACK_DEV_SERVER_PORT = 3500
 
-// Create Webpack Config From Dev
-const { WebpackConfig } = require(path.join(BENZED_PKG, 'dev'))
-const webpackConfig = new WebpackConfig({
-  output: path.resolve(__dirname, '../example'),
-  html: path.resolve(__dirname, 'src', 'webpack', 'index.html')
-})
+const ENV = {
+    NODE_ENV: process.env.NODE_ENV || 'development',
+    APP_PORT: 3000
+}
 
-// Resolve BenZed node_modules
-webpackConfig.resolve.modules = [ BENZED_BNM, BENZED_NM, 'node_modules' ]
-webpackConfig.resolve.alias = {}
+const LIB = path.resolve(__dirname, 'lib')
 
-webpackConfig.devServer = webpackConfig.devServer || {}
-webpackConfig.devServer.port = 7000
+if (!fs.existsSync(LIB)) fs.mkdirSync(LIB)
 
-// Alias BenZed Packages
-for (const name of names)
-  webpackConfig.resolve.alias[`@benzed/${name}`] = path.join(BENZED_PKG, name)
+const OUTPUT = path.resolve(LIB, 'public')
 
-/******************************************************************************/
-// Exports
-/******************************************************************************/
+/// Config ////
 
-module.exports = webpackConfig
+module.exports = {
+    mode: ENV.NODE_ENV,
+
+    entry: './src/client/index.tsx',
+
+    output: {
+        filename: 'bz-[contenthash].js',
+        path: OUTPUT,
+        publicPath: '/'
+    },
+
+    devServer: {
+        compress: true,
+        port: WEBPACK_DEV_SERVER_PORT,
+        historyApiFallback: true,
+        host: '0.0.0.0',
+        devMiddleware: {
+            writeToDisk: true
+        }
+    },
+    devtool: 'inline-source-map',
+
+    module: {
+        rules: [
+            {
+                test: /\.worker\.ts$/,
+                loader: 'worker-loader'
+            },
+            {
+                test: /\.tsx?$/i,
+                use: {
+                    loader: 'ts-loader'
+                },
+                exclude: /node_modules/
+            },
+            {
+                test: /\.css$/,
+                use: [MiniCssExtractPlugin.loader, 'css-loader']
+            },
+            {
+                test: /\.(svg|png|jpe?g|gif)$/,
+                use: {
+                    loader: 'file-loader',
+                    options: {
+                        name: '[name]@[contenthash].[ext]'
+                    }
+                }
+            }
+        ]
+    },
+
+    optimization: {
+        splitChunks: {
+            chunks: 'all'
+        }
+    },
+
+    resolve: {
+        extensions: ['.tsx', '.ts', '.js'],
+        fallback: {
+            util: false,
+            path: false,
+            child_process: false
+        }
+    },
+
+    plugins: [
+        new CleanWebpackPlugin({
+            dangerouslyAllowCleanPatternsOutsideProject: true
+        }),
+        new MiniCssExtractPlugin(),
+        new HtmlWebpackPlugin({
+            title: 'Gravity Toy',
+            template: './src/client/assets/index.html',
+            inject: 'head'
+        }),
+        new EnvironmentPlugin(ENV)
+    ]
+}

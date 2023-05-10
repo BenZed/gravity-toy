@@ -1,0 +1,28 @@
+{
+    "compilerOptions": {
+        //
+        // Build Config
+        "target": "ES5",
+        "module": "commonjs",
+        "rootDir": "./src",
+        "outDir": "./lib",
+        "lib": [
+            "ESNext"
+        ],
+        //
+        // Type Config
+        "types": ["node"],
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "declaration": true,
+        //
+        // Language Config
+        "strict": true,
+        // I think the following should be true by default when "strict": true
+        "useUnknownInCatchVariables": true,
+        "noImplicitOverride": true,
+        "downlevelIteration": true,
+        "jsx": "react"
+    }
+}
