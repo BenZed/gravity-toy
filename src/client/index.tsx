@@ -10,7 +10,12 @@ const dependencies = [import('react'), import('react-dom/client')] as const
 //// Main ////
 
 Promise.all(dependencies).then(
-    ([{ default: React, StrictMode }, { createRoot }]) => {
+    ([
+        // react
+        { default: React, StrictMode },
+        // react-dom
+        { createRoot }
+    ]) => {
         const mainTag = document.getElementById('gravity-toy')
         if (!mainTag) throw new Error('No <main id="gravity-toy"/> tag.')
 
