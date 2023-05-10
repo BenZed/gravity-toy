@@ -1,6 +1,7 @@
+import { BodyDataWithId } from './body'
 import { DEFAULT_MAX_MB } from './constants'
 
-import { BodyJson, SimulationData, SimulationSettings } from './simulation'
+import { SimulationData, SimulationSettings } from './simulation'
 
 import { SimulationFork } from './simulation-fork'
 import { MultiTimeline, Tick } from './util'
@@ -16,50 +17,50 @@ interface SimulationTimelineSettings extends SimulationSettings {
 /**
  * Caches data created from a forked simulation into a timeline
  */
-abstract class SimulationTimeline<B extends BodyJson>
+abstract class SimulationTimeline<B extends BodyDataWithId>
     extends SimulationFork<B>
     implements SimulationTimelineSettings
 {
     // Cache
-    private readonly _timeline = new MultiTimeline<BodyJson>(({ mass }) => [
-        { mass }
-    ])
+    private readonly _timeline = new MultiTimeline<BodyDataWithId>(
+        ({ mass }) => [{ mass }]
+    )
 
-    public readonly maxCacheMemory: number
+    readonly maxCacheMemory: number
 
     private readonly _usedCacheMemory = 0
-    public get usedCacheMemory() {
+    get usedCacheMemory() {
         return this._usedCacheMemory
     }
 
     // State
-    public get firstTick() {
+    get firstTick() {
         return this._timeline.firstTick
     }
 
-    public get tick(): Tick {
+    get tick(): Tick {
         return this._timeline.tick
     }
-    public set tick(tick: Tick) {
+    set tick(tick: Tick) {
         this.applyState(tick)
     }
 
-    public get lastTick() {
+    get lastTick() {
         return this._timeline.lastTick
     }
 
-    public applyState(tick: Tick) {
+    applyState(tick: Tick) {
         this._timeline.applyState(tick)
         this._applyBodyJson(this._timeline.state)
     }
 
-    public getState(tick: Tick): BodyJson[] {
+    getState(tick: Tick): BodyDataWithId[] {
         return this._timeline.getState(tick)
     }
 
     // Construction
 
-    public constructor(settings?: Partial<SimulationTimelineSettings>) {
+    constructor(settings?: Partial<SimulationTimelineSettings>) {
         const { maxCacheMemory = DEFAULT_MAX_MB, ...rest } = settings ?? {}
 
         super(rest)
@@ -72,7 +73,7 @@ abstract class SimulationTimeline<B extends BodyJson>
     /**
      * Runs the simulation from a given tick in the cache.
      */
-    public runAtTick(tick: Tick) {
+    runAtTick(tick: Tick) {
         this.applyState(tick)
         this.run()
     }

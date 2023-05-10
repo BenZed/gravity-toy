@@ -13,7 +13,7 @@ type GravityToySettings = SimulationTimelineSettings
 //// Help ////
 
 class Body implements BodyDataWithId {
-    public constructor(
+    constructor(
         public id = 0,
         public pos: V2Json = V2.ZERO,
         public vel: V2Json = V2.ZERO,
@@ -22,7 +22,7 @@ class Body implements BodyDataWithId {
 }
 
 class GravityToy extends SimulationTimeline<Body> {
-    public constructor(settings: GravityToySettings) {
+    constructor(settings: GravityToySettings) {
         super(settings)
     }
 

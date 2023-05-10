@@ -1,5 +1,5 @@
 import { v2 } from '@benzed/math'
-import type { BodyDataWithId } from '../../body'
+import type { BodyDataWithId } from '../body'
 
 //// Exports ////
 

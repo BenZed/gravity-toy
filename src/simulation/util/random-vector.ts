@@ -12,6 +12,4 @@ function randomVector(radius: number) {
 
 //// Exports ////
 
-export default randomVector
-
 export { randomVector }

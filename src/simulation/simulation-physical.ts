@@ -33,7 +33,7 @@ class SimulationPhysical extends Simulation<Body> {
 
     // Construct
 
-    public constructor(settings?: Partial<SimulationData>) {
+    constructor(settings?: Partial<SimulationData>) {
         super(settings)
         this._update = this._update.bind(this)
     }
@@ -41,11 +41,11 @@ class SimulationPhysical extends Simulation<Body> {
     // Main Interface
 
     private _isRunning = false
-    public get isRunning(): boolean {
+    get isRunning(): boolean {
         return this._isRunning
     }
 
-    public run(): void {
+    run(): void {
         this._isRunning = true
 
         this._livingBodies.length = 0
@@ -54,7 +54,7 @@ class SimulationPhysical extends Simulation<Body> {
         void this._update()
     }
 
-    public stop(): void {
+    stop(): void {
         this._isRunning = false
     }
 

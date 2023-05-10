@@ -1,24 +1,15 @@
 import { Sortable, SortedArray } from '@benzed/array'
-import {
-    $$copy,
-    $$equals,
-    copy,
-    CopyComparable,
-    equals
-} from '@benzed/immutable'
+import { $$copy, $$equals, copy, equals } from '@benzed/immutable'
 import { max } from '@benzed/math'
 
 //// Types ////
 
 type Tick = number
 
-/**
- * State
- */
 type State<T> = Partial<T>
 
 /**
- * KeyedState
+ * State at a given Tick
  */
 type KeyedState<T> = { valueOf(): Tick; tick: Tick; state: State<T> }
 
@@ -100,68 +91,66 @@ function _ensureSortedArrayMethodsHack<T extends Sortable>(
 
 //// _TimelineLike ////
 
-abstract class _TimelineLike<T extends object>
-    implements CopyComparable<_TimelineLike<T>>, Iterable<T>
-{
+abstract class _TimelineLike<T extends object> {
     // Iterable
 
-    public *ticks(): Generator<number> {
+    *ticks(): Generator<number> {
         const { firstTick, lastTick } = this
 
         if (this.stateCount > 0)
             for (let i = firstTick; i <= lastTick; i++) yield i
     }
 
-    public *states(): Generator<T> {
+    *states(): Generator<T> {
         for (const tick of this.ticks()) yield this.getState(tick) as T
     }
 
-    public *[Symbol.iterator](): Generator<T> {
+    *[Symbol.iterator](): Generator<T> {
         yield* this.states()
     }
 
     // Tick
 
-    public abstract get firstTick(): Tick
-    public abstract get tick(): Tick
-    public abstract get lastTick(): Tick
+    abstract get firstTick(): Tick
+    abstract get tick(): Tick
+    abstract get lastTick(): Tick
 
-    public valueOf = valueOf
+    valueOf = valueOf
 
     // State
 
-    public abstract get state(): T
-    public abstract get stateCount(): number
-    public abstract get rawStateCount(): number
-    public abstract get keyStateCounts(): number[]
+    abstract get state(): T
+    abstract get stateCount(): number
+    abstract get rawStateCount(): number
+    abstract get keyStateCounts(): number[]
 
-    public abstract pushState(state: Readonly<T>): void
-    public abstract hasState(tick: Tick): boolean
-    public abstract getState(tick: Tick): T | null
+    abstract pushState(state: Readonly<T>): void
+    abstract hasState(tick: Tick): boolean
+    abstract getState(tick: Tick): T | null
 
-    public abstract applyState(tick: Tick): T
-    public applyLastState(): T {
+    abstract applyState(tick: Tick): T
+    applyLastState(): T {
         return this.applyState(this.lastTick)
     }
-    public applyFirstState(): T {
+    applyFirstState(): T {
         return this.applyState(this.firstTick)
     }
 
-    public abstract clearStatesFrom(tick: Tick): void
-    public abstract clearStatesBefore(tick: Tick): void
-    public clearStates(): void {
+    abstract clearStatesFrom(tick: Tick): void
+    abstract clearStatesBefore(tick: Tick): void
+    clearStates(): void {
         this.clearStatesFrom(this.firstTick)
     }
-    public setState(tick: Tick, state: Readonly<T>): void {
+    setState(tick: Tick, state: Readonly<T>): void {
         this.clearStatesFrom(tick)
         this.pushState(state)
     }
 
     // CopyComparable
 
-    public abstract [$$copy](): this
+    abstract [$$copy](): this
 
-    public [$$equals](other: unknown): other is this {
+    [$$equals](other: unknown): other is this {
         const ThisTimeline = this.constructor as new () => this
 
         return (
@@ -180,41 +169,41 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
     // Tick
 
     protected _firstTick = 0
-    public get firstTick(): Tick {
+    get firstTick(): Tick {
         return this._firstTick
     }
 
     protected _tick = 0
-    public get tick(): Tick {
+    get tick(): Tick {
         return this._tick
     }
 
     protected _lastTick = 0
-    public get lastTick(): Tick {
+    get lastTick(): Tick {
         return this._lastTick
     }
 
     // State
 
-    public get stateCount(): Tick {
+    get stateCount(): Tick {
         return this._state ? this._lastTick - this._firstTick + 1 : 0
     }
 
-    public get rawStateCount(): number {
+    get rawStateCount(): number {
         return this._cache.rawStates.length
     }
 
-    public get keyStateCounts(): number[] {
+    get keyStateCounts(): number[] {
         return this._cache.keyedStates.map(keyState => keyState.length)
     }
 
     private _state: T | null = null
-    public get state(): Readonly<T> {
+    get state(): Readonly<T> {
         this._assertNotEmpty(this._state)
         return this._state
     }
 
-    public pushState(state: Readonly<T>): void {
+    pushState(state: Readonly<T>): void {
         const isEmpty = !this._state
         if (isEmpty) this._state = state
         else this._lastTick++
@@ -261,7 +250,7 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
         }
     }
 
-    public hasState(tick: Tick): boolean {
+    hasState(tick: Tick): boolean {
         return (
             tick >= this._firstTick &&
             tick <= this._lastTick &&
@@ -269,7 +258,7 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
         )
     }
 
-    public getState(tick: Tick): T | null {
+    getState(tick: Tick): T | null {
         if (!this.hasState(tick)) return null
 
         const { rawStates, keyedStates: allKeyedStates } = this._cache
@@ -298,7 +287,7 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
         return { ...rawState, ...keyedState } as T
     }
 
-    public applyState(tick: Tick): Readonly<T> {
+    applyState(tick: Tick): Readonly<T> {
         this._assertNotEmpty(this._state)
         this._assertTick(tick)
 
@@ -307,7 +296,7 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
         return this._state as T
     }
 
-    public clearStatesFrom(tick: Tick): void {
+    clearStatesFrom(tick: Tick): void {
         this._assertTick(tick)
 
         const { rawStates, keyedStates: allKeyedStates } = this._cache
@@ -327,7 +316,7 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
         if (this._lastTick === this._firstTick) this._state = null
     }
 
-    public clearStatesBefore(tick: Tick): void {
+    clearStatesBefore(tick: Tick): void {
         this._assertTick(tick)
 
         const { rawStates, keyedStates: allKeyedStates } = this._cache
@@ -352,7 +341,7 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
 
     // CopyComparable
 
-    public [$$copy](): this {
+    [$$copy](): this {
         const TimelineLike = this.constructor as new () => this
 
         const newTimeline = new TimelineLike()
@@ -394,7 +383,7 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
 //// Timeline ////
 
 class Timeline<T extends object> extends _Timeline<T> {
-    public constructor(
+    constructor(
         protected _toKeyedStatePayload?: (
             state: Readonly<T>
         ) => KeyedStatePayload<T>

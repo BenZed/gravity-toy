@@ -23,6 +23,4 @@ function closestPointOnLine(lineStart: V2, lineEnd: V2, point: V2): V2 {
 
 //// Exports ////
 
-export default closestPointOnLine
-
 export { closestPointOnLine }

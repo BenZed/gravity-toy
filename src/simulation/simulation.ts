@@ -40,8 +40,7 @@ interface SimulationSettings extends SimulationData {
     readonly maxListeners: number
 }
 
-interface SimulationEvents {
-    [key: string]: any[]
+type SimulationEvents = {
     /**
      * Emitted for each iteration on the simulation.
      */
@@ -67,20 +66,20 @@ abstract class Simulation<B extends BodyDataWithId>
 
     protected readonly _bodies: Map<number, B> = new Map()
 
-    public get bodies(): readonly B[] {
+    get bodies(): readonly B[] {
         return [...this]
     }
 
-    public readonly g: SimulationData['g']
-    public readonly physicsSteps: SimulationData['physicsSteps']
-    public readonly realMassThreshold: SimulationData['realMassThreshold']
-    public readonly realBodiesMin: SimulationData['realBodiesMin']
+    readonly g: SimulationData['g']
+    readonly physicsSteps: SimulationData['physicsSteps']
+    readonly realMassThreshold: SimulationData['realMassThreshold']
+    readonly realBodiesMin: SimulationData['realBodiesMin']
 
     private _bodyId = 0
 
     // Constructor
 
-    public constructor(settings?: Partial<SimulationSettings>) {
+    constructor(settings?: Partial<SimulationSettings>) {
         const {
             bodies,
             g,
@@ -108,7 +107,7 @@ abstract class Simulation<B extends BodyDataWithId>
     /**
      * Returns true if the simulation is running.
      */
-    public abstract get isRunning(): boolean
+    abstract get isRunning(): boolean
 
     /**
      * Starts the simulation. While the simulation is running,
@@ -116,13 +115,13 @@ abstract class Simulation<B extends BodyDataWithId>
      * Simulation will run until it encounters and error or
      * is manually stopped.
      */
-    public abstract run(): void
+    abstract run(): void
 
     /**
      * Starts the simulations, runs it for the specified number
      * of ticks or until it encounters an error.
      */
-    public async runForNumTicks(ticks: number): Promise<void> {
+    async runForNumTicks(ticks: number): Promise<void> {
         let target = 0
         return this.runUntil(() => target++ >= ticks)
     }
@@ -130,14 +129,14 @@ abstract class Simulation<B extends BodyDataWithId>
     /**
      * Runs the simulation for one tick.
      */
-    public runForOneTick() {
+    runForOneTick() {
         return this.runForNumTicks(1)
     }
 
     /**
      * Runs the simulation until a specified condition
      */
-    public runUntil(
+    runUntil(
         condition: (bodies: SimulationData['bodies']) => boolean
     ): Promise<void> {
         return new Promise<void>((resolve, reject) => {
@@ -169,27 +168,27 @@ abstract class Simulation<B extends BodyDataWithId>
         })
     }
 
-    public abstract stop(): void
+    abstract stop(): void
 
     // Body CRUD interface
 
-    public addBodies(data: BodyData[]): B[] {
+    addBodies(data: BodyData[]): B[] {
         return data.map(datum => this.addBody(datum))
     }
 
-    public addBody(data: BodyData): B {
+    addBody(data: BodyData): B {
         const id = this._bodyId++
 
         return this._upsertBody({ id, ...data }, true)
     }
 
-    public updateBody(id: number, data: BodyData): B {
+    updateBody(id: number, data: BodyData): B {
         if (!this.hasBody(id)) throw new Error(`No body with id ${id}`)
 
         return this._upsertBody({ id, ...data }, true)
     }
 
-    public removeBody(id: number): B {
+    removeBody(id: number): B {
         const body = this.getBody(id)
         if (!body) throw new Error(`No body with id ${id}`)
 
@@ -198,21 +197,21 @@ abstract class Simulation<B extends BodyDataWithId>
         return body
     }
 
-    public getBody(id: number): B | null {
+    getBody(id: number): B | null {
         return this._bodies.get(id) ?? null
     }
 
-    public hasBody(id: number): boolean {
+    hasBody(id: number): boolean {
         return this._bodies.has(id)
     }
 
     // Iteration
 
-    public *[Symbol.iterator]() {
+    *[Symbol.iterator]() {
         for (const body of this._bodies.values()) yield body
     }
 
-    public *ids() {
+    *ids() {
         yield* this._bodies.keys()
     }
 
@@ -312,7 +311,7 @@ abstract class Simulation<B extends BodyDataWithId>
 
     // toJSON
 
-    public toJSON(): SimulationData {
+    toJSON(): SimulationData {
         const { g, physicsSteps, realMassThreshold, realBodiesMin, bodies } =
             this
 

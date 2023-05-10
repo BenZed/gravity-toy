@@ -23,6 +23,4 @@ function orbitalVelocity(
 
 //// Exports ////
 
-export default orbitalVelocity
-
 export { orbitalVelocity }

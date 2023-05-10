@@ -20,15 +20,16 @@ const IS_CHILD = IS_NODE
  * Forks the physics integration into a separate child process
  */
 abstract class SimulationFork<B extends BodyDataWithId> extends Simulation<B> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private _childProcess: any = null
 
-    public override get isRunning(): boolean {
+    override get isRunning(): boolean {
         return !!this._childProcess
     }
 
     // Override
 
-    public override run() {
+    override run() {
         if (this.isRunning) this.stop()
 
         if (IS_BROWSER) {
@@ -64,7 +65,7 @@ abstract class SimulationFork<B extends BodyDataWithId> extends Simulation<B> {
         return this
     }
 
-    public override stop(): void {
+    override stop(): void {
         if (IS_BROWSER) this._childProcess?.terminate()
 
         if (IS_NODE) this._childProcess?.kill()

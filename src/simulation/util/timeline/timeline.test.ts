@@ -41,7 +41,7 @@ describe('construct', () => {
         'tick',
         'lastTick',
         'stateCount'
-    ] as (keyof Timeline<any>)[])
+    ] as (keyof Timeline<object>)[])
         it(`${field.toString()} is initially 0`, () => {
             expect(emptyTimeline[field]).toBe(0)
         })
@@ -124,7 +124,7 @@ describe('applyState()', () => {
         expect(copy(timeline).applyState(1)).toEqual(input[1])
     })
 
-    it('throws an error trying to apply non-existant states', () => {
+    it('throws an error trying to apply non-existent states', () => {
         const emptyTimeline = new Timeline()
 
         expect(() => emptyTimeline.applyState(0)).toThrow('Timeline is empty')

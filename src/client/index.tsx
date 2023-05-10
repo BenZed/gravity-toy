@@ -1,3 +1,5 @@
+/// <reference lib="dom" />
+
 import 'normalize.css'
 import './assets/gravity-toy.css'
 

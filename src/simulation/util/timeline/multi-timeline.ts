@@ -6,41 +6,42 @@ import { KeyedStatePayload, Tick, Timeline, _TimelineLike } from './timeline'
 abstract class _MultiTimeline<
     T extends { id: number | string }
 > extends _TimelineLike<readonly T[]> {
-    public get firstTick(): Tick {
-        return this._getFirstCacheProperty('firstTick')
+    get firstTick(): Tick {
+        return this._firstCache.firstTick
     }
-    public get tick(): Tick {
-        return this._getFirstCacheProperty('tick')
+    get tick(): Tick {
+        return this._firstCache.tick
     }
-    public get lastTick(): Tick {
-        return this._getFirstCacheProperty('lastTick')
-    }
-
-    public get stateCount(): number {
-        return this._getFirstCacheProperty('numStates')
+    get lastTick(): Tick {
+        return this._firstCache.lastTick
     }
 
-    private _getFirstCacheProperty(
-        key: 'firstTick' | 'tick' | 'lastTick' | 'numStates'
-    ): Tick {
-        // return the key value of the first timeline in the cache
-        // as they'll all be synced anyway
-        for (const cache of this._cache.values()) return cache[key]
-
-        return 0 // no timelines in the cache
+    get stateCount(): number {
+        return this._firstCache.stateCount
+    }
+    get rawStateCount(): number {
+        return this._firstCache.rawStateCount
+    }
+    get keyStateCounts(): number[] {
+        return this._firstCache.keyStateCounts
     }
 
     // Cache
 
     private readonly _cache: Map<T['id'], Timeline<Omit<T, 'id'>>> = new Map()
 
+    private get _firstCache(): Timeline<Omit<T, 'id'>> {
+        const [cache] = this._cache.values()
+        return cache
+    }
+
     // State
     private _state: T[] = []
-    public get state(): readonly T[] {
+    get state(): readonly T[] {
         return this._state
     }
 
-    public pushState(states: readonly T[]): void {
+    pushState(states: readonly T[]): void {
         for (const state of states) {
             let timeline = this._cache.get(state.id)
             if (!timeline) {
@@ -54,16 +55,16 @@ abstract class _MultiTimeline<
         }
     }
 
-    public applyState(tick: Tick): T[] {
+    applyState(tick: Tick): T[] {
         this._state = this.getState(tick)
         return this._state
     }
 
-    public hasState(tick: number): boolean {
+    hasState(tick: number): boolean {
         return this.getState(tick).length > 0
     }
 
-    public getState(tick: Tick): T[] {
+    getState(tick: Tick): T[] {
         const states: T[] = []
 
         for (const [id, timeline] of this._cache) {
@@ -74,21 +75,21 @@ abstract class _MultiTimeline<
         return states
     }
 
-    public clearStatesBefore(tick: Tick): void {
-        /* Not Yet Implementeed */
+    clearStatesBefore(_tick: Tick): void {
+        /* Not Yet Implemented */
     }
 
-    public clearStatesFrom(tick: Tick): void {
-        /* Not Yet Implementeed */
+    clearStatesFrom(_tick: Tick): void {
+        /* Not Yet Implemented */
     }
 
     //
 
     protected abstract _toKeyedStatePayload?: (
         input: Omit<T, 'id'>
-    ) => KeyedStatePayload<T>
+    ) => KeyedStatePayload<T>;
 
-    public [$$copy](): this {
+    [$$copy](): this {
         throw new Error('Not yet implemented.')
     }
 }
@@ -98,7 +99,7 @@ abstract class _MultiTimeline<
 class MultiTimeline<
     T extends { id: string | number }
 > extends _MultiTimeline<T> {
-    public constructor(
+    constructor(
         protected _toKeyedStatePayload?: (
             state: Omit<T, 'id'>
         ) => KeyedStatePayload<T>

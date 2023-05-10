@@ -1,21 +1,24 @@
-import { Body } from './body'
-import { SimulationPhysical } from './simulation-physical'
+import { it } from '@jest/globals'
 
-import { V2 } from '@benzed/math'
+// import { Body } from './body'
+// import { SimulationPhysical } from './simulation-physical'
 
-import { massFromRadius } from './util'
+// import { V2 } from '@benzed/math'
 
+// import { massFromRadius } from './util'
 /**
- * Similar api as simulation, doesnt cache data or use a child process
+ * Similar api as simulation, doesn't cache data or use a child process
  */
 
 //// Tests ////
+
+it.todo('physical')
 
 // describe('SimulationPhysical', function () {
 
 //     describe('sorting', () => {
 
-//         it('psuedo bodies must be under the props.realMassThreshold', () => {
+//         it('pseudo bodies must be under the props.realMassThreshold', () => {
 //             for (const threshold of [100, 200, 300]) {
 //                 const sim = new SimulationPhysical({
 //                     realBodiesMin: 0,
@@ -65,21 +68,21 @@ import { massFromRadius } from './util'
 //                 realMassThreshold: 100
 //             })
 
-//             const [psuedo, real] = sim.addBodies([
+//             const [pseudo, real] = sim.addBodies([
 //                 { mass: 99, pos: V2.ZERO },
 //                 { mass: 100, pos: new V2(50, 0) }
 //             ])
 
 //             worker.bodies.sort(worker.physics)
 
-//             expect(psuedo).toHaveProperty('real', false)
+//             expect(pseudo).toHaveProperty('real', false)
 //             expect(real).toHaveProperty('real', true)
 
 //             await sim.runForNumTicks(5)
 
-//             // If psuedo bodies weren't attracted to real bodies, it wouldn't have
+//             // If pseudo bodies weren't attracted to real bodies, it wouldn't have
 //             // moved at all
-//             expect(psuedo.pos.x).toBeGreaterThan(0)
+//             expect(pseudo.pos.x).toBeGreaterThan(0)
 //         })
 
 //         it('pseudo bodies are not attracted to each other', async () => {
@@ -103,7 +106,7 @@ import { massFromRadius } from './util'
 
 //             await sim.runForNumTicks(5)
 
-//             // If psuedo bodies were attracted to each other, they would have moved
+//             // If pseudo bodies were attracted to each other, they would have moved
 //             expect(p1.pos.x).toEqual(0)
 //             expect(p2.pos.x).toEqual(20)
 //         })
@@ -115,20 +118,20 @@ import { massFromRadius } from './util'
 //                 realMassThreshold: 100
 //             })
 
-//             const [psuedo, real] = sim.addBodies([
+//             const [pseudo, real] = sim.addBodies([
 //                 { mass: 99, pos: new V2(50, 0) },
 //                 { mass: 1000, pos: new V2(0, 0) }
 //             ])
 
 //             worker.bodies.sort(worker.physics)
 
-//             expect(psuedo).toHaveProperty('real', false)
+//             expect(pseudo).toHaveProperty('real', false)
 //             expect(real).toHaveProperty('real', true)
 
 //             await sim.runForNumTicks(10)
 
-//             // Psuedo body should have moved toward real body
-//             expect(psuedo.pos.x).toBeLessThan(50)
+//             // pseudo body should have moved toward real body
+//             expect(pseudo.pos.x).toBeLessThan(50)
 
 //             // Real body should not have moved
 //             expect(real.pos.x).toEqual(0)
@@ -163,7 +166,7 @@ import { massFromRadius } from './util'
 //             expect(r1.link).toEqual(null)
 
 //             const totalMass = worker.bodies.living.reduce((m, b) => m + b.mass, 0)
-//             const realMass = worker.bodies.real.reduce((m, b) => m + b.mass + b.massFromPsuedoBodies, 0)
+//             const realMass = worker.bodies.real.reduce((m, b) => m + b.mass + b.massFromPseudoBodies, 0)
 
 //             expect(realMass).toEqual(totalMass)
 //         })

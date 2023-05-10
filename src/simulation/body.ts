@@ -2,7 +2,7 @@ import { V2, V2Json } from '@benzed/math'
 
 import { closestPointOnLine, radiusFromMass } from './util'
 import { RELATIVE_VELOCITY_EPSILON } from './constants'
-import { bySpeed } from './util/timeline/by-speed'
+import { bySpeed } from './util/by-speed'
 
 //// Types ////
 
@@ -19,17 +19,17 @@ interface BodyDataWithId extends BodyData {
 //// Helper Classes ////
 
 class BodyEdge {
-    public value = 0
+    value = 0
 
     constructor(
-        public readonly body: Body,
-        public readonly axis: 'x' | 'y',
-        public readonly isMin: boolean
+        readonly body: Body,
+        readonly axis: 'x' | 'y',
+        readonly isMin: boolean
     ) {
         this.value = isMin ? -Infinity : Infinity
     }
 
-    public valueOf() {
+    valueOf() {
         return this.value
     }
 }
@@ -41,26 +41,26 @@ class Body implements BodyDataWithId, Iterable<BodyEdge> {
 
     readonly id: number
 
-    public readonly pos: V2
-    public readonly vel: V2
-    public mass: number
+    readonly pos: V2
+    readonly vel: V2
+    mass: number
 
     // Physics
 
-    public pseudoMass = 0
+    pseudoMass = 0
 
-    public readonly force: V2 = V2.ZERO
+    readonly force: V2 = V2.ZERO
 
-    public readonly left: BodyEdge
-    public readonly right: BodyEdge
-    public readonly top: BodyEdge
-    public readonly bottom: BodyEdge
+    readonly left: BodyEdge
+    readonly right: BodyEdge
+    readonly top: BodyEdge
+    readonly bottom: BodyEdge
 
-    public get radius() {
+    get radius() {
         return radiusFromMass(this)
     }
 
-    public constructor(input: BodyDataWithId) {
+    constructor(input: BodyDataWithId) {
         this.id = input.id
         this.pos = V2.from(input.pos)
         this.vel = V2.from(input.vel)
@@ -74,7 +74,7 @@ class Body implements BodyDataWithId, Iterable<BodyEdge> {
 
     //// Interface ////
 
-    public isOverlapping(other: Body) {
+    isOverlapping(other: Body) {
         if (this.left > other.right || other.left > this.right) return false
 
         if (this.top > other.bottom || other.top > this.bottom) return false
@@ -82,7 +82,7 @@ class Body implements BodyDataWithId, Iterable<BodyEdge> {
         return true
     }
 
-    public isColliding(other: Body) {
+    isColliding(other: Body) {
         const [fast, slow] = [this, other].sort(bySpeed)
 
         const relativeVel = fast.vel.copy().sub(slow.vel)
@@ -105,7 +105,7 @@ class Body implements BodyDataWithId, Iterable<BodyEdge> {
         return distance < fast.radius + slow.radius
     }
 
-    public updateBounds() {
+    updateBounds() {
         for (const edge of this) {
             const vel = this.vel[edge.axis]
             const pos = this.pos[edge.axis]
@@ -123,11 +123,11 @@ class Body implements BodyDataWithId, Iterable<BodyEdge> {
     /**
      * So it may be sorted by mass.
      */
-    public valueOf() {
+    valueOf() {
         return this.mass
     }
 
-    public toJSON(): BodyDataWithId {
+    toJSON(): BodyDataWithId {
         return {
             id: this.id,
             pos: this.pos.toJSON(),
@@ -138,7 +138,7 @@ class Body implements BodyDataWithId, Iterable<BodyEdge> {
 
     //// Iterable Implementation ////
 
-    public *[Symbol.iterator](): Generator<BodyEdge> {
+    *[Symbol.iterator](): Generator<BodyEdge> {
         yield this.left
         yield this.right
         yield this.top
