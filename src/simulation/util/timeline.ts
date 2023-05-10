@@ -1,4 +1,4 @@
-import { Sortable, SortedArray } from '@benzed/array'
+import { SortedArray } from '@benzed/array'
 import { $$copy, $$equals, copy, equals } from '@benzed/immutable'
 import { max } from '@benzed/math'
 
@@ -49,123 +49,9 @@ type Cache<T> = {
  */
 type KeyedStatePayload<T> = State<T>[]
 
-//// Util ////
-
-/**
- * KeyedState ValueOf
- */
-function valueOf(this: { tick: number }) {
-    return this.tick
-}
-
-function getClosestKeyState<T extends object>(
-    states: KeyedStates<T>,
-    tick: Tick
-): [state: KeyedState<T>, tick: Tick] {
-    _ensureSortedArrayMethodsHack(states)
-
-    const closestIndex = states.closestIndexOf({
-        valueOf,
-        tick,
-        state: null as unknown as T
-    })
-
-    return [states[closestIndex], closestIndex]
-}
-
-/**
- * Sorted Array is classed as an Array due to the limitations of the engine
- * the compiler is targeting.
- * I'll have to find away around that, or use a newer target.
- */
-function _ensureSortedArrayMethodsHack<T extends Sortable>(
-    arr: SortedArray<T>
-): void {
-    const proto = SortedArray.prototype
-
-    // @ts-expect-error hack
-    arr._getIndexViaBinarySearch = proto._getIndexViaBinarySearch
-    arr.closestIndexOf = proto.closestIndexOf
-    arr.copy = proto.copy
-}
-
-//// _TimelineLike ////
-
-abstract class _TimelineLike<T extends object> {
-    // Iterable
-
-    *ticks(): Generator<number> {
-        const { firstTick, lastTick } = this
-
-        if (this.stateCount > 0)
-            for (let i = firstTick; i <= lastTick; i++) yield i
-    }
-
-    *states(): Generator<T> {
-        for (const tick of this.ticks()) yield this.getState(tick) as T
-    }
-
-    *[Symbol.iterator](): Generator<T> {
-        yield* this.states()
-    }
-
-    // Tick
-
-    abstract get firstTick(): Tick
-    abstract get tick(): Tick
-    abstract get lastTick(): Tick
-
-    valueOf = valueOf
-
-    // State
-
-    abstract get state(): T
-    abstract get stateCount(): number
-    abstract get rawStateCount(): number
-    abstract get keyStateCounts(): number[]
-
-    abstract pushState(state: Readonly<T>): void
-    abstract hasState(tick: Tick): boolean
-    abstract getState(tick: Tick): T | null
-
-    abstract applyState(tick: Tick): T
-    applyLastState(): T {
-        return this.applyState(this.lastTick)
-    }
-    applyFirstState(): T {
-        return this.applyState(this.firstTick)
-    }
-
-    abstract clearStatesFrom(tick: Tick): void
-    abstract clearStatesBefore(tick: Tick): void
-    clearStates(): void {
-        this.clearStatesFrom(this.firstTick)
-    }
-    setState(tick: Tick, state: Readonly<T>): void {
-        this.clearStatesFrom(tick)
-        this.pushState(state)
-    }
-
-    // CopyComparable
-
-    abstract [$$copy](): this
-
-    [$$equals](other: unknown): other is this {
-        const ThisTimeline = this.constructor as new () => this
-
-        return (
-            other instanceof ThisTimeline &&
-            equals(this.firstTick, other.firstTick) &&
-            equals(this.tick, other.tick) &&
-            equals(this.lastTick, other.lastTick) &&
-            equals(this.state, other.state)
-        )
-    }
-}
-
 //// _Timeline ////
 
-abstract class _Timeline<T extends object> extends _TimelineLike<T> {
+abstract class _Timeline<T extends object> {
     // Tick
 
     protected _firstTick = 0
@@ -203,6 +89,8 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
         return this._state
     }
 
+    // State
+
     pushState(state: Readonly<T>): void {
         const isEmpty = !this._state
         if (isEmpty) this._state = state
@@ -229,13 +117,15 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
                 this._cache.keyedStates[i] = keyedStates
             }
 
-            const [prevKeyState] = getClosestKeyState(keyedStates, tick)
+            const [prevKeyState] = this._getClosestKeyState(keyedStates, tick)
 
             if (!equals(keyState, prevKeyState?.state))
                 keyedStates.push({
                     state: keyState,
                     tick,
-                    valueOf
+                    valueOf() {
+                        return this.tick
+                    }
                 })
         }
 
@@ -270,7 +160,7 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
         let keyedState: State<T> | null = null
 
         for (const keyedStates of allKeyedStates) {
-            const [{ state: lastKeyedState }] = getClosestKeyState(
+            const [{ state: lastKeyedState }] = this._getClosestKeyState(
                 keyedStates,
                 tick
             )
@@ -295,6 +185,12 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
         this._tick = tick
         return this._state as T
     }
+    applyLastState(): T {
+        return this.applyState(this.lastTick)
+    }
+    applyFirstState(): T {
+        return this.applyState(this.firstTick)
+    }
 
     clearStatesFrom(tick: Tick): void {
         this._assertTick(tick)
@@ -306,7 +202,7 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
 
         // Clear key states
         for (const keyedStates of allKeyedStates) {
-            const [closest, index] = getClosestKeyState(keyedStates, tick)
+            const [closest, index] = this._getClosestKeyState(keyedStates, tick)
 
             keyedStates.length = closest.tick === tick ? index : index + 1
         }
@@ -314,6 +210,10 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
         // Set last tick
         this._lastTick = max(tick - 1, this._firstTick)
         if (this._lastTick === this._firstTick) this._state = null
+    }
+
+    clearStates(): void {
+        this.clearStatesFrom(this.firstTick)
     }
 
     clearStatesBefore(tick: Tick): void {
@@ -326,7 +226,7 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
 
         // Clear key states
         for (const keyedStates of allKeyedStates) {
-            const [keyedState, closestIndex] = getClosestKeyState(
+            const [keyedState, closestIndex] = this._getClosestKeyState(
                 keyedStates,
                 tick
             )
@@ -339,27 +239,60 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
         this._firstTick = tick
     }
 
-    // CopyComparable
+    setState(tick: Tick, state: Readonly<T>): void {
+        this.clearStatesFrom(tick)
+        this.pushState(state)
+    }
 
-    [$$copy](): this {
-        const TimelineLike = this.constructor as new () => this
+    // Iterable
 
-        const newTimeline = new TimelineLike()
-        newTimeline._toKeyedStatePayload = this._toKeyedStatePayload
+    *ticks(): Generator<number> {
+        const { firstTick, lastTick } = this
 
-        newTimeline._cache.rawStates = [...this._cache.rawStates]
-        newTimeline._cache.keyedStates = [...this._cache.keyedStates.map(copy)]
+        if (this.stateCount > 0)
+            for (let i = firstTick; i <= lastTick; i++) yield i
+    }
 
-        newTimeline._firstTick = this._tick
-        newTimeline._tick = this._tick
-        newTimeline._lastTick = this._lastTick
+    *states(): Generator<T> {
+        for (const tick of this.ticks()) yield this.getState(tick) as T
+    }
 
-        newTimeline._state = this._state
-
-        return newTimeline
+    *[Symbol.iterator](): Generator<T> {
+        yield* this.states()
     }
 
     // Helper
+
+    protected _getClosestKeyState(
+        states: KeyedStates<T>,
+        tick: Tick
+    ): [state: KeyedState<T>, tick: Tick] {
+        // EnsureSortedArrayMethods
+        {
+            /**
+             * TODO
+             * Sorted Array is classed as an Array due to the limitations of the engine
+             * the compiler is targeting.
+             * I'll have to find away around that, or use a newer target.
+             */
+            // @ts-expect-error hack
+            states._getIndexViaBinarySearch =
+                // @ts-expect-error hack
+                SortedArray.prototype._getIndexViaBinarySearch
+            states.closestIndexOf = SortedArray.prototype.closestIndexOf
+            states.copy = SortedArray.prototype.copy
+        }
+
+        const closestIndex = states.closestIndexOf({
+            valueOf() {
+                return this.tick
+            },
+            tick,
+            state: null as unknown as T
+        })
+
+        return [states[closestIndex], closestIndex]
+    }
 
     private readonly _cache: Cache<T> = {
         rawStates: [],
@@ -378,6 +311,38 @@ abstract class _Timeline<T extends object> extends _TimelineLike<T> {
                 `${tick} out of range: ${this._firstTick} - ${this._lastTick}`
             )
     }
+
+    // CopyComparable
+
+    [$$equals](other: unknown): other is this {
+        const ThisTimeline = this.constructor as new () => this
+
+        return (
+            other instanceof ThisTimeline &&
+            equals(this.firstTick, other.firstTick) &&
+            equals(this.tick, other.tick) &&
+            equals(this.lastTick, other.lastTick) &&
+            equals(this.state, other.state)
+        )
+    }
+
+    [$$copy](): this {
+        const TimelineLike = this.constructor as new () => this
+
+        const timeline = new TimelineLike()
+        timeline._toKeyedStatePayload = this._toKeyedStatePayload
+
+        timeline._cache.rawStates = [...this._cache.rawStates]
+        timeline._cache.keyedStates = [...this._cache.keyedStates.map(copy)]
+
+        timeline._firstTick = this._tick
+        timeline._tick = this._tick
+        timeline._lastTick = this._lastTick
+
+        timeline._state = this._state
+
+        return timeline
+    }
 }
 
 //// Timeline ////
@@ -394,4 +359,4 @@ class Timeline<T extends object> extends _Timeline<T> {
 
 //// Exports ////
 
-export { Timeline, _Timeline, _TimelineLike, Tick, State, KeyedStatePayload }
+export { Timeline, _Timeline, Tick, State, KeyedStatePayload }
